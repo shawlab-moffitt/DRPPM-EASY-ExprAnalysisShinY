@@ -18,15 +18,20 @@ library(readr)
 ##User Input
 
 #Assign expression data
-expr_file <- "~/path/to/expresion/matrix.tsv"
+expr_file <- "~/R/PauloRodriguez/read_counts_normalized_geneSymbol_max_1FPKM.tsv"
 
 #Assign meta data
-meta_file <- "~/path/to/meta/file.txt"
+meta_file <- "~/R/PauloRodriguez/metafile.txt"
 #Is there a header?
 header <- FALSE
 
 #Assign user .gmt file if provided
-GeneSet_file.u <- "/input/gmt/here.gmt"
+GeneSet_file.u.gmt <- "~/input/gmt/file/here.gmt"
+
+#Assign user gene set file if provided
+GeneSet_file.u.gs <- "~/input/geneset/file/here.tsv"
+#does this file have a header?
+header.gs <- TRUE
 
 #OR
 
@@ -57,18 +62,21 @@ meta <- read.delim(meta_file, sep = '\t', header = header, strip.white = T)
 
 ##reading GeneSet data=
 #Generate gmt with user gmt file if provided
-if (file.exists(GeneSet_file.u)){
-  gmt <- read.gmt(GeneSet_file.u)
+if (file.exists(GeneSet_file.u.gmt)){
+  gmt <- read.gmt(GeneSet_file.u.gmt)
+}
+if (file.exists(GeneSet_file.u.gs)){
+  gmt <- read.delim(GeneSet_file.u.gs, header = header.gs, sep = '\t')
 }
 
 #generate gmt with pre-loaded MSigDB gmt file - Human or Mouse
 if (file.exists(GeneSet_file.u) == FALSE){
   if (human == TRUE) {
-    GeneSet_file.m <- '~/path/to/data/msigdb_gsNsym_HS.tsv'
+    GeneSet_file.m <- '~/R/USP7appsNstuff/data/MSigDB/msigdb_gsNsym_HS.tsv'
     gmt <- read.delim(GeneSet_file.m, header = T, sep = '\t')
   }
   if (human == FALSE) {
-    GeneSet_file.m <- '~/path/to/data/msigdb_gsNsym_MS.tsv'
+    GeneSet_file.m <- '~/R/USP7appsNstuff/data/MSigDB/msigdb_gsNsym_MS.tsv'
     gmt <- read.delim(GeneSet_file.m, header = T, sep = '\t')
   }
 }
