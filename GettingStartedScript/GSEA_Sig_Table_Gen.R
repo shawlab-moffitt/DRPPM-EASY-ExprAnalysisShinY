@@ -18,10 +18,10 @@ library(readr)
 ##User Input
 
 #Assign expression data
-expr_file <- "~/R/PauloRodriguez/read_counts_normalized_geneSymbol_max_1FPKM.tsv"
+expr_file <- "~/path/to/expresion/matrix.tsv"
 
 #Assign meta data
-meta_file <- "~/R/PauloRodriguez/metafile.txt"
+meta_file <- "~/path/to/meta/file.txt"
 #Is there a header?
 header <- FALSE
 
@@ -64,11 +64,11 @@ if (file.exists(GeneSet_file.u)){
 #generate gmt with pre-loaded MSigDB gmt file - Human or Mouse
 if (file.exists(GeneSet_file.u) == FALSE){
   if (human == TRUE) {
-    GeneSet_file.m <- '~/R/USP7appsNstuff/data/MSigDB/msigdb_gsNsym_HS.tsv'
+    GeneSet_file.m <- '~/path/to/data/msigdb_gsNsym_HS.tsv'
     gmt <- read.delim(GeneSet_file.m, header = T, sep = '\t')
   }
   if (human == FALSE) {
-    GeneSet_file.m <- '~/R/USP7appsNstuff/data/MSigDB/msigdb_gsNsym_MS.tsv'
+    GeneSet_file.m <- '~/path/to/data/msigdb_gsNsym_MS.tsv'
     gmt <- read.delim(GeneSet_file.m, header = T, sep = '\t')
   }
 }
