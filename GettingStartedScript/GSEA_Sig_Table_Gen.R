@@ -25,23 +25,23 @@ meta_file <- "~/R/PauloRodriguez/metafile.txt"
 #Is there a header?
 header <- FALSE
 
-#Assign .gmt file
-#GeneSet_file <- "..."
+#Assign user .gmt file if provided
+GeneSet_file.u <- "/input/gmt/here.gmt"
 
 #OR
 
-#2 column file with GeneSetName and GeneSymbol as columns
-GeneSet_file <- "~/R/USP7appsNstuff/data/MSigDB/msigdb_gsNsym_MS.tsv"
+#Use prepared MSigDB gene set, if FALSE mouse model gene set used
+human <- FALSE
 
 
-#Code to generate gene set for MSigDB based on species
+
+
+
+#Code to generate gene set for MSigDB based on species if not using human or mouse
 #msigdbr_species() #to see species available
 #msigdb_gs <- msigdbr(species = "Homo sapiens") %>%
 #  dplyr::select(gs_name, gene_symbol)
 #gmt <- msigdb_gs
-
-
-
 
 
 
@@ -55,13 +55,23 @@ A <- as.matrix(expr)
 #turn header on or off if in file
 meta <- read.delim(meta_file, sep = '\t', header = header, strip.white = T)
 
-##reading GeneSet data
-GeneSet <- read.delim(GeneSet_file, header = T, sep = '\t')
-gmt <- GeneSet
+##reading GeneSet data=
+#Generate gmt with user gmt file if provided
+if (file.exists(GeneSet_file.u)){
+  gmt <- read.gmt(GeneSet_file.u)
+}
 
-##generate genelist data
-#Gene <- rownames(expr)
-#GeneList_MS <- as.data.frame(Gene)
+#generate gmt with pre-loaded MSigDB gmt file - Human or Mouse
+if (file.exists(GeneSet_file.u) == FALSE){
+  if (human == TRUE) {
+    GeneSet_file.m <- '~/R/USP7appsNstuff/data/MSigDB/msigdb_gsNsym_HS.tsv'
+    gmt <- read.delim(GeneSet_file.m, header = T, sep = '\t')
+  }
+  if (human == FALSE) {
+    GeneSet_file.m <- '~/R/USP7appsNstuff/data/MSigDB/msigdb_gsNsym_MS.tsv'
+    gmt <- read.delim(GeneSet_file.m, header = T, sep = '\t')
+  }
+}
 
 
 ##Create groups based off meta
@@ -86,8 +96,8 @@ list2env(levlst,globalenv())
 #assign group from environment
 groupA.r <- groupA
 groupB.r <- groupB
-#assign outfile name and path
-OutPathAndName <- "~/R/PauloRodriguez/Enrich_Sig_Table"
+#assign outfile name and path - no extension
+OutPathAndName <- "..."
 
 
 A <- A + 0.00000001
