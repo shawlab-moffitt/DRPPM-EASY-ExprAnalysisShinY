@@ -67,6 +67,7 @@ if (file.exists(GeneSet_file.u.gmt)){
 }
 if (file.exists(GeneSet_file.u.gs)){
   gmt <- read.delim(GeneSet_file.u.gs, header = header.gs, sep = '\t')
+  colnames(gmt) <- c("Term","Gene")
 }
 
 #generate gmt with pre-loaded MSigDB gmt file - Human or Mouse
