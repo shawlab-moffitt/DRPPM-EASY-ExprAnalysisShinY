@@ -4,8 +4,8 @@
 
 # Requirements
 
-* 'R' - https://cran.r-project.org/src/base/R-4/
-* 'R Studio' - https://www.rstudio.com/products/rstudio/download/
+* `R` - https://cran.r-project.org/src/base/R-4/
+* `R Studio` - https://www.rstudio.com/products/rstudio/download/
 
 # Installation
 
