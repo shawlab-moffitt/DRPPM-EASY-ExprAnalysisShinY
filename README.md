@@ -35,3 +35,10 @@
 * ggrepel_0.9.1
 
 
+# Required Files
+
+## Required By User
+
+* **Expression Matrix:** Data in a tab delimited format with a header where the first column consists of the gene symbols and the following columns should start with the sample name followed by the expression data. It is requested that you filter out the lowly expressed genes prior to running this analysis, as when the files are too large it can cause memory issues for some computers.
+* **Meta Data:** This should be a tab delimited file with two columns, header is not necessary but you may dictate whether there is a header or not when adding your file to the `app.R` code. The first column should consist of column names and the second column should be the phenotype grouping for each sample.
+* 
