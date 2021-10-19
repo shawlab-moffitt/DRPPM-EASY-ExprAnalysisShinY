@@ -133,7 +133,9 @@ for (i in 1:ncol(g_combos)){
   group2 <- unlist(levlst[which(names(levlst) == g_combos[2,i])])
   #for file names
   group1.n <- meta[,2][which(meta[,1] == group1[1])]
+  group1.n <- gsub(" ","",group1.n)
   group2.n <- meta[,2][which(meta[,1] == group2[1])]
+  group2.n <- gsub(" ","",group2.n)
   
   ####----Signal-to-Noise Calculation----####
   A <- A + 0.00000001
