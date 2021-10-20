@@ -17,19 +17,21 @@ library(readr)
 
 ##User Input
 
-#Assign expression data
-expr_file <- "~/R/USP7appsNstuff/data/HAUSP_htseq_fpkm_geneName_max.txt"
+#Assign expression data path
+expr_file <- "~/path/to/expression/file.txt"
 
-#Assign meta data
-meta_file <- "~/R/USP7appsNstuff/data/MS_meta.tsv"
+#Assign meta data path
+meta_file <- "~/path/to/meta/file.tsv"
 #Is there a header?
 header <- TRUE
 
 #assign outfile path - where you want the enriched signatures table
-OutPath <- "~/R/USP7appsNstuff/data/"
+OutPath <- "~/desired/path/for/outfile/"
 
-#Use prepared MSigDB gene set, if FALSE mouse model gene set used
-human <- FALSE
+#Use prepared MSigDB gene set
+MSigDB_file <- "~/path/to/provided/MSigdb/file.tsv"
+#Choose FALSE mouse model gene set used
+human <- TRUE
 
 
 ##--OR--##
@@ -37,10 +39,10 @@ human <- FALSE
 
 ##User designated gene set (OPTIONAL)
 #Assign user .gmt file if provided
-GeneSet_file.u.gmt <- "~/input/gmt/file/here.gmt"
+GeneSet_file.u.gmt <- "~/user/input/gmt/file/here.gmt"
 #or
 #Assign user gene set file if provided
-GeneSet_file.u.gs <- "~/input/geneset/file/here.tsv"
+GeneSet_file.u.gs <- "~/user/input/geneset/file/here.tsv"
 #does this file have a header?
 header.gs <- TRUE
 
@@ -80,14 +82,8 @@ meta[,1] <- gsub("[_.-]", "_", meta[,1])
 
 #generate gmt with pre-loaded MSigDB gmt file - Human or Mouse
 if (file.exists(GeneSet_file.u.gmt) == FALSE && file.exists(GeneSet_file.u.gs) == FALSE){
-  if (human == TRUE) {
-    GeneSet_file.m <- '~/R/USP7appsNstuff/data/MSigDB/msigdb_gsNsym_HS.tsv'
+    GeneSet_file.m <- MSigDB_file
     gmt <- read.delim(GeneSet_file.m, header = T, sep = '\t')
-  }
-  else if (human == FALSE) {
-    GeneSet_file.m <- '~/R/USP7appsNstuff/data/MSigDB/msigdb_gsNsym_MM.tsv'
-    gmt <- read.delim(GeneSet_file.m, header = T, sep = '\t')
-  }
 }
 
 
@@ -123,7 +119,7 @@ list2env(levlst,globalenv())
 
 ####----Generate Enrich Sig Tables----####
 ##loop through combinations of the groups
-##This will likely take sveral minutes due to the GSEA function
+##This will likely take several minutes due to the GSEA function
 
 g_combos <- combn(names(levlst), 2)
 for (i in 1:ncol(g_combos)){
