@@ -29,7 +29,7 @@ header <- TRUE
 OutPath <- "~/desired/path/for/outfile/"
 
 #Use prepared MSigDB gene set
-MSigDB_file <- "~/path/to/provided/MSigdb/file.tsv"
+MSigDB_file <- "~/path/to/provided/MSigdb/msigdb_gsNsym_*.tsv"
 #Choose FALSE mouse model gene set used
 human <- TRUE
 
