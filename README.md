@@ -80,6 +80,10 @@ Once these files are input in the script it can be run in its entirety. The scri
 
 # Prepping the R Shiny App
 
-Similar to generating the Enriched Signatures Table, the Shiny App requires just a few user inputs and it can be up and running.
+Similar to generating the Enriched Signatures Table, the Shiny App requires just a few user inputs and it can be up and running. Once the [app](https://github.com/shawlab-moffitt/RShinyAnalysisGenerator/blob/main/App/app.R) script is loaded all that is needed is to update the user input and then it can be run!
+
+## User Input for R Shiny App
+
+
 
 
