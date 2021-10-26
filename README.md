@@ -33,6 +33,8 @@
 * limma_3.48.3
 * enrichR_3.0
 * ggrepel_0.9.1
+* tidyr_1.1.3
+* GSVA_1.40.1
 
 
 # Required Files
@@ -49,7 +51,7 @@
 * **MSigDB Files:** These files are provided in the /data/ folder which begin with "msigdb_" and are formated for the GSEA analysis within the GettingStartedScript, `GSEA_Sig_Table_Gen.R` and the Shiny app, as well as are used for the user interface tables to select gene sets within the GSEA tab. The msigdb_gsNsym.tsv files are zipped due to size constraints, when unzipped they are around 140mb-160mb each. The MSigDB gene sets are available for *Homo sapiens* and *Mus musculus* which can either both be downloaded or only the species you need. You choose if the samples are human or not when setting up the scripts.
 * **Tab2 Gene Set GMT file:** This is a temporary file which is a subset of the MSigDB gene set collection. In the future it will be replaced with relevant gene sets that users may use when interacting with their data. Please keep in mind that this is from the Homo Sapien collection and will not generate results if you are observing mouse model data. The current gene set in this place is also included in the main MSigDB file, so idealy this tab can be ignored until it contains a more unique gene set.
 
-# Getting Started
+# [Getting Started Script](https://github.com/shawlab-moffitt/RShinyAnalysisGenerator/tree/main/GettingStartedScript)
 
 ## Generating the Enriched Signature Tables
 
@@ -64,7 +66,7 @@ More details on these file inputs in the [Required Files](https://github.com/sha
 * `OutPath` - Text input of user defined outfile path - This is where your enriched signature table(s) will be written to. The specific file naming is taken care of in the script.
 * Gene Set File
   * `MSigDB_file` - MSigDB Gene Set
-    * If you would like to use an MSigDB gene set you must download and unzip the appropriate msigdb_gsNsym_\*.tsv file for either *Homo sapiens* (HS) or *Mus musculus* (MM).
+    * If you would like to use an [MSigDB gene set](https://github.com/shawlab-moffitt/RShinyAnalysisGenerator/tree/main/data) you must download and unzip the appropriate msigdb_gsNsym_\*.tsv file for either *Homo sapiens* (HS) or *Mus musculus* (MM).
     * There is code included but commented out in regards to the msigdbr package which allows you to retreive gene sets based on certain species as well as from specific collections.
     * Please note `TRUE` or `FALSE` if the sample data is human or not, so the correct gene set is located and used.
   * User Provided Gene Set
@@ -73,3 +75,6 @@ More details on these file inputs in the [Required Files](https://github.com/sha
       * Please note `TRUE` or `FALSE` in `header.gs` if there is a header in the gene set file.
 
 Once these files are input in the script it can be run in its entirety. The script consists of reading the files and correcting for any formatting issues, generating groups based off of the meta file, and running through the signal-to-noise calculation. Based off the groups found in the meta file, an enriched signatures table will be made for each combination of the groupings and writen to a file containing the group names being compared.
+
+
+
