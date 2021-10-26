@@ -58,15 +58,15 @@ One of the required file inputs for the Shiny App is the GSEA enriched signature
 ### User Input for Getting Started Script
 More details on these file inputs in the "Required Files" section.
 
-* Expression matrix file
-* Meta File
- * Please note `TRUE` or `FALSE` if there is a header in the meta file
-* Text input of user defined outfile path - This is where your enriched signature table(s) will be written to. The specific file naming is taken care of in the script.
+* `expr_file` - Expression matrix file
+* `meta_file` - Meta File
+  * Please note `TRUE` or `FALSE` if there is a header in the meta file
+* `OutPath` - Text input of user defined outfile path - This is where your enriched signature table(s) will be written to. The specific file naming is taken care of in the script.
 * Gene Set File
- * MSigDB Gene Set
-  * If you would like to use an MSigDB gene set you must download and unzip the appropriate msigdb_gsNsym_\*.tsv file for either *Homo sapiens* (HS) or *Mus musculus* (MM).
-  * There is code included but commented out in regards to the msigdbr package which allows you to retreive gene sets based on certain species as well as from specific collections.
-  * Please note `TRUE` or `FALSE` if the sample data is human or not, so the correct gene set is located and used.
- * User Provided Gene Set
-  * There is an option to provide your own .gmt file or a tab delimited gene set file that I described in the "Required Files" section above.
+  * MSigDB Gene Set
+    * If you would like to use an MSigDB gene set you must download and unzip the appropriate msigdb_gsNsym_\*.tsv file for either *Homo sapiens* (HS) or *Mus musculus* (MM).
+    * There is code included but commented out in regards to the msigdbr package which allows you to retreive gene sets based on certain species as well as from specific collections.
+    * Please note `TRUE` or `FALSE` if the sample data is human or not, so the correct gene set is located and used.
+  * User Provided Gene Set
+    * There is an option to provide your own .gmt file or a tab delimited gene set file that I described in the "Required Files" section above.
  
