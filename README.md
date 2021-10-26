@@ -53,11 +53,10 @@
 
 # Getting Started Script
 
-## Generating the Enriched Signature Tables
-
 One of the required file inputs for the Shiny App is the GSEA enriched signatures table for your samples. The production of this table can take several minutes depending on the number of gene sets that are being ranked, but to save time we wrote a [script](https://github.com/shawlab-moffitt/RShinyAnalysisGenerator/blob/main/GettingStartedScript/GSEA_Sig_Table_Gen.R) that requires just a few file inputs and does the rest for you! We use all of the collections from the Molecular Signatures Database (MSigDB) for the initial ranking but the getting started script and the Shiny App both allow for user input of gene set/gmt files.
 
-### User Input for Getting Started Script
+## User Input for Getting Started Script
+
 More details on these file inputs in the [Required Files](https://github.com/shawlab-moffitt/RShinyAnalysisGenerator/blob/main/README.md#required-files) section.
 
 * `expr_file` - Expression matrix file
@@ -74,7 +73,13 @@ More details on these file inputs in the [Required Files](https://github.com/sha
     * `GeneSet_file.u.gs` - user provided geneset file
       * Please note `TRUE` or `FALSE` in `header.gs` if there is a header in the gene set file.
 
+## Generating Enriched Signature Table(s)
+
 Once these files are input in the script it can be run in its entirety. The script consists of reading the files and correcting for any formatting issues, generating groups based off of the meta file, and running through the signal-to-noise calculation. Based off the groups found in the meta file, an enriched signatures table will be made for each combination of the groupings and writen to a file containing the group names being compared.
 
+
+# Prepping the R Shiny App
+
+Similar to generating the Enriched Signatures Table, the Shiny App requires just a few user inputs and it can be up and running.
 
 
