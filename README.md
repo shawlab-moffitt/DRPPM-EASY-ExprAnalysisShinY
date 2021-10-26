@@ -69,6 +69,7 @@ More details on these file inputs in the [Required Files](https://github.com/sha
     * Please note `TRUE` or `FALSE` if the sample data is human or not, so the correct gene set is located and used.
   * User Provided Gene Set
     * `GeneSet_file.u.gmt` - user provided .gmt file
-    * `GeneSet_file.u.gs` - user provided geneset file, format described in the [Required Files](https://github.com/shawlab-moffitt/RShinyAnalysisGenerator/blob/main/README.md#required-files) section.
+    * `GeneSet_file.u.gs` - user provided geneset file
       * Please note `TRUE` or `FALSE` in `header.gs` if there is a header in the gene set file.
- 
+
+Once these files are input in the script it can be run in its entirety. The script consists of reading the files and correcting for any formatting issues, generating groups based off of the meta file, and running through the signal-to-noise calculation. Based off the groups found in the meta file, an enriched signatures table will be made for each combination of the groupings and writen to a file containing the group names being compared.
