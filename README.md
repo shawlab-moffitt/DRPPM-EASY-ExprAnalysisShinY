@@ -56,7 +56,7 @@
 One of the required file inputs for the Shiny App is the GSEA enriched signatures table for your samples. The production of this table can take several minutes depending on the number of gene sets that are being ranked. We use all of the collections from the Molecular Signatures Database (MSigDB) for the initial ranking but the getting started script and the Shiny App both allow for user input of gene set/gmt files.
 
 ### User Input for Getting Started Script
-More details on these file inputs in the "Required Files" section.
+More details on these file inputs in the [Required Files](https://github.com/shawlab-moffitt/RShinyAnalysisGenerator/blob/main/README.md#required-files) section.
 
 * `expr_file` - Expression matrix file
 * `meta_file` - Meta File
@@ -69,6 +69,6 @@ More details on these file inputs in the "Required Files" section.
     * Please note `TRUE` or `FALSE` if the sample data is human or not, so the correct gene set is located and used.
   * User Provided Gene Set
     * `GeneSet_file.u.gmt` - user provided .gmt file
-    * `GeneSet_file.u.gs` - user provided geneset file, format described in the "Required Files" section.
+    * `GeneSet_file.u.gs` - user provided geneset file, format described in the [Required Files](https://github.com/shawlab-moffitt/RShinyAnalysisGenerator/blob/main/README.md#required-files) section.
       * Please note `TRUE` or `FALSE` in `header.gs` if there is a header in the gene set file.
  
