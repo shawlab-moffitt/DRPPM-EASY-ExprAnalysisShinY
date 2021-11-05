@@ -84,6 +84,42 @@ Similar to generating the Enriched Signatures Table, the Shiny App requires just
 
 ### User Input for R Shiny App
 
+Below is the begining chunk of code for the Shiny App and where the user will designate which files to use for the analysis. 
+
+```{r}
+
+####----User Data Input----####
+
+#Input desired project name for webpage - will be followed by 'RNAseq Analysis'
+ProjectName <- "USP7 Human Demo"
+
+##file names
+#expression data
+expr_file <- "htseq_gene_level_fpkm_T_geneName_max_1cutoff_v2.txt"
+
+#meta data
+meta_file <- "USP7_meta.tsv"
+#Is there a header?
+header <- TRUE
+
+#Enriched Signatures data table
+ES_tables <- c("USP7_Enrich_Sig.tsv")
+
+#If human: set TRUE
+#If mouse: set FALSE
+human <- TRUE
+
+##User input of Gene Set file and .RData list
+#write in the name of your gene set list for shiny UI
+userGSlist_name <- 'CellMarker Gene Sets'
+#path to your gene set file .gmt or .txt/.tsv
+userGS_file <- 'CellMarker_gsNsym_HS.tsv'
+#if .gmt file: set TRUE
+isGMT <- FALSE
+#path to your R data list object for ssGSEA
+userRData_file <- 'CellMarker_GS_HS.RData'
+
+```
 
 
 
