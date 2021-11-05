@@ -84,7 +84,7 @@ Similar to generating the Enriched Signatures Table, the Shiny App requires just
 
 ### User Input for R Shiny App
 
-Below is the begining chunk of code for the Shiny App and where the user will designate which files to use for the analysis. 
+Below is the begining chunk of code for the Shiny App and where the user will designate which files to use for the analysis. Here you designate the name for the app, your expression and meta data, a single or list of enriched signature tables to display, as well as your gene set seletion for the second tab of the GSEA section. Along with ansering a could `TRUE or FALSE` statements in this chunk, it should be the only secion that requires editing by the user, though to note, there is a section below in the script that calls on the MSigDB gene sets based on the 'Human' `TRUE or FALSE` statement. These files so not have paths so the app should either be ran in the same working directory as the data input files or you may add the paths to those file names.
 
 ```{r}
 
@@ -110,12 +110,15 @@ ES_tables <- c("USP7_Enrich_Sig.tsv")
 human <- TRUE
 
 ##User input of Gene Set file and .RData list
+
 #write in the name of your gene set list for shiny UI
 userGSlist_name <- 'CellMarker Gene Sets'
+
 #path to your gene set file .gmt or .txt/.tsv
 userGS_file <- 'CellMarker_gsNsym_HS.tsv'
 #if .gmt file: set TRUE
 isGMT <- FALSE
+
 #path to your R data list object for ssGSEA
 userRData_file <- 'CellMarker_GS_HS.RData'
 
