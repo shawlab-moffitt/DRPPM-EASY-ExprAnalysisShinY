@@ -12,6 +12,13 @@ library(ggpubr)
 library(readr)
 
 
+####-------------------------------------------------------------####
+#                                                                   #
+#  This is a script to generate Enriched Signature Table(s) for the #
+#  GSEA portion of the General Expression Analysis R Shiny App      #
+#                                                                   #
+####-------------------------------------------------------------####
+
 
 ####----Files----####
 
