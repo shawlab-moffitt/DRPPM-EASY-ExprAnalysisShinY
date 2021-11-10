@@ -130,5 +130,11 @@ userRData_file <- 'CellMarker_GS_HS.RData'
 
 Once the file names and choices are correctly written you should be able to hit the "Run App" button in your R Studio desktop application load up the web page if you decide to save the code to a server.
 
+## Shiny App Features
 
+### Gene Set Enrichment Analysis
+
+In app the user may select two comparison groups within the side panel which are based off of the meta file that was provided, as well a gene set by selecting from one of the gene set tables in the side 
+
+![alt text](https://github.com/shawlab-moffitt/RShinyAnalysisGenerator/blob/main/App_Demo_Pictures/GSEA_Shiny_1.png?raw=true)
 
