@@ -51,11 +51,11 @@
 * **MSigDB Files:** These files are provided in the /data/ folder which begin with "msigdb_" and are formated for the GSEA analysis within the GettingStartedScript, `GSEA_Sig_Table_Gen.R` and the Shiny app, as well as are used for the user interface tables to select gene sets within the GSEA tab. The msigdb_gsNsym.tsv files are zipped due to size constraints, when unzipped they are around 140mb-160mb each. The MSigDB gene sets are available for *Homo sapiens* and *Mus musculus* which can either both be downloaded or only the species you need. You choose if the samples are human or not when setting up the scripts.
 * **Tab2 Gene Set GMT file:** This is a temporary file which is a subset of the MSigDB gene set collection. In the future it will be replaced with relevant gene sets that users may use when interacting with their data. Please keep in mind that this is from the Homo Sapien collection and will not generate results if you are observing mouse model data. The current gene set in this place is also included in the main MSigDB file, so idealy this tab can be ignored until it contains a more unique gene set.
 
-# Getting Started Script
+# Getting Started Scripts
 
-One of the required file inputs for the Shiny App is the GSEA enriched signatures table for your samples. The production of this table can take several minutes depending on the number of gene sets that are being ranked, but to save time we wrote a [script](https://github.com/shawlab-moffitt/RShinyAnalysisGenerator/blob/main/GettingStartedScript/GSEA_Sig_Table_Gen.R) that requires just a few file inputs and does the rest for you! We use all of the collections from the Molecular Signatures Database (MSigDB) for the initial ranking but the getting started script and the Shiny App both allow for user input of gene set/gmt files.
+One of the required file inputs for the Shiny App is the GSEA enriched signatures table for your samples. The production of this table can take several minutes depending on the number of gene sets that are being ranked, but to save time we wrote a [script](https://github.com/shawlab-moffitt/RShinyAnalysisGenerator/blob/main/GettingStartedScripts/GSEA_Sig_Table_Gen.R) that requires just a few file inputs and does the rest for you! We use all of the collections from the Molecular Signatures Database (MSigDB) for the initial ranking but the getting started script and the Shiny App both allow for user input of gene set/gmt files.
 
-### User Input for Getting Started Script
+### User Input for GSEA_Sig_Table_Gen.R Script
 
 More details on these file inputs in the [Required Files](https://github.com/shawlab-moffitt/RShinyAnalysisGenerator/blob/main/README.md#required-files) section.
 
@@ -77,6 +77,9 @@ More details on these file inputs in the [Required Files](https://github.com/sha
 
 Once these files are input in the script it can be run in its entirety. The script consists of reading the files and correcting for any formatting issues, generating groups based off of the meta file, and running through the signal-to-noise calculation. Based off the groups found in the meta file, an enriched signatures table will be made for each combination of the groupings and writen to a file containing the group names being compared.
 
+### Generating a Gene Set RData List for ssGSEA
+
+If you choose to use your own Gene Sets either in .gmt or tab delimited format as described above, in order to perform ssGSEA analysis the Gene Set must be converted into an RData list object when loaded into the app. This list can take several minutes to generate depending on the size of the gene set file, so there is a separate script to perform this with [GeneSetRDataListGen.R](https://github.com/shawlab-moffitt/RShinyAnalysisGenerator/blob/main/GettingStartedScripts/GeneSetRDataListGen.R). The only user input is the Gene Set file path and name, whether or not it has a header, and the desired outfile path and name. Once they are input, the code can be run as a whole and it will produce and save an RData list which can be input to the R Shiny app. These RData lists have already been generated for provided Gene Sets and can be found in the [data folder](https://github.com/shawlab-moffitt/RShinyAnalysisGenerator/tree/main/data) of this repsitory.
 
 # Prepping the R Shiny App
 
@@ -93,7 +96,8 @@ Below is the begining chunk of code for the Shiny App and where the user will de
 #Input desired project name for webpage - will be followed by 'RNAseq Analysis'
 ProjectName <- "USP7 Human Demo"
 
-##file names
+##--User Input File Names--##
+
 #expression data
 expr_file <- "htseq_gene_level_fpkm_T_geneName_max_1cutoff_v2.txt"
 
@@ -109,20 +113,22 @@ ES_tables <- c("USP7_Enrich_Sig.tsv")
 #If mouse: set FALSE
 human <- TRUE
 
-##User input of Gene Set file and .RData list
+##--User Gene Set Input--##
 
 #write in the name of your gene set list for shiny UI
 userGSlist_name <- 'CellMarker Gene Sets'
 
 #path to your gene set file .gmt or .txt/.tsv
 userGS_file <- 'CellMarker_gsNsym_HS.tsv'
-#if .gmt file: set TRUE
-isGMT <- FALSE
+#Does gene set file have header?
+header.gs <- TRUE
 
 #path to your R data list object for ssGSEA
 userRData_file <- 'CellMarker_GS_HS.RData'
 
 ```
+
+Once the file names and choices are correctly written you should be able to hit the "Run App" button in your R Studio desktop application load up the web page if you decide to save the code to a server.
 
 
 
