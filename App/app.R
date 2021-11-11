@@ -21,6 +21,7 @@ library(enrichR)
 library(ggrepel)
 library(tidyr)
 library(GSVA)
+library(tools)
 
 
 
@@ -29,7 +30,9 @@ library(GSVA)
 #Input desired project name for webpage - will be followed by 'RNAseq Analysis'
 ProjectName <- "USP7 Human Demo"
 
-##file names
+
+##--User Input File Names--##
+
 #expression data
 expr_file <- "htseq_gene_level_fpkm_T_geneName_max_1cutoff_v2.txt"
 
@@ -45,13 +48,16 @@ ES_tables <- c("USP7_Enrich_Sig.tsv")
 #If mouse: set FALSE
 human <- TRUE
 
-##User input of Gene Set file and .RData list
+##--User Gene Set Input--##
+
 #write in the name of your gene set list for shiny UI
 userGSlist_name <- 'CellMarker Gene Sets'
+
 #path to your gene set file .gmt or .txt/.tsv
 userGS_file <- 'CellMarker_gsNsym_HS.tsv'
-#if .gmt file: set TRUE
-isGMT <- FALSE
+#Does gene set file have header?
+header.gs <- TRUE
+
 #path to your R data list object for ssGSEA
 userRData_file <- 'CellMarker_GS_HS.RData'
 
@@ -69,7 +75,7 @@ if (human == TRUE) {
     msigdb2 <- 'msigdb_gsNcat_HS.tsv'
     #gene set list for ssGSEA
     load('gs_list_HS.RData')
-    #Cytokiny genes for human
+    #Cytokine genes for human
     CTKgenes <- c("IL2","IL12A","IL12B","IL17A","IFNA1","IFNB1","IFNG","IFNGR","CD11b",
                   "ITGAM","CD33","ENTPD1","ICOSLG","CD275","CD278","TNFSF9","TNFRSF9",
                   "CD40","CD40LG","CD70","CD27","TNFSF18","TNFRSF18","TNFSF14","TNFRSF14",
@@ -135,21 +141,31 @@ sampsames <- intersect(colnames(expr),meta[,1])
 
 
 #Enriched Signatures
-ldf <- list()
-SigNames <- c()
-for (k in 1:length(ES_tables)){
-    file <- basename(ES_tables[k])
-    file2 <- gsub("\\..*$","",file)
-    SigNames <- c(SigNames, file2)
-    #ldf[[k]] <- read.delim(ES_tables[k], header = T, sep = '\t')
-    ldf[[k]] <- as.data.frame(read_delim(ES_tables[k], delim = '\t'))
+if (!is.null(ES_tables)) {
+    ldf <- list()
+    SigNames <- c()
+    for (k in 1:length(ES_tables)){
+        file <- basename(ES_tables[k])
+        file2 <- gsub("\\..*$","",file)
+        SigNames <- c(SigNames, file2)
+        #ldf[[k]] <- read.delim(ES_tables[k], header = T, sep = '\t')
+        ldf[[k]] <- as.data.frame(read_delim(ES_tables[k], delim = '\t'))
+    }
+    j <- 1
+    for (i in 1:length(ldf)){
+        names(ldf)[i] <- paste("ES_table",j,sep = "")
+        j=j+1
+    }
+    list2env(ldf,globalenv())
 }
-j <- 1
-for (i in 1:length(ldf)){
-    names(ldf)[i] <- paste("ES_table",j,sep = "")
-    j=j+1
+#load blank enriched signatures table if none given by user
+if (is.null(ES_tables)) {
+    SigNames <- "None Loaded"
+    ES_table1 <- data.frame("ID" = "No Enriched Signature Tables loaded","Description" = "NA","setSize" = "NA",
+                            "enrichmentScore" = "NA","NES" = "NA","pvalue" = "NA","p.adjust" = "NA","qvalues" = "NA",
+                            "rank" = "NA","leading_edge" = "NA","core_enrichment" = "NA")
+    
 }
-list2env(ldf,globalenv())
 
 
 #MSigDB gene sets
@@ -162,11 +178,11 @@ msigdb.gsea2 <- read.delim(msigdb2, header = T, sep = '\t')
 
 
 #tab2 User gene set
-if (isGMT == TRUE){
+if (file_ext(userGS_file) == "gmt") {
     tab2 <- read.gmt(userGS_file)
 }
-if (isGMT == FALSE){
-    tab2 <- read.delim(userGS_file, header = T, sep = '\t')
+if (file_ext(userGS_file) == "tsv" || file_ext(userGS_file) == "txt") {
+    tab2 <- read.delim(userGS_file, header = header.gs, sep = '\t')
 }
 
 #tab2 back end
@@ -195,6 +211,7 @@ cv <- function(x){
 
 
 
+
 ####----Shiny UI----####
 
 shinytheme("sandstone")
@@ -202,16 +219,17 @@ shinytheme("sandstone")
 ui <-
     
 navbarPage(paste("{",ProjectName,"RNAseq Analysis }", sep=" "),
-           
+    
     ####----Intro Tab----####
     
     tabPanel("Intro/Methodology",
         fluidPage(
             mainPanel(
                 h2("GSEA and RNAseq Analysis Method"),
-                p("Mapped reads were derived from BBSR and likely normalized to CPM. Pathway enrichment analysis was performed by GSEA [PMID: 16199517] and enrichR[PMID: 23586463]. Single-sample gene set enrichment analysis (ssGSEA) [PMID: 19847166, PMID: 30595505] was used to quantify the expression signatures. LIMMA was used to define differentially expressed genes [PMID: PMID: 25605792]"))
-        )
-    ),
+                p("Mapped reads were derived from BBSR and likely normalized to CPM. Pathway enrichment analysis was performed by GSEA [PMID: 16199517] and enrichR[PMID: 23586463]. Single-sample gene set enrichment analysis (ssGSEA) [PMID: 19847166, PMID: 30595505] was used to quantify the expression signatures. LIMMA was used to define differentially expressed genes [PMID: PMID: 25605792]")
+                )
+            )
+        ),
     
     ####----GSEA Tab----####
     
@@ -236,8 +254,11 @@ navbarPage(paste("{",ProjectName,"RNAseq Analysis }", sep=" "),
                                  div(DT::dataTableOutput("tab2table"), style = "font-size:10px; height:500px; overflow-X: scroll"),
                                  value = 3),
                         tabPanel("Use your own gene set",
+                                 p(),
                                  uiOutput("user.gmt"),
                                  uiOutput("user.GStable"),
+                                 uiOutput("user.gs.tsv"),
+                                 uiOutput("user.gs.tsv.table"),
                                  value = 5)
                     )
                 ),
@@ -271,12 +292,13 @@ navbarPage(paste("{",ProjectName,"RNAseq Analysis }", sep=" "),
                         tabPanel("ssGSEA Boxplots",
                                  p(),
                                  withSpinner(jqui_resizable(plotOutput('boxplot2', width = "700px", height = "500px")), type = 6),
+                                 DT::dataTableOutput("ssGSEAtable"),
                                  downloadButton("ssGSEAdownload", "Download .tsv"))
                     )
                 )
             )
         )
-    ),
+     ),
     
     ####----RNAseq Tab----####
     
@@ -319,16 +341,6 @@ navbarPage(paste("{",ProjectName,"RNAseq Analysis }", sep=" "),
                                  numericInput("top_x2", "Number of Top Hits:", value = 100),
                                  downloadButton("DEGgmtDownload", "Download DEG .gmt")
                         ),
-                        tabPanel("Volcano & MA Plot Parameters",
-                                 p(),
-                                 numericInput("fc_cutoff", "LogFC Threshold (Absolute Value)",
-                                              min = 0, max = 5, step = 0.1, value = 1),
-                                 numericInput("p_cutoff", "Significance Threshold (-log10(P.Value)):",
-                                              min = 0, max = 10, step = 0.1, value = 0.05),
-                                 numericInput("top_x", "Number of Top Hits:", value = 10),
-                                 selectizeInput("userGeneSelec", "User Selected Hits:",
-                                                choices = sort(as.vector(geneList[,1])), multiple = T, selected = "-")
-                        ),
                         tabPanel("Custom Heatmap Genes",
                                  p(),
                                  selectizeInput("heatmapGeneSelec","Gene Selection:",
@@ -339,6 +351,16 @@ navbarPage(paste("{",ProjectName,"RNAseq Analysis }", sep=" "),
                                  selectizeInput("userheatsamp2", "Samples Selection:",
                                                 choices = sampsames, multiple = T, selected = sampsames),
                                  value = 444
+                        ),
+                        tabPanel("Volcano & MA Plot Parameters",
+                                 p(),
+                                 numericInput("fc_cutoff", "LogFC Threshold (Absolute Value)",
+                                              min = 0, max = 5, step = 0.1, value = 1),
+                                 numericInput("p_cutoff", "Significance Threshold (-log10(P.Value)):",
+                                              min = 0, max = 10, step = 0.1, value = 0.05),
+                                 numericInput("top_x", "Number of Top Hits:", value = 10),
+                                 selectizeInput("userGeneSelec", "User Selected Hits:",
+                                                choices = sort(as.vector(geneList[,1])), multiple = T, selected = "-")
                         )
                     )
                 ),
@@ -420,25 +442,23 @@ navbarPage(paste("{",ProjectName,"RNAseq Analysis }", sep=" "),
 
 server <- function(input, output, session) {
     
+    
     ####----Render UI----####
+    
     
     #render user gmt data upload if indicated
     output$user.gmt <- renderUI({
-        
-        fileInput("user.gmt.file", "GMT (Gene Set File)", accept = ".gmt")
-        
+        fileInput("user.gmt.file", "Gene Set File (.gmt, .tsv, or .txt)", accept = c(".gmt",".tsv",".txt"))
     })
     
     #render gene set table based off gmt file given
     output$user.GStable <- renderUI({
-        
+        req(input$user.gmt.file)
         div(DT::dataTableOutput("GStable.u"), style = "font-size:10px; height:500px; overflow-X: scroll")
-        
     })
     
     #render UI for hover text in volcano plot
     output$hover_info <- renderUI({
-        
         top2 <- topgenereact()
         df <- top2 %>%
             select(GeneName,logFC,P.Value,adj.P.Val)
@@ -455,12 +475,10 @@ server <- function(input, output, session) {
                           "<b> adj P Value: </b>", point[4], "<br/>",
                           NULL
             ))))
-        
     })
     
     #render UI for hover text in MA plot
     output$hover_info2 <- renderUI({
-        
         top2 <- topgenereact()
         df <- top2 %>%
             select(GeneName,AveExpr,logFC,P.Value,adj.P.Val)
@@ -478,14 +496,14 @@ server <- function(input, output, session) {
                           "<b> Avg. Expression: </b>", round(point[2], digits = 4), "<br/>",
                           NULL
             ))))
-        
     })
+    
     
     ####----Reactives----####
     
+    
     #reactive for ssGSEA function
     ssGSEAfunc <- reactive({
-        
         if (input$tables == 1) {
             GS <- gs[(msigdb.gsea2[input$msigdbTable_rows_selected,3])]
         }
@@ -493,33 +511,32 @@ server <- function(input, output, session) {
             GS <- gs2[(GeneSet2[input$tab2table_rows_selected,1])]
         }
         gsva(A, GS, method = "ssgsea", verbose = F)
-        
     })
     
     #create background GMT from user input gene set table
     GStable.ubg <- reactive({
-        
         gmt.u <- input$user.gmt.file
         ext <- tools::file_ext(gmt.u$datapath)
         req(gmt.u)
-        validate(need(ext == "gmt", "Please upload gmt file"))
-        read.gmt(gmt.u$datapath)
-        
+        validate(need(ext == c("gmt","tsv","txt"), "Please upload .gmt, .tsv, or .txt file"))
+        if (ext == "gmt") {
+            read.gmt(gmt.u$datapath)
+        }
+        else {
+            read_delim(gmt.u$datapath, delim = '\t')
+        }
     })
     
     #gs mirror from user input for selection help on back end
     user_gs_mirror <- reactive({
-        
         GeneSet <- as.data.frame(unique(GStable.ubg()[1]))
         rownames(GeneSet) <- 1:nrow(GeneSet)
         colnames(GeneSet)[1] <- "Gene_Set"
         GeneSet
-        
     })
     
     #perform sig2noise calculation and create GSEA result from user chosen gene set
     datasetInput <- reactive({
-        
         groupA <- meta[,1][meta[,2] == input$comparisonA]
         groupB <- meta[,1][meta[,2] == input$comparisonB]
         ##----Signal-to-Noise Calculation----##
@@ -572,12 +589,10 @@ server <- function(input, output, session) {
             GSEA(s2n.matrix.s, TERM2GENE = GStable.ubg()[which(GStable.ubg()$term == as.character(user_gs_mirror()[input$GStable.u_rows_selected,1])),],
                  verbose = F, pvalueCutoff = input$userPval)
         }
-        
     })
     
     #top genes data frame reactive
     topgenereact <- reactive({
-        
         top_probes <- input$NumFeatures
         col_labels <- colnames(expr)
         isexpr <- rowSums(expr[,col_labels] > 1) >= length(col_labels)
@@ -658,41 +673,41 @@ server <- function(input, output, session) {
         top2['FCgroup'] <- "NotSignificant"
         top2[which(abs(top2$logFC) > abs(input$fc_cutoff)), "group2"] <- "FoldChange"
         top2
-        
     })
+    
     
     ####----Data Tables----####
     
+    
     #render MSigDB gene set table
     output$msigdbTable <- DT::renderDataTable({
-        
         DT::datatable(msigdb.gsea2,
                       selection = 'single',
                       options = list(keys = TRUE, searchHighlight = TRUE, pageLength = 10, lengthMenu = c("10", "25", "50", "100")))
-        
-    
     })
     
     #create user input gene set table
     output$GStable.u <- DT::renderDataTable({
-        
         gmt.u <- input$user.gmt.file
         ext <- tools::file_ext(gmt.u$datapath)
         req(gmt.u)
-        validate(need(ext == "gmt", "Please upload gmt file"))
-        gmt.us <- read.gmt(gmt.u$datapath)
+        validate(need(ext == c("gmt","tsv","txt"), "Please upload .gmt, .tsv, or .txt file"))
+        if (ext == "gmt") {
+            gmt.us <- read.gmt(gmt.u$datapath)
+        }
+        else {
+            gmt.us <- read_delim(gmt.u$datapath, delim = '\t')
+        }
         GeneSet <- as.data.frame(unique(gmt.us[1]))
         rownames(GeneSet) <- 1:nrow(GeneSet)
         colnames(GeneSet)[1] <- "Gene_Set"
         DT::datatable(GeneSet,
                       selection = 'single',
                       options = list(keys = TRUE, searchHighlight = TRUE, pageLength = 10, lengthMenu = c("10", "25", "50", "100")))
-    
     })
     
     #render tab2 gene set table
     output$tab2table <- DT::renderDataTable({
-        
         DT::datatable(GeneSet2,
                       selection = 'single',
                       options = list(keys = TRUE, searchHighlight = TRUE, pageLength = 10, lengthMenu = c("10", "25", "50", "100")))
@@ -701,7 +716,6 @@ server <- function(input, output, session) {
     
     #render leading edge genes list
     output$LeadingEdgeGenes <- DT::renderDataTable({
-        
         if (input$tables == 1){
             if (length(input$msigdbTable_rows_selected) > 0){
                 res <- datasetInput()
@@ -744,12 +758,10 @@ server <- function(input, output, session) {
                 DT::datatable(GeneSymbol, options = list(paging = F), rownames = F)
             }
         }
-        
     })
     
     #render pre-loaded enriched signatures table
     output$enrich_sig_table <- DT::renderDataTable({
-        
         if (input$SigTableChoice == SigNames[1]) {
             gsea.df <- as_tibble(ES_table1)
             DT::datatable(gsea.df,
@@ -776,9 +788,9 @@ server <- function(input, output, session) {
         }
         
     })
+    
     #render user generated enriched signature table based off other gmt
     output$enrich_sig_table_gen <- DT::renderDataTable({
-        
         if (input$tables == 3) {
             groupA <- meta[,1][meta[,2] == input$comparisonA]
             groupB <- meta[,1][meta[,2] == input$comparisonB]
@@ -881,12 +893,10 @@ server <- function(input, output, session) {
                           options = list(keys = T, searchHighlight = T, pageLength = 10, lengthMenu = c("10", "25", "50", "100"), scrollX = T)) %>%
                 formatRound(columns = c(2:10), digits = 2)
         }
-        
     })
     
     #render variable genes list in sidebar from heatmap
     output$MostVariableGenesList <- DT::renderDataTable({
-        
         top_probes <- input$NumFeatures
         col_labels <- colnames(expr)
         isexpr <- rowSums(expr[,col_labels] > 1) >= length(col_labels)
@@ -928,12 +938,10 @@ server <- function(input, output, session) {
         variable_gene_list <- variable_gene_list %>%
             select(Rank, Genes)
         DT::datatable(variable_gene_list, options = list(paging = F), rownames = F)
-        
     })
     
     #render DEG table
     output$DEGtable1 <- DT::renderDataTable({
-        
         top_probes <- input$NumFeatures
         col_labels <- colnames(expr)
         isexpr <- rowSums(expr[,col_labels] > 1) >= length(col_labels)
@@ -1001,12 +1009,10 @@ server <- function(input, output, session) {
         top1 <- topTable(fit2, coef = 1, n = 300000, sort = "p", p.value = 1.0, adjust.method = "BH")
         DT::datatable(top1, options = list(lengthMenu = c(50,100,1000, 5000, 10000), pageLength = 100, scrollX = TRUE),
                       selection=list(mode = "multiple"))
-        
     })
     
     #render up regulated pathway enrichment data table
     output$UpRegPathwayTable1 <- DT::renderDataTable({
-        
         top_probes <- input$NumFeatures
         col_labels <- colnames(expr)
         isexpr <- rowSums(expr[,col_labels] > 1) >= length(col_labels)
@@ -1082,12 +1088,10 @@ server <- function(input, output, session) {
         enriched <- enrichr(genes, dbs) # Plot top 20 GO-BP results ordered by P-value
         DT::datatable(enriched[[1]], options = list(lengthMenu = c(10,20,50,100,1000), pageLength = 10, scrollX = TRUE),
                       selection=list(mode = "multiple"))
-        
     })
     
     #render down regulated pathway enrichment data table
     output$DnRegPathwayTable1 <- DT::renderDataTable({
-        
         top_probes <- input$NumFeatures
         col_labels <- colnames(expr)
         isexpr <- rowSums(expr[,col_labels] > 1) >= length(col_labels)
@@ -1163,12 +1167,10 @@ server <- function(input, output, session) {
         enriched <- enrichr(genes, dbs) # Plot top 20 GO-BP results ordered by P-value
         DT::datatable(enriched[[1]], options = list(lengthMenu = c(10,20,50,100,1000), pageLength = 10, scrollX = TRUE),
                       selection=list(mode = "multiple"))
-        
     })
     
     #render cluster assignment data table
     output$Clusters <- DT::renderDataTable({
-        
         top_probes <- input$NumFeatures
         col_labels <- colnames(expr)
         isexpr <- rowSums(expr[,col_labels] > 1) >= length(col_labels)
@@ -1228,26 +1230,26 @@ server <- function(input, output, session) {
     
     #render gene list table for boxplot selection
     output$GeneListTable <- DT::renderDataTable({
-        
         DT::datatable(geneList,
                       selection = 'single',
                       options = list(keys = TRUE, searchHighlight = TRUE, pageLength = 10, lengthMenu = c("10", "25", "50", "100")))
-    
     })
     
     #render gene scatter plot data table
     output$geneScatterTable <- DT::renderDataTable({
         
-        
         #log if user designates
         if (input$logask == TRUE) {
             expr <- log2(expr + 1)
         }
+        
         #transpose
         expr_t <- as.data.frame(t(expr))
+        
         #reorder rowname to match meta for merging
         samporder <- meta[,1]
         expr_t2 <- as.data.frame(expr_t[samporder,])
+        
         #add type
         expr_t3 <- expr_t2 %>% 
             mutate(type = case_when(
@@ -1255,9 +1257,11 @@ server <- function(input, output, session) {
             ))
         expr_t3 <- expr_t3 %>%
             relocate(type)
+        
         #user gene input
         gene1.u <- input$scatterG1
         gene2.u <- input$scatterG2
+        
         #get columns and info based off user input
         gene1 <- expr_t3[,gene1.u]
         gene2 <- expr_t3[,gene2.u]
@@ -1269,6 +1273,7 @@ server <- function(input, output, session) {
             gene2.n <- paste(colnames(expr_t3)[which(colnames(expr_t3) == gene2.u)], " Expression", sep = "")
             gene1.n <- paste(colnames(expr_t3)[which(colnames(expr_t3) == gene1.u)], " Expression", sep = "")
         }
+        
         #make table
         Sample <- rownames(expr_t3)
         Type <- expr_t3[,'type']
@@ -1276,6 +1281,7 @@ server <- function(input, output, session) {
         gene2col <- expr_t3[,gene2.u]
         scatterTab <- data.frame(Sample, Type, gene1col, gene2col)
         colnames(scatterTab)[c(3,4)] <- c(gene1.n, gene2.n)
+        
         #table output
         DT::datatable(scatterTab,
                       options = list(keys = TRUE,
@@ -1285,11 +1291,61 @@ server <- function(input, output, session) {
         
     })
     
+    #render ssGSEA table
+    output$ssGSEAtable <- DT::renderDataTable({
+        if (input$tables == 3) {
+            if (length(input$tab2table_rows_selected) > 0){
+                ssgsea <- ssGSEAfunc()
+                ssgsea2 <- as.data.frame(t(ssgsea))
+                samporder <- meta[,1]
+                ssgsea3 <- as.data.frame(ssgsea2[samporder,])
+                colnames(ssgsea3)[1] <- colnames(ssgsea2[1])
+                rownames(ssgsea3) <- samporder
+                ssgsea4 <- ssgsea3 %>% 
+                    mutate(type = case_when(
+                        rownames(ssgsea3) == meta[,1] ~ meta[,2],
+                    ))
+                ssgsea4 <- ssgsea4 %>%
+                    relocate(type)
+                #table output
+                DT::datatable(ssgsea4,
+                              options = list(keys = TRUE,
+                                             searchHighlight = TRUE,
+                                             pageLength = 10,
+                                             lengthMenu = c("10", "25", "50", "100")))
+            }
+        }
+        else if (input$tables == 1) {
+            if (length(input$msigdbTable_rows_selected) > 0){
+                ssgsea <- ssGSEAfunc()
+                ssgsea2 <- as.data.frame(t(ssgsea))
+                samporder <- meta[,1]
+                ssgsea3 <- as.data.frame(ssgsea2[samporder,])
+                colnames(ssgsea3)[1] <- colnames(ssgsea2[1])
+                rownames(ssgsea3) <- samporder
+                ssgsea4 <- ssgsea3 %>% 
+                    mutate(type = case_when(
+                        rownames(ssgsea3) == meta[,1] ~ meta[,2],
+                    ))
+                ssgsea4 <- ssgsea4 %>%
+                    relocate(type)
+                #table output
+                DT::datatable(ssgsea4,
+                              options = list(keys = TRUE,
+                                             searchHighlight = TRUE,
+                                             pageLength = 10,
+                                             lengthMenu = c("10", "25", "50", "100")))
+            }
+        }
+        
+    })
+    
+    
     ####----Plots----####
+    
     
     #render GSEA plot
     output$enrichplot0 <- renderPlot({
-        
         if (input$tables == 1){
             if (length(input$msigdbTable_rows_selected) > 0){
                 res <- datasetInput()
@@ -1326,12 +1382,10 @@ server <- function(input, output, session) {
                           pvalue_table = F)
             }
         }
-        
     })
     
     #render heatmap
     output$heatmap0 <- renderPlot({
-        
         if (input$tables == 1) {
             if (length(input$msigdbTable_rows_selected) > 0){
                 groupA <- meta[,1][meta[,2] == input$comparisonA]
@@ -1479,12 +1533,10 @@ server <- function(input, output, session) {
                          annotation_col = meta3)
             }
         }
-        
     })
     
     #render RNAseq heatmap
     output$heatmap1 <- renderPlot({
-        
         if (input$customs == 444){
             if (length(input$heatmapGeneSelec) >= 2 || length(input$userheatgenes) >= 1) {
                 genelist.uih <- NULL
@@ -1645,7 +1697,6 @@ server <- function(input, output, session) {
     
     #render MA plot
     output$MAPlot1 <- renderPlot({
-        
         top2 <- topgenereact()
         top_hits_up <- top2[head(which(top2$logFC > abs(input$fc_cutoff)), n = input$top_x),]
         top_hits_dn <- top2[head(which(top2$logFC < -abs(input$fc_cutoff)), n = input$top_x),]
@@ -1693,12 +1744,10 @@ server <- function(input, output, session) {
         x <- x + theme(axis.text = element_text(size=18))
         x <- x + theme(axis.title = element_text(size=24))
         x
-        
     })
     
     #render boxplot
     output$boxplot1 <- renderPlot({
-        
         if (length(input$GeneListTable_rows_selected) > 0){
             top_probes <- input$NumFeatures
             col_labels <- colnames(expr)
@@ -1775,12 +1824,10 @@ server <- function(input, output, session) {
                 labs(title= paste(gene, "Expression (log2)")) +
                 theme(axis.text.x = element_text(angle = 90, vjust = 0.25, hjust = 1))
         }
-        
     })
     
     #render up regulated pathway enrichment plot
     output$UpRegPathway1 <- renderPlot({
-        
         top1 <- topgenereact()
         genes <- rownames(top1)[which(top1$adj.P.Val < 0.05 & top1$logFC > 1)]
         dbs <- listEnrichrDbs() 
@@ -1791,12 +1838,10 @@ server <- function(input, output, session) {
         dbs <- input$SelectedPathway
         enriched <- enrichr(genes, dbs) # Plot top 20 GO-BP results ordered by P-value 
         plotEnrich(enriched[[1]], showTerms = 20, numChar = 50, y = "Count", orderBy = "P.value") 
-        
     })
     
     #render down regulated pathway enrichment plot
     output$DnRegPathway1 <- renderPlot({
-        
         top1 <-top2 <- topgenereact()
         genes <- rownames(top1)[which(top1$adj.P.Val < 0.05 & top1$logFC < -1)]
         dbs <- listEnrichrDbs() 
@@ -1807,12 +1852,10 @@ server <- function(input, output, session) {
         dbs <- input$SelectedPathway
         enriched <- enrichr(genes, dbs) # Plot top 20 GO-BP results ordered by P-value 
         plotEnrich(enriched[[1]], showTerms = 20, numChar = 50, y = "Count", orderBy = "P.value") 
-        
     })
     
     #render volcano plot
     output$Volcano3 <- renderPlot({
-        
         top2 <- topgenereact()
         top_hits_up <- top2[head(which(top2$logFC > abs(input$fc_cutoff) & top2$P.Value < input$p_cutoff), n = input$top_x),]
         top_hits_dn <- top2[head(which(top2$logFC < -abs(input$fc_cutoff) & top2$P.Value < input$p_cutoff), n = input$top_x),]
@@ -1860,12 +1903,10 @@ server <- function(input, output, session) {
         x <- x + theme(axis.text = element_text(size=18))
         x <- x + theme(axis.title = element_text(size=24))
         x
-        
     })
     
     #render ssGSEA boxplot
     output$boxplot2 <- renderPlot({
-        
         if (input$tables == 3) {
             if (length(input$tab2table_rows_selected) > 0){
                 ssgsea <- ssGSEAfunc()
@@ -2056,7 +2097,6 @@ server <- function(input, output, session) {
                 }
             }
         }
-        
     })
     
     #render gene expression comparison scatter plot
@@ -2066,11 +2106,14 @@ server <- function(input, output, session) {
         if (input$logask == TRUE) {
             expr <- log2(expr + 1)
         }
+        
         #transpose
         expr_t <- as.data.frame(t(expr))
+        
         #reorder rowname to match meta for merging
         samporder <- meta[,1]
         expr_t2 <- as.data.frame(expr_t[samporder,])
+        
         #add type
         expr_t3 <- expr_t2 %>% 
             mutate(type = case_when(
@@ -2078,9 +2121,11 @@ server <- function(input, output, session) {
             ))
         expr_t3 <- expr_t3 %>%
             relocate(type)
+        
         #user gene input
         gene1.u <- input$scatterG1
         gene2.u <- input$scatterG2
+        
         #get columns and info based off user input
         gene1 <- expr_t3[,gene1.u]
         gene2 <- expr_t3[,gene2.u]
@@ -2092,6 +2137,7 @@ server <- function(input, output, session) {
             gene2.n <- paste(colnames(expr_t3)[which(colnames(expr_t3) == gene2.u)], " Expression", sep = "")
             gene1.n <- paste(colnames(expr_t3)[which(colnames(expr_t3) == gene1.u)], " Expression", sep = "")
         }
+        
         #plot
         p <- ggplot(expr_t3, aes(x = gene1, y = gene2,
                                  color = type,
@@ -2101,14 +2147,16 @@ server <- function(input, output, session) {
             theme_minimal() +
             labs(x = gene1.n, y = gene2.n,
                  title = paste(gene1.n, " vs. ", gene2.n, sep = ''))
+        
         ggplotly(p, tooltip = 'text')
         
     })
     
+    
     ####----Download Handlers----####
     
+    
     output$geneScatterDownload <- downloadHandler(
-        
         filename = function() {
             #user gene input
             gene1.u <- input$scatterG1
@@ -2150,11 +2198,9 @@ server <- function(input, output, session) {
             colnames(scatterTab)[c(3,4)] <- c(gene1.n, gene2.n)
             write_tsv(scatterTab, file)
         }
-        
     )
     
     output$ssGSEAdownload <- downloadHandler(
-        
         filename = function() {
             if (input$tables == 1) {
                 paste('ssGSEAscore_',names(gs[(msigdb.gsea2[input$msigdbTable_rows_selected,3])]),'.tsv',sep = '')
@@ -2187,12 +2233,10 @@ server <- function(input, output, session) {
             rownames(ssgsea5) <- 1:nrow(ssgsea5)
             write_tsv(ssgsea5, file)
         }
-        
     )
     
     #render download button for DEG GMT
     output$DEGgmtDownload <- downloadHandler(
-        
         filename = function() {
             paste(input$DEGfileName,".gmt",sep = "")
         },
@@ -2285,12 +2329,10 @@ server <- function(input, output, session) {
             }
             write_delim(genes.h.gmt, file, delim = '\t', col_names = F)
         }
-        
     )
     
     #render download button for upreg gene pathways GMT
     output$UpRegPathDownloadgmt <- downloadHandler(
-        
         filename = function() {
             paste("UpReg_",input$SelectedPathway,"_pathway.gmt",sep = "")
         },
@@ -2320,12 +2362,10 @@ server <- function(input, output, session) {
             rownames(gmt.df) <- NULL
             write_delim(gmt.df, file, delim = '\t', col_names = F)
         }
-        
     )
     
     #render download button for dnreg gene pathways GMT
     output$DnRegPathDownloadgmt <- downloadHandler(
-        
         filename = function() {
             paste("DnReg_",input$SelectedPathway,"_pathway.gmt",sep = "")
         },
@@ -2355,12 +2395,10 @@ server <- function(input, output, session) {
             rownames(gmt.df) <- NULL
             write_delim(gmt.df, file, delim = '\t', col_names = F)
         }
-        
     )
     
     #render download button for upreg gene pathways
     output$UpRegPathDownload <- downloadHandler(
-        
         filename = function() {
             paste("UpReg_",input$SelectedPathway,"_pathway.tsv",sep = "")
         },
@@ -2377,12 +2415,10 @@ server <- function(input, output, session) {
             df <- enriched[[1]]
             write_delim(df, file, delim = '\t')
         }
-        
     )
     
     #render download button for dnreg gene pathways
     output$DnRegPathDownload <- downloadHandler(
-        
         filename = function() {
             paste("DnReg_",input$SelectedPathway,"_pathway.tsv",sep = "")
         },
@@ -2399,12 +2435,10 @@ server <- function(input, output, session) {
             df <- enriched[[1]]
             write_delim(df, file, delim = '\t')
         }
-        
     )
     
     #render Most Variable Gene download button
     output$MVGdownload <- downloadHandler(
-        
         filename = function() {
             top_probes <- input$NumFeatures
             paste(top_probes,"_Most_Variable_Genes", ".tsv", sep = "")
@@ -2452,12 +2486,10 @@ server <- function(input, output, session) {
                 select(Rank, Genes)
             write_delim(variable_gene_list, file, delim = '\t')
         }
-        
     )
     
     #render Most Variable Gene download button
     output$MVGdownloadgmt <- downloadHandler(
-        
         filename = function() {
             top_probes <- input$NumFeatures
             paste(top_probes,"_Most_Variable_Genes", ".gmt", sep = "")
@@ -2514,12 +2546,10 @@ server <- function(input, output, session) {
             rownames(gmt.df) <- NULL
             write_delim(gmt.df, file, delim = '\t', col_names = F)
         }
-        
     )
     
     #download button for leading edge genes
     output$LEGdownload <- downloadHandler(
-        
         filename = function() {
             if (input$tables == 1){
                 if (length(input$msigdbTable_rows_selected) > 0){
@@ -2564,12 +2594,10 @@ server <- function(input, output, session) {
             GeneSymbol <- GeneSymbol[,c("Rank","GeneSymbol")]
             write_delim(GeneSymbol, file, delim = '\t')
         }
-        
     )
     
     #render DEG table download button
     output$DEGtableDownload <- downloadHandler(
-        
         filename = function() {
             paste("DEG_Table_",Sys.Date(), ".tsv", sep = "")
         },
@@ -2644,19 +2672,44 @@ server <- function(input, output, session) {
                 relocate(Gene)
             write_delim(top1, file, delim = '\t')
         }
-        
     )
     
     #download button for leading edge genes
     output$enrich_sig_download <- downloadHandler(
-        
         filename = function() {
             paste("Enriched_Signatures_Table_",Sys.Date(), ".tsv", sep = "")
         },
         content = function(file){
+            if (input$SigTableChoice == SigNames[1]) {
+                gsea.df <- as_tibble(ES_table1)
+                DT::datatable(gsea.df,
+                              extensions = c("KeyTable", "FixedHeader"),
+                              caption = "Enriched Signatures",
+                              options = list(keys = T, searchHighlight = T, pageLength = 10, lengthMenu = c("10", "25", "50", "100"),scrollX = T)) %>%
+                    formatRound(columns = c(2:10), digits = 2)
+            }
+            else if (input$SigTableChoice == SigNames[2]) {
+                gsea.df <- as_tibble(ES_table2)
+                DT::datatable(gsea.df,
+                              extensions = c("KeyTable", "FixedHeader"),
+                              caption = "Enriched Signatures",
+                              options = list(keys = T, searchHighlight = T, pageLength = 10, lengthMenu = c("10", "25", "50", "100"),scrollX = T)) %>%
+                    formatRound(columns = c(2:10), digits = 2)
+            }
+            else if (input$SigTableChoice == SigNames[3]) {
+                gsea.df <- as_tibble(ES_table3)
+                DT::datatable(gsea.df,
+                              extensions = c("KeyTable", "FixedHeader"),
+                              caption = "Enriched Signatures",
+                              options = list(keys = T, searchHighlight = T, pageLength = 10, lengthMenu = c("10", "25", "50", "100"),scrollX = T)) %>%
+                    formatRound(columns = c(2:10), digits = 2)
+            }
+            
             enrich_sig_table <- ES.df
             write_delim(enrich_sig_table, file, delim = '\t')
-        })
+        }
+    )
+    
     #download button for user enriched signature table
     output$enrich_sig_download.u <- downloadHandler(
         filename = function() {
@@ -2756,14 +2809,14 @@ server <- function(input, output, session) {
                 write_delim(gsea.df, file, delim = '\t')
             }
         }
-        
     )
+    
     
     ####----Text----####
     
+    
     #NES and Pval output
     output$NESandPval <- renderText({
-        
         if (input$tables == 1){
             if (length(input$msigdbTable_rows_selected) > 0){
                 res <- datasetInput()
@@ -2818,46 +2871,33 @@ server <- function(input, output, session) {
                 paste(NES.o, Pval.o, UpOrDown, sep = '\n')
             }
         }
-        
     })
     
     output$VolGroupsText <- renderText({
-        
         paste("This volcano plot is comparing group A: ",input$comparisonA2, " and group B: ",input$comparisonB2, ".\nGenes with a positive log fold change are upregulated in the ",
               input$comparisonA2, " group.\nGenes with a negative log fold change are upregulated in the ",input$comparisonB2, " group.", sep = "")
-    
     })
     
     output$MAGroupsText <- renderText({
-        
         paste("This MA plot is comparing group A: ",input$comparisonA2, " and group B: ",input$comparisonB2, ".\nGenes with a positive log fold change are upregulated in the ",
               input$comparisonA2, " group.\nGenes with a negative log fold change are upregulated in the ",input$comparisonB2, " group.", sep = "")
-    
     })
     
     output$upregpath_text <- renderText({
-        
         paste("Genes in these enriched terms are upregulated in group A: ", input$comparisonA2, " group.", sep = "")
-    
     })
     
     output$downregpath_text <- renderText({
-        
         paste("Genes in these enriched terms are upregulated in group B: ", input$comparisonB2," group", sep = "")
-
     })
     
     output$degtext <- renderText({
-        
         paste("This table represents differentially expressed genes when comparing group A: ",input$comparisonA2," and group B: ",input$comparisonB2,
               ".\nGenes with a positive logFC, indicate an upregulation in group A: ", input$comparisonA2,
               ".\nGenes with a negative logFC, indicate an upregulation in group B: ", input$comparisonB2,
               ".\nThe 'AveExpr' column represents the log transformed average expression between group A: ",input$comparisonA2," and group B: ",input$comparisonB2,".", sep = "")
-    
     })
-    
 }
-
 
 
 
