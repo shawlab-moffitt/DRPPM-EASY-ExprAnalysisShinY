@@ -195,3 +195,13 @@ These will be the RNAseq analysis parameters shown on the main side bar of this 
     * The user may select different sample types to compare in the 'RNAseq Parameters' tab of the side panel
 6. Below the plot will appear a text box based on the data point that the users mouse may be hovering over
     * It will not appear if the mouse is not hovering a data point
+
+![alt text](https://github.com/shawlab-moffitt/RShinyAnalysisGenerator/blob/main/App_Demo_Pictures/GSEA_Shiny_7.png?raw=true)
+
+1. Users may select two genes from the expression matrix to view in a scatter plot
+2. These are from the base expression plot, so there is an option to log2+1 transform the data
+3. A table will show below with expression data for those genes which can be downloaded as a .tsv file
+
+
+
+
