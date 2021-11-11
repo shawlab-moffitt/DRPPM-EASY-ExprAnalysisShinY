@@ -142,7 +142,7 @@ In app, the user may select two comparison groups within the side panel which ar
 
 1. Select comparison groups base on types of samples from the meta data file
 2. Select stat comparison method for ssGSEA boxlots
-  * With 2 sample types it allows for Wilcos and t-test, with 3 or more types it allows for Kruskal-Wallis and ANOVA
+    * With 2 sample types it allows for Wilcos and t-test, with 3 or more types it allows for Kruskal-Wallis and ANOVA
 3. You may use your own gene set either in .gmt, .tsv. or .txt format as described in the [Required Files](https://github.com/shawlab-moffitt/RShinyAnalysisGenerator/blob/main/README.md#required-files) section
 4. You may search for a collection or gene set of interest
 5. The Normalized Enrichment Score (NES) and P-value appear at the top of the enrichment plot, as well as a message stating whether the selected gene set is up or down regulated in a sample type
@@ -151,14 +151,14 @@ In app, the user may select two comparison groups within the side panel which ar
 ![alt text](https://github.com/shawlab-moffitt/RShinyAnalysisGenerator/blob/main/App_Demo_Pictures/GSEA_Shiny_2.png?raw=true)
 
 1. Based on the list of enriched signatures tables loaded into the app, their basenames will show up as a list that you may select from to view.
-  * Due to this, it is helpful to be descriptive in naming the files. The table generator script does take this into account when nameing the output files
+    * Due to this, it is helpful to be descriptive in naming the files. The table generator script does take this into account when nameing the output files
 
 ![alt text](https://github.com/shawlab-moffitt/RShinyAnalysisGenerator/blob/main/App_Demo_Pictures/GSEA_Shiny_3.png?raw=true)
 
 1. This tab allows you to upload your own gene set file and when uploaded it will display the list of gene sets within the file below. These can be selected to be viewed with other visualizations as well, such as the enrichment or volcano plot
 2. This screenshot is showcasing the enriched signature table generation in app if you choose to perform it there rather than prior to loading the app
-  * This is useful if you have a large number of sample types or if you have a specific comparison you are interested in with the gene set of your choice uploaded
-  * Please keep in mind that depending on the size of the gene set data or number of samples this may take several minutes
+    * This is useful if you have a large number of sample types or if you have a specific comparison you are interested in with the gene set of your choice uploaded
+    * Please keep in mind that depending on the size of the gene set data or number of samples this may take several minutes
 
 ### RNAseq Analysis
 
@@ -171,27 +171,27 @@ These will be the RNAseq analysis parameters shown on the main side bar of this 
 3. Here you have the choice of variance measure between MAD, CV, and VAR
 4. The samples are able to to be clustered with multiple methods in a drop down box
 5. The Most Variable Genes will appear in the side bar below the sample cluster results
-  * This table may be downloaded as a tab delimited rank file or in .gmt format to be used as a gene set.
+    * This table may be downloaded as a tab delimited rank file or in .gmt format to be used as a gene set.
 6. Below the Most Variable Gene table are parameters to download a .gmt file based on the the Differentially Expressed Genes table
 
 ![alt text](https://github.com/shawlab-moffitt/RShinyAnalysisGenerator/blob/main/App_Demo_Pictures/GSEA_Shiny_5.png?raw=true)
 
 1. Users may select specific genes from a list generated from the expression matrix.
-  * The starting values selected are genes involved in cytokines.
-  * The starting values may be deleted with backspace and new gene options will appear in a dropdown box when the box is selected or a gene of choice is typed in the box
+    * The starting values selected are genes involved in cytokines.
+    * The starting values may be deleted with backspace and new gene options will appear in a dropdown box when the box is selected or a gene of choice is typed in the box
 2. The user may also paste a list of genes in a text input box and those genes will be visualized in the heatmap
-  * Please note, the genes selected in the first and second box of this side panel are stacked and will show the genes selected in both boxes
+    * Please note, the genes selected in the first and second box of this side panel are stacked and will show the genes selected in both boxes
 3. The heatmap will begin with all samples displayed but the user may delete ones that they do not wish to see in the Sample Selection box
 
 ![alt text](https://github.com/shawlab-moffitt/RShinyAnalysisGenerator/blob/main/App_Demo_Pictures/GSEA_Shiny_6.png?raw=true)
 
 1. To adjust the logFC the user must enter the absolute value of the desired fold change and it will adjust the vertical dashed line on the volcano plot and the horizontal dashed lines on the MA plot
-  * The data point colors will also be adjusted based on where the points lie
+    * The data point colors will also be adjusted based on where the points lie
 2. The user may adjust the significance threshold by entering the desired P-value, where the value will be calculated as -log10 and adjust the horizontal line on the volcano plot accordingly
 3. The number of top hits begins at 10 genes in each fold change direction which can be seen labeled on the volcano and MA plots
-  * Please note that increasing the number of the labeled genes may decrease the visibility of the gene names depending on over lapping
+    * Please note that increasing the number of the labeled genes may decrease the visibility of the gene names depending on over lapping
 4. The user may select additional genes to be labeled on the volcano and MA plots by selecting from the available list or typing in a gene of interest
 5. At the top of the volcano and MA plots there will be a description based on the sample types selected.
-  * The user may select different sample types to compare in the 'RNAseq Parameters' tab of the side panel
+    * The user may select different sample types to compare in the 'RNAseq Parameters' tab of the side panel
 6. Below the plot will appear a text box based on the data point that the users mouse may be hovering over
-  * It will not appear if the mouse is not hovering a data point
+    * It will not appear if the mouse is not hovering a data point
