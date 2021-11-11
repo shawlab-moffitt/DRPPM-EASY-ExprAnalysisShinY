@@ -1,4 +1,4 @@
-# RShinyAnalysisGenerator
+# GeneralExpressionAnalysisApp
 
 # Introduction
 
@@ -6,10 +6,6 @@
 
 * `R` - https://cran.r-project.org/src/base/R-4/
 * `R Studio` - https://www.rstudio.com/products/rstudio/download/
-
-# Installation
-
-1. 
 
 # R Dependencies
 
@@ -130,9 +126,9 @@ userRData_file <- 'CellMarker_GS_HS.RData'
 
 Once the file names and choices are correctly written you should be able to hit the "Run App" button in your R Studio desktop application load up the web page if you decide to save the code to a server.
 
-## Shiny App Features
+# Shiny App Features
 
-### Gene Set Enrichment Analysis
+## Gene Set Enrichment Analysis
 
 In app, the user may select two comparison groups within the side panel which are based off of the meta file that was provided, as well a gene set by selecting from one of the gene set tables in the side panel. If the user uploads their own gene set data a table will appear based on the file input. 
 
@@ -160,7 +156,12 @@ In app, the user may select two comparison groups within the side panel which ar
     * This is useful if you have a large number of sample types or if you have a specific comparison you are interested in with the gene set of your choice uploaded
     * Please keep in mind that depending on the size of the gene set data or number of samples this may take several minutes
 
-### RNAseq Analysis
+![alt text](https://github.com/shawlab-moffitt/RShinyAnalysisGenerator/blob/main/App_Demo_Pictures/GSEA_Shiny_8.png?raw=true)
+
+1. When viewing the ssGSEA box plot for a specific gene set, the ssGSEA enrichment score table may be downloaded
+    * This can be used further in the ssGSEA analysis app that is being developed
+
+## RNAseq Analysis
 
 ![alt text](https://github.com/shawlab-moffitt/RShinyAnalysisGenerator/blob/main/App_Demo_Pictures/GSEA_Shiny_4.png?raw=true)
 
@@ -202,6 +203,12 @@ These will be the RNAseq analysis parameters shown on the main side bar of this 
 2. These are from the base expression plot, so there is an option to log2+1 transform the data
 3. A table will show below with expression data for those genes which can be downloaded as a .tsv file
 
+![alt text](https://github.com/shawlab-moffitt/RShinyAnalysisGenerator/blob/main/App_Demo_Pictures/GSEA_Shiny_9.png?raw=true)
 
+1. The user may select pathways to visualize with Enrichr for their samples
+    * Below the upregulated visualization and table shows the downregulated pathway
+3. The pathway analysis table can be downloaded as a .tsv file or it can be formated into a .gmt file for the selected pathway based on the genes listed in the table
 
+# Quesions and Comments
 
+Please email Alyssa Obermayer at alyssa.obermayer@moffitt.org if you have any further comments or questions in regards to the r Shiny Application.
