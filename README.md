@@ -10,7 +10,7 @@
 * Unzip and load into directory as a project in R Studio
 * Open the ‘App.R’ script and write in user input files and options as directed at the top of the script
   * ‘App.R’ script begins with example files loaded in from the ExampleData folder
-* Press ‘Run App’ button in R Studio and enjoy!
+* Press ‘Run App’ button in R Studio to run in application or browser window and enjoy!
 
 # Requirements
 
