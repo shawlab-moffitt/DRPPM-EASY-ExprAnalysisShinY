@@ -25,18 +25,18 @@ library(readr)
 ##User Input
 
 #Assign expression data path
-expr_file <- "~/path/to/expression/file.txt"
+expr_file <- "~/R/GeneralExpressionAnalysisApp-main/ExampleData/htseq_gene_level_fpkm_T_geneName_max_1cutoff_v2.txt"
 
 #Assign meta data path
-meta_file <- "~/path/to/meta/file.tsv"
+meta_file <- "~/R/GeneralExpressionAnalysisApp-main/ExampleData/USP7_meta.tsv"
 #Is there a header?
 header <- TRUE
 
 #assign outfile path - where you want the enriched signatures table
-OutPath <- "~/desired/path/for/outfile/"
+OutPath <- "~/R/GeneralExpressionAnalysisApp-main/ExampleData/"
 
 #Use prepared gene set
-GeneSet_file <- "~/path/to/provided/MSigdb/msigdb_gsNsym_*.tsv"
+GeneSet_file <- "~/R/GeneralExpressionAnalysisApp-main/GeneSets/msigdb_gsNsym_HS.zip"
 #Choose FALSE mouse model gene set used
 human <- TRUE
 
@@ -45,7 +45,7 @@ human <- TRUE
 
 
 ##User designated gene set (OPTIONAL)
-#Assign user .gmt file if provided
+#Assign user .gmt, .tsv, or txt file if provided
 GeneSet_file.u <- "~/path/to/gene/set/file"
 #does this file have a header?
 header.gs <- TRUE
@@ -87,7 +87,7 @@ meta[,1] <- gsub("[_.-]", "_", meta[,1])
 #generate gmt with pre-loaded MSigDB gmt file - Human or Mouse
 if (file.exists(GeneSet_file.u) == FALSE){
     GeneSet_file.m <- GeneSet_file
-    gmt <- read.delim(GeneSet_file.m, header = T, sep = '\t')
+    gmt <- read_delim(GeneSet_file.m, delim = '\t')
 }
 
 
