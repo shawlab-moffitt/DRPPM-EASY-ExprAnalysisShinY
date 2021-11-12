@@ -34,15 +34,15 @@ ProjectName <- "USP7 Human Demo"
 ##--User Input File Names--##
 
 #expression data
-expr_file <- "htseq_gene_level_fpkm_T_geneName_max_1cutoff_v2.txt"
+expr_file <- "~/R/GeneralExpressionAnalysisApp-main/ExampleData/htseq_gene_level_fpkm_T_geneName_max_1cutoff_v2.txt"
 
 #meta data
-meta_file <- "USP7_meta.tsv"
+meta_file <- "~/R/GeneralExpressionAnalysisApp-main/ExampleData/USP7_meta.tsv"
 #Is there a header?
 header <- TRUE
 
 #Enriched Signatures data table
-ES_tables <- c("USP7_Enrich_Sig.tsv")
+ES_tables <- c("~/R/GeneralExpressionAnalysisApp-main/ExampleData/USP7_Enrich_Sig.tsv")
 
 #If human: set TRUE
 #If mouse: set FALSE
@@ -54,12 +54,12 @@ human <- TRUE
 userGSlist_name <- 'CellMarker Gene Sets'
 
 #path to your gene set file .gmt or .txt/.tsv
-userGS_file <- 'CellMarker_gsNsym_HS.tsv'
+userGS_file <- '~/R/GeneralExpressionAnalysisApp-main/GeneSets/CellMarker_gsNsym_HS.tsv'
 #Does gene set file have header?
 header.gs <- TRUE
 
 #path to your R data list object for ssGSEA
-userRData_file <- 'CellMarker_GS_HS.RData'
+userRData_file <- '~/R/GeneralExpressionAnalysisApp-main/GeneSets/CellMarker_GS_HS.RData'
 
 
 
@@ -70,11 +70,11 @@ userRData_file <- 'CellMarker_GS_HS.RData'
 
 if (human == TRUE) {
     #MSigDB gene set
-    msigdb <- 'msigdb_gsNsym_HS.tsv'
+    msigdb <- '~/R/GeneralExpressionAnalysisApp-main/GeneSets/msigdb_gsNsym_HS.zip'
     #MSigDB gene set FOR UI
-    msigdb2 <- 'msigdb_gsNcat_HS.tsv'
+    msigdb2 <- '~/R/GeneralExpressionAnalysisApp-main/GeneSets/msigdb_gsNcat_HS.tsv'
     #gene set list for ssGSEA
-    load('gs_list_HS.RData')
+    load('~/R/GeneralExpressionAnalysisApp-main/GeneSets/gs_list_HS.RData')
     #Cytokine genes for human
     CTKgenes <- c("IL2","IL12A","IL12B","IL17A","IFNA1","IFNB1","IFNG","IFNGR","CD11b",
                   "ITGAM","CD33","ENTPD1","ICOSLG","CD275","CD278","TNFSF9","TNFRSF9",
@@ -85,11 +85,11 @@ if (human == TRUE) {
 }
 if (human == FALSE) {
     #MSigDB gene set
-    msigdb <- 'msigdb_gsNsym_MM.tsv'
+    msigdb <- '~/R/GeneralExpressionAnalysisApp-main/GeneSets/msigdb_gsNsym_MM.zip'
     #MSigDB gene set FOR UI
-    msigdb2 <- 'msigdb_gsNcat_MM.tsv'
+    msigdb2 <- '~/R/GeneralExpressionAnalysisApp-main/GeneSets/msigdb_gsNcat_MM.tsv'
     #gene set list for ssGSEA 
-    load('gs_list_MM.RData')
+    load('~/R/GeneralExpressionAnalysisApp-main/GeneSets/gs_list_MM.RData')
     #Cytokiny genes for mouse
     CTKgenes <- c("Il2","Il12a","Il12b","Il17a","Ifna13","Ifnb1","Ifng","Ifngr1","Cd11b","Itgam",
                   "Cd33","Entpd1","Icosl","Icos","Tnfsf9","Tnfrsf9","Cd40","Cd40lg","Cd70","Cd27",
@@ -169,12 +169,12 @@ if (is.null(ES_tables)) {
 
 
 #MSigDB gene sets
-msigdb.gsea <- read.delim(msigdb, header = T, sep = '\t')
+msigdb.gsea <- read_delim(msigdb, delim = '\t')
 gmt <- msigdb.gsea
 
 
 #MSigDB gene sets FOR UI
-msigdb.gsea2 <- read.delim(msigdb2, header = T, sep = '\t')
+msigdb.gsea2 <- read_delim(msigdb2, delim = '\t')
 
 
 #tab2 User gene set
