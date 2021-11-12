@@ -12,9 +12,6 @@
   * ‘App.R’ script begins with example files loaded in from the ExampleData folder
 * Press ‘Run App’ button in R Studio and enjoy!
 
-![image](https://user-images.githubusercontent.com/89986836/141511860-b77147ef-4ac8-4cb7-9411-1b45e4927c7e.png)
-
-
 # Requirements
 
 * `R` - https://cran.r-project.org/src/base/R-4/
