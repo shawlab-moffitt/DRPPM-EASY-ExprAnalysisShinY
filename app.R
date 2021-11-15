@@ -27,7 +27,7 @@ library(tools)
 
 ####----User Data Input----####
 
-#Input desired project name for webpage - will be followed by 'RNAseq Analysis'
+#Input desired project name for webpage - will be followed by 'Expression Analysis'
 ProjectName <- "USP7 Human Demo"
 
 
@@ -218,7 +218,7 @@ shinytheme("sandstone")
 
 ui <-
     
-navbarPage(paste("{",ProjectName,"RNAseq Analysis }", sep=" "),
+navbarPage(paste("{",ProjectName,"Expression Analysis }", sep=" "),
     
     ####----Intro Tab----####
     
