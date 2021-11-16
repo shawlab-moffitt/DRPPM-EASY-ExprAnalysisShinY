@@ -1,27 +1,16 @@
 
-library(shiny)
-library(shinythemes)
-library(shinyjqui)
-library(pheatmap)
-library(RColorBrewer)
-library(clusterProfiler)
-library(dplyr)
-library(DT)
-library(enrichplot)
-library(shinycssloaders)
-library(ggplot2)
-library(ggpubr)
-library(msigdbr)
-library(reshape2)
-library(tibble)
-library(plotly)
-library(readr)
-library(limma)
-library(enrichR)
-library(ggrepel)
-library(tidyr)
-library(GSVA)
-library(tools)
+
+####----Install and load packages----####
+
+packages <- c("shiny","shinythemes","shinyjqui","pheatmap","RColorBrewer","clusterProfiler",
+              "dplyr","DT","enrichplot","ggplot2","ggpubr","msigdbr","reshape2","tibble","plotly",
+              "readr","limma","enrichR","ggrepel","tidyr","GSVA","tools","shinycssloaders")
+installed_packages <- packages %in% rownames(installed.packages())
+if (any(installed_packages == FALSE)) {
+    install.packages(packages[!installed_packages])
+}
+
+invisible(lapply(packages, library, character.only = TRUE))
 
 
 
