@@ -1,15 +1,15 @@
 
-library(clusterProfiler)
-library(msigdbr)
-library(dplyr)
-library(DT)
-library(enrichplot)
-library(ggplot2)
-library(GSVA)
-library(reshape2)
-library(pheatmap)
-library(ggpubr)
-library(readr)
+
+####----Install and load packages----####
+
+packages <- c("clusterProfiler","dplyr","DT","msigdbr","GSVA","readr","ggpubr","reshape2")
+
+installed_packages <- packages %in% rownames(installed.packages())
+if (any(installed_packages == FALSE)) {
+  install.packages(packages[!installed_packages])
+}
+
+invisible(lapply(packages, library, character.only = TRUE))
 
 
 ####-------------------------------------------------------------####
