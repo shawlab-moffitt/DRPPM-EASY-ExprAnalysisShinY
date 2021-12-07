@@ -1,4 +1,4 @@
-# GeneralExpressionAnalysisApp
+# DRPPM Expression Analysis Shiny App
 
 # Introduction
 
