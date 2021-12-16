@@ -32,11 +32,12 @@ meta_file <- "~/R/GeneralExpressionAnalysisApp-main/ExampleData/USP7_meta.tsv"
 #Is there a header?
 header <- TRUE
 
+#Gene Set File
+GeneSet_file <- "~/R/GeneralExpressionAnalysisApp-main/GeneSets/msigdb_gsNsym_HS.zip"
+
 #assign outfile path - where you want the enriched signatures table
 OutPath <- "~/R/GeneralExpressionAnalysisApp-main/ExampleData/"
 
-#Gene Set File
-GeneSet_file <- "~/R/GeneralExpressionAnalysisApp-main/GeneSets/msigdb_gsNsym_HS.zip"
 
 
 
