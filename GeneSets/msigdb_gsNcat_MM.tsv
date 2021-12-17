@@ -1,4 +1,54 @@
 GeneSet_Category	GeneSet_Sub_Category	GeneSet_Name
+H: Hallmark Gene Sets	NA	HALLMARK_ADIPOGENESIS
+H: Hallmark Gene Sets	NA	HALLMARK_ALLOGRAFT_REJECTION
+H: Hallmark Gene Sets	NA	HALLMARK_ANDROGEN_RESPONSE
+H: Hallmark Gene Sets	NA	HALLMARK_ANGIOGENESIS
+H: Hallmark Gene Sets	NA	HALLMARK_APICAL_JUNCTION
+H: Hallmark Gene Sets	NA	HALLMARK_APICAL_SURFACE
+H: Hallmark Gene Sets	NA	HALLMARK_APOPTOSIS
+H: Hallmark Gene Sets	NA	HALLMARK_BILE_ACID_METABOLISM
+H: Hallmark Gene Sets	NA	HALLMARK_CHOLESTEROL_HOMEOSTASIS
+H: Hallmark Gene Sets	NA	HALLMARK_COAGULATION
+H: Hallmark Gene Sets	NA	HALLMARK_COMPLEMENT
+H: Hallmark Gene Sets	NA	HALLMARK_DNA_REPAIR
+H: Hallmark Gene Sets	NA	HALLMARK_E2F_TARGETS
+H: Hallmark Gene Sets	NA	HALLMARK_EPITHELIAL_MESENCHYMAL_TRANSITION
+H: Hallmark Gene Sets	NA	HALLMARK_ESTROGEN_RESPONSE_EARLY
+H: Hallmark Gene Sets	NA	HALLMARK_ESTROGEN_RESPONSE_LATE
+H: Hallmark Gene Sets	NA	HALLMARK_FATTY_ACID_METABOLISM
+H: Hallmark Gene Sets	NA	HALLMARK_G2M_CHECKPOINT
+H: Hallmark Gene Sets	NA	HALLMARK_GLYCOLYSIS
+H: Hallmark Gene Sets	NA	HALLMARK_HEDGEHOG_SIGNALING
+H: Hallmark Gene Sets	NA	HALLMARK_HEME_METABOLISM
+H: Hallmark Gene Sets	NA	HALLMARK_HYPOXIA
+H: Hallmark Gene Sets	NA	HALLMARK_IL2_STAT5_SIGNALING
+H: Hallmark Gene Sets	NA	HALLMARK_IL6_JAK_STAT3_SIGNALING
+H: Hallmark Gene Sets	NA	HALLMARK_INFLAMMATORY_RESPONSE
+H: Hallmark Gene Sets	NA	HALLMARK_INTERFERON_ALPHA_RESPONSE
+H: Hallmark Gene Sets	NA	HALLMARK_INTERFERON_GAMMA_RESPONSE
+H: Hallmark Gene Sets	NA	HALLMARK_KRAS_SIGNALING_DN
+H: Hallmark Gene Sets	NA	HALLMARK_KRAS_SIGNALING_UP
+H: Hallmark Gene Sets	NA	HALLMARK_MITOTIC_SPINDLE
+H: Hallmark Gene Sets	NA	HALLMARK_MTORC1_SIGNALING
+H: Hallmark Gene Sets	NA	HALLMARK_MYC_TARGETS_V1
+H: Hallmark Gene Sets	NA	HALLMARK_MYC_TARGETS_V2
+H: Hallmark Gene Sets	NA	HALLMARK_MYOGENESIS
+H: Hallmark Gene Sets	NA	HALLMARK_NOTCH_SIGNALING
+H: Hallmark Gene Sets	NA	HALLMARK_OXIDATIVE_PHOSPHORYLATION
+H: Hallmark Gene Sets	NA	HALLMARK_P53_PATHWAY
+H: Hallmark Gene Sets	NA	HALLMARK_PANCREAS_BETA_CELLS
+H: Hallmark Gene Sets	NA	HALLMARK_PEROXISOME
+H: Hallmark Gene Sets	NA	HALLMARK_PI3K_AKT_MTOR_SIGNALING
+H: Hallmark Gene Sets	NA	HALLMARK_PROTEIN_SECRETION
+H: Hallmark Gene Sets	NA	HALLMARK_REACTIVE_OXYGEN_SPECIES_PATHWAY
+H: Hallmark Gene Sets	NA	HALLMARK_SPERMATOGENESIS
+H: Hallmark Gene Sets	NA	HALLMARK_TGF_BETA_SIGNALING
+H: Hallmark Gene Sets	NA	HALLMARK_TNFA_SIGNALING_VIA_NFKB
+H: Hallmark Gene Sets	NA	HALLMARK_UNFOLDED_PROTEIN_RESPONSE
+H: Hallmark Gene Sets	NA	HALLMARK_UV_RESPONSE_DN
+H: Hallmark Gene Sets	NA	HALLMARK_UV_RESPONSE_UP
+H: Hallmark Gene Sets	NA	HALLMARK_WNT_BETA_CATENIN_SIGNALING
+H: Hallmark Gene Sets	NA	HALLMARK_XENOBIOTIC_METABOLISM
 C1: Positional Gene Sets	NA	chr10p12
 C1: Positional Gene Sets	NA	chr10p13
 C1: Positional Gene Sets	NA	chr10p14
@@ -2832,55 +2882,55 @@ C2: Curated Gene Sets	CPG: Chemical and Genetic Perturbations	MYLLYKANGAS_AMPLIF
 C2: Curated Gene Sets	CPG: Chemical and Genetic Perturbations	MYLLYKANGAS_AMPLIFICATION_HOT_SPOT_7
 C2: Curated Gene Sets	CPG: Chemical and Genetic Perturbations	MYLLYKANGAS_AMPLIFICATION_HOT_SPOT_8
 C2: Curated Gene Sets	CPG: Chemical and Genetic Perturbations	MYLLYKANGAS_AMPLIFICATION_HOT_SPOT_9
-C2: Curated Gene Sets	CP: Canonical Pathway	"NABA_BASEMENT_MEMBRANES"
-C2: Curated Gene Sets	CP: Canonical Pathway	"NABA_COLLAGENS"
-C2: Curated Gene Sets	CP: Canonical Pathway	"NABA_CORE_MATRISOME"
-C2: Curated Gene Sets	CP: Canonical Pathway	"NABA_ECM_AFFILIATED"
-C2: Curated Gene Sets	CP: Canonical Pathway	"NABA_ECM_GLYCOPROTEINS"
-C2: Curated Gene Sets	CP: Canonical Pathway	"NABA_ECM_REGULATORS"
-C2: Curated Gene Sets	CP: Canonical Pathway	"NABA_MATRISOME"
-C2: Curated Gene Sets	CP: Canonical Pathway	"NABA_MATRISOME_ASSOCIATED"
-C2: Curated Gene Sets	CP: Canonical Pathway	"NABA_PROTEOGLYCANS"
-C2: Curated Gene Sets	CP: Canonical Pathway	"NABA_SECRETED_FACTORS"
-C2: Curated Gene Sets	CPG: Chemical and Genetic Perturbations	"NADELLA_PRKAR1A_TARGETS_DN"
-C2: Curated Gene Sets	CPG: Chemical and Genetic Perturbations	"NADELLA_PRKAR1A_TARGETS_UP"
-C2: Curated Gene Sets	CPG: Chemical and Genetic Perturbations	"NADERI_BREAST_CANCER_PROGNOSIS_DN"
-C2: Curated Gene Sets	CPG: Chemical and Genetic Perturbations	"NADERI_BREAST_CANCER_PROGNOSIS_UP"
-C2: Curated Gene Sets	CPG: Chemical and Genetic Perturbations	"NADLER_HYPERGLYCEMIA_AT_OBESITY"
-C2: Curated Gene Sets	CPG: Chemical and Genetic Perturbations	"NADLER_OBESITY_DN"
-C2: Curated Gene Sets	CPG: Chemical and Genetic Perturbations	"NADLER_OBESITY_UP"
-C2: Curated Gene Sets	CPG: Chemical and Genetic Perturbations	"NAGASHIMA_EGF_SIGNALING_UP"
-C2: Curated Gene Sets	CPG: Chemical and Genetic Perturbations	"NAGASHIMA_NRG1_SIGNALING_DN"
-C2: Curated Gene Sets	CPG: Chemical and Genetic Perturbations	"NAGASHIMA_NRG1_SIGNALING_UP"
-C2: Curated Gene Sets	CPG: Chemical and Genetic Perturbations	"NAGY_PCAF_COMPONENTS_HUMAN"
-C2: Curated Gene Sets	CPG: Chemical and Genetic Perturbations	"NAGY_STAGA_COMPONENTS_HUMAN"
-C2: Curated Gene Sets	CPG: Chemical and Genetic Perturbations	"NAGY_TFTC_COMPONENTS_HUMAN"
-C2: Curated Gene Sets	CPG: Chemical and Genetic Perturbations	"NAISHIRO_CTNNB1_TARGETS_WITH_LEF1_MOTIF"
-C2: Curated Gene Sets	CPG: Chemical and Genetic Perturbations	"NAKAJIMA_EOSINOPHIL"
-C2: Curated Gene Sets	CPG: Chemical and Genetic Perturbations	"NAKAJIMA_MAST_CELL"
-C2: Curated Gene Sets	CPG: Chemical and Genetic Perturbations	"NAKAMURA_ADIPOGENESIS_EARLY_DN"
-C2: Curated Gene Sets	CPG: Chemical and Genetic Perturbations	"NAKAMURA_ADIPOGENESIS_EARLY_UP"
-C2: Curated Gene Sets	CPG: Chemical and Genetic Perturbations	"NAKAMURA_ADIPOGENESIS_LATE_DN"
-C2: Curated Gene Sets	CPG: Chemical and Genetic Perturbations	"NAKAMURA_ADIPOGENESIS_LATE_UP"
-C2: Curated Gene Sets	CPG: Chemical and Genetic Perturbations	"NAKAMURA_ALVEOLAR_EPITHELIUM"
-C2: Curated Gene Sets	CPG: Chemical and Genetic Perturbations	"NAKAMURA_BRONCHIAL_AND_BRONCHIOLAR_EPITHELIA"
-C2: Curated Gene Sets	CPG: Chemical and Genetic Perturbations	"NAKAMURA_CANCER_MICROENVIRONMENT_DN"
-C2: Curated Gene Sets	CPG: Chemical and Genetic Perturbations	"NAKAMURA_CANCER_MICROENVIRONMENT_UP"
-C2: Curated Gene Sets	CPG: Chemical and Genetic Perturbations	"NAKAMURA_LUNG_CANCER"
-C2: Curated Gene Sets	CPG: Chemical and Genetic Perturbations	"NAKAMURA_LUNG_CANCER_DIFFERENTIATION_MARKERS"
-C2: Curated Gene Sets	CPG: Chemical and Genetic Perturbations	"NAKAMURA_METASTASIS"
-C2: Curated Gene Sets	CPG: Chemical and Genetic Perturbations	"NAKAMURA_METASTASIS_MODEL_DN"
-C2: Curated Gene Sets	CPG: Chemical and Genetic Perturbations	"NAKAMURA_METASTASIS_MODEL_UP"
-C2: Curated Gene Sets	CPG: Chemical and Genetic Perturbations	"NAKAMURA_TUMOR_ZONE_PERIPHERAL_VS_CENTRAL_DN"
-C2: Curated Gene Sets	CPG: Chemical and Genetic Perturbations	"NAKAMURA_TUMOR_ZONE_PERIPHERAL_VS_CENTRAL_UP"
-C2: Curated Gene Sets	CPG: Chemical and Genetic Perturbations	"NAKAYAMA_FRA2_TARGETS"
-C2: Curated Gene Sets	CPG: Chemical and Genetic Perturbations	"NAKAYAMA_SOFT_TISSUE_TUMORS_PCA1_DN"
-C2: Curated Gene Sets	CPG: Chemical and Genetic Perturbations	"NAKAYAMA_SOFT_TISSUE_TUMORS_PCA1_UP"
-C2: Curated Gene Sets	CPG: Chemical and Genetic Perturbations	"NAKAYAMA_SOFT_TISSUE_TUMORS_PCA2_DN"
-C2: Curated Gene Sets	CPG: Chemical and Genetic Perturbations	"NAKAYAMA_SOFT_TISSUE_TUMORS_PCA2_UP"
-C2: Curated Gene Sets	CPG: Chemical and Genetic Perturbations	"NAM_FXYD5_TARGETS_DN"
-C2: Curated Gene Sets	CPG: Chemical and Genetic Perturbations	"NATSUME_RESPONSE_TO_INTERFERON_BETA_DN"
-C2: Curated Gene Sets	CPG: Chemical and Genetic Perturbations	"NATSUME_RESPONSE_TO_INTERFERON_BETA_UP"
+C2: Curated Gene Sets	CP: Canonical Pathway	NABA_BASEMENT_MEMBRANES
+C2: Curated Gene Sets	CP: Canonical Pathway	NABA_COLLAGENS
+C2: Curated Gene Sets	CP: Canonical Pathway	NABA_CORE_MATRISOME
+C2: Curated Gene Sets	CP: Canonical Pathway	NABA_ECM_AFFILIATED
+C2: Curated Gene Sets	CP: Canonical Pathway	NABA_ECM_GLYCOPROTEINS
+C2: Curated Gene Sets	CP: Canonical Pathway	NABA_ECM_REGULATORS
+C2: Curated Gene Sets	CP: Canonical Pathway	NABA_MATRISOME
+C2: Curated Gene Sets	CP: Canonical Pathway	NABA_MATRISOME_ASSOCIATED
+C2: Curated Gene Sets	CP: Canonical Pathway	NABA_PROTEOGLYCANS
+C2: Curated Gene Sets	CP: Canonical Pathway	NABA_SECRETED_FACTORS
+C2: Curated Gene Sets	CPG: Chemical and Genetic Perturbations	NADELLA_PRKAR1A_TARGETS_DN
+C2: Curated Gene Sets	CPG: Chemical and Genetic Perturbations	NADELLA_PRKAR1A_TARGETS_UP
+C2: Curated Gene Sets	CPG: Chemical and Genetic Perturbations	NADERI_BREAST_CANCER_PROGNOSIS_DN
+C2: Curated Gene Sets	CPG: Chemical and Genetic Perturbations	NADERI_BREAST_CANCER_PROGNOSIS_UP
+C2: Curated Gene Sets	CPG: Chemical and Genetic Perturbations	NADLER_HYPERGLYCEMIA_AT_OBESITY
+C2: Curated Gene Sets	CPG: Chemical and Genetic Perturbations	NADLER_OBESITY_DN
+C2: Curated Gene Sets	CPG: Chemical and Genetic Perturbations	NADLER_OBESITY_UP
+C2: Curated Gene Sets	CPG: Chemical and Genetic Perturbations	NAGASHIMA_EGF_SIGNALING_UP
+C2: Curated Gene Sets	CPG: Chemical and Genetic Perturbations	NAGASHIMA_NRG1_SIGNALING_DN
+C2: Curated Gene Sets	CPG: Chemical and Genetic Perturbations	NAGASHIMA_NRG1_SIGNALING_UP
+C2: Curated Gene Sets	CPG: Chemical and Genetic Perturbations	NAGY_PCAF_COMPONENTS_HUMAN
+C2: Curated Gene Sets	CPG: Chemical and Genetic Perturbations	NAGY_STAGA_COMPONENTS_HUMAN
+C2: Curated Gene Sets	CPG: Chemical and Genetic Perturbations	NAGY_TFTC_COMPONENTS_HUMAN
+C2: Curated Gene Sets	CPG: Chemical and Genetic Perturbations	NAISHIRO_CTNNB1_TARGETS_WITH_LEF1_MOTIF
+C2: Curated Gene Sets	CPG: Chemical and Genetic Perturbations	NAKAJIMA_EOSINOPHIL
+C2: Curated Gene Sets	CPG: Chemical and Genetic Perturbations	NAKAJIMA_MAST_CELL
+C2: Curated Gene Sets	CPG: Chemical and Genetic Perturbations	NAKAMURA_ADIPOGENESIS_EARLY_DN
+C2: Curated Gene Sets	CPG: Chemical and Genetic Perturbations	NAKAMURA_ADIPOGENESIS_EARLY_UP
+C2: Curated Gene Sets	CPG: Chemical and Genetic Perturbations	NAKAMURA_ADIPOGENESIS_LATE_DN
+C2: Curated Gene Sets	CPG: Chemical and Genetic Perturbations	NAKAMURA_ADIPOGENESIS_LATE_UP
+C2: Curated Gene Sets	CPG: Chemical and Genetic Perturbations	NAKAMURA_ALVEOLAR_EPITHELIUM
+C2: Curated Gene Sets	CPG: Chemical and Genetic Perturbations	NAKAMURA_BRONCHIAL_AND_BRONCHIOLAR_EPITHELIA
+C2: Curated Gene Sets	CPG: Chemical and Genetic Perturbations	NAKAMURA_CANCER_MICROENVIRONMENT_DN
+C2: Curated Gene Sets	CPG: Chemical and Genetic Perturbations	NAKAMURA_CANCER_MICROENVIRONMENT_UP
+C2: Curated Gene Sets	CPG: Chemical and Genetic Perturbations	NAKAMURA_LUNG_CANCER
+C2: Curated Gene Sets	CPG: Chemical and Genetic Perturbations	NAKAMURA_LUNG_CANCER_DIFFERENTIATION_MARKERS
+C2: Curated Gene Sets	CPG: Chemical and Genetic Perturbations	NAKAMURA_METASTASIS
+C2: Curated Gene Sets	CPG: Chemical and Genetic Perturbations	NAKAMURA_METASTASIS_MODEL_DN
+C2: Curated Gene Sets	CPG: Chemical and Genetic Perturbations	NAKAMURA_METASTASIS_MODEL_UP
+C2: Curated Gene Sets	CPG: Chemical and Genetic Perturbations	NAKAMURA_TUMOR_ZONE_PERIPHERAL_VS_CENTRAL_DN
+C2: Curated Gene Sets	CPG: Chemical and Genetic Perturbations	NAKAMURA_TUMOR_ZONE_PERIPHERAL_VS_CENTRAL_UP
+C2: Curated Gene Sets	CPG: Chemical and Genetic Perturbations	NAKAYAMA_FRA2_TARGETS
+C2: Curated Gene Sets	CPG: Chemical and Genetic Perturbations	NAKAYAMA_SOFT_TISSUE_TUMORS_PCA1_DN
+C2: Curated Gene Sets	CPG: Chemical and Genetic Perturbations	NAKAYAMA_SOFT_TISSUE_TUMORS_PCA1_UP
+C2: Curated Gene Sets	CPG: Chemical and Genetic Perturbations	NAKAYAMA_SOFT_TISSUE_TUMORS_PCA2_DN
+C2: Curated Gene Sets	CPG: Chemical and Genetic Perturbations	NAKAYAMA_SOFT_TISSUE_TUMORS_PCA2_UP
+C2: Curated Gene Sets	CPG: Chemical and Genetic Perturbations	NAM_FXYD5_TARGETS_DN
+C2: Curated Gene Sets	CPG: Chemical and Genetic Perturbations	NATSUME_RESPONSE_TO_INTERFERON_BETA_DN
+C2: Curated Gene Sets	CPG: Chemical and Genetic Perturbations	NATSUME_RESPONSE_TO_INTERFERON_BETA_UP
 C2: Curated Gene Sets	CPG: Chemical and Genetic Perturbations	NEBEN_AML_WITH_FLT3_OR_NRAS_DN
 C2: Curated Gene Sets	CPG: Chemical and Genetic Perturbations	NEBEN_AML_WITH_FLT3_OR_NRAS_UP
 C2: Curated Gene Sets	CPG: Chemical and Genetic Perturbations	NELSON_RESPONSE_TO_ANDROGEN_DN
@@ -9665,7 +9715,7 @@ C3: Regulatory Target Gene Sets	TFT: Transcription Factor Targets	MYOGNF1_01
 C3: Regulatory Target Gene Sets	TFT: Transcription Factor Targets	MZF1_01
 C3: Regulatory Target Gene Sets	TFT: Transcription Factor Targets	MZF1_02
 C3: Regulatory Target Gene Sets	TFT: Transcription Factor Targets	MZF1_TARGET_GENES
-C3: Regulatory Target Gene Sets	TFT: Transcription Factor Targets	"NAB2_TARGET_GENES"
+C3: Regulatory Target Gene Sets	TFT: Transcription Factor Targets	NAB2_TARGET_GENES
 C3: Regulatory Target Gene Sets	TFT: Transcription Factor Targets	NCOA2_TARGET_GENES
 C3: Regulatory Target Gene Sets	TFT: Transcription Factor Targets	NCOA4_TARGET_GENES
 C3: Regulatory Target Gene Sets	TFT: Transcription Factor Targets	NCOA6_TARGET_GENES
@@ -31418,42 +31468,42 @@ C7: Immunologic Signature Gene Sets	VAX: Vaccine Response Gene Sets	MATSUMIYA_PB
 C7: Immunologic Signature Gene Sets	VAX: Vaccine Response Gene Sets	MATSUMIYA_PBMC_MODIFIED_VACCINIA_ANKARA_VACCINE_AGE_18_55YO_VACCINATED_VS_CONTROL_TREATED_IN_VITRO_WITH_WILD_TYPE_MVA_6HR_UP
 C7: Immunologic Signature Gene Sets	VAX: Vaccine Response Gene Sets	MATSUMIYA_PBMC_MODIFIED_VACCINIA_ANKARA_VACCINE_AGE_4_6MO_BCG_PRIMED_28DY_UP
 C7: Immunologic Signature Gene Sets	VAX: Vaccine Response Gene Sets	MATSUMIYA_PBMC_MODIFIED_VACCINIA_ANKARA_VACCINE_AGE_4_6MO_VACCINATED_VS_CANDIN_PLACEBO_BCG_PRIMED_28DY_UP
-C7: Immunologic Signature Gene Sets	VAX: Vaccine Response Gene Sets	"NAKAYA_B_CELL_FLUARIX_FLUVIRIN_AGE_18_50YO_7DY_DN"
-C7: Immunologic Signature Gene Sets	VAX: Vaccine Response Gene Sets	"NAKAYA_B_CELL_FLUARIX_FLUVIRIN_AGE_18_50YO_7DY_UP"
-C7: Immunologic Signature Gene Sets	VAX: Vaccine Response Gene Sets	"NAKAYA_B_CELL_FLUMIST_AGE_18_50YO_7DY_DN"
-C7: Immunologic Signature Gene Sets	VAX: Vaccine Response Gene Sets	"NAKAYA_B_CELL_FLUMIST_AGE_18_50YO_7DY_UP"
-C7: Immunologic Signature Gene Sets	VAX: Vaccine Response Gene Sets	"NAKAYA_MONOCYTE_FLUARIX_FLUVIRIN_AGE_18_50YO_7DY_DN"
-C7: Immunologic Signature Gene Sets	VAX: Vaccine Response Gene Sets	"NAKAYA_MONOCYTE_FLUARIX_FLUVIRIN_AGE_18_50YO_7DY_UP"
-C7: Immunologic Signature Gene Sets	VAX: Vaccine Response Gene Sets	"NAKAYA_MONOCYTE_FLUMIST_AGE_18_50YO_7DY_DN"
-C7: Immunologic Signature Gene Sets	VAX: Vaccine Response Gene Sets	"NAKAYA_MONOCYTE_FLUMIST_AGE_18_50YO_7DY_UP"
-C7: Immunologic Signature Gene Sets	VAX: Vaccine Response Gene Sets	"NAKAYA_MYELOID_DENDRITIC_CELL_FLUARIX_FLUVIRIN_AGE_18_50YO_7DY_DN"
-C7: Immunologic Signature Gene Sets	VAX: Vaccine Response Gene Sets	"NAKAYA_MYELOID_DENDRITIC_CELL_FLUARIX_FLUVIRIN_AGE_18_50YO_7DY_UP"
-C7: Immunologic Signature Gene Sets	VAX: Vaccine Response Gene Sets	"NAKAYA_MYELOID_DENDRITIC_CELL_FLUMIST_AGE_18_50YO_7DY_DN"
-C7: Immunologic Signature Gene Sets	VAX: Vaccine Response Gene Sets	"NAKAYA_MYELOID_DENDRITIC_CELL_FLUMIST_AGE_18_50YO_7DY_UP"
-C7: Immunologic Signature Gene Sets	VAX: Vaccine Response Gene Sets	"NAKAYA_PBMC_FLUAD_IMUVAC_MALE_AGE_14_27YO_CORRELATED_WITH_HAI_RESPONSE_MF59_ADJUVANTED_AND_NON_1DY_GENES_IN_BTM_M75_POSITIVE"
-C7: Immunologic Signature Gene Sets	VAX: Vaccine Response Gene Sets	"NAKAYA_PBMC_FLUAD_MALE_AGE_14_27YO_1D_POSTBOOST_VS_0D_PREIMM_MF59_ADJUVANTED_1DY_ATIV_UP"
-C7: Immunologic Signature Gene Sets	VAX: Vaccine Response Gene Sets	"NAKAYA_PBMC_FLUAD_MALE_AGE_14_27YO_1D_POSTBOOST_VS_0D_PREIMM_MF59_ADJUVANTED_1DY_GENES_IN_BTM_M40_AND_M53_DN"
-C7: Immunologic Signature Gene Sets	VAX: Vaccine Response Gene Sets	"NAKAYA_PBMC_FLUAD_MALE_AGE_14_27YO_1D_POSTBOOST_VS_0D_PREIMM_MF59_ADJUVANTED_1DY_GENES_IN_BTM_M40_AND_M53_UP"
-C7: Immunologic Signature Gene Sets	VAX: Vaccine Response Gene Sets	"NAKAYA_PBMC_FLUARIX_FLUVIRIN_AGE_18_50YO_3DY_DN"
-C7: Immunologic Signature Gene Sets	VAX: Vaccine Response Gene Sets	"NAKAYA_PBMC_FLUARIX_FLUVIRIN_AGE_18_50YO_3DY_UP"
-C7: Immunologic Signature Gene Sets	VAX: Vaccine Response Gene Sets	"NAKAYA_PBMC_FLUARIX_FLUVIRIN_AGE_18_50YO_7DY_DN"
-C7: Immunologic Signature Gene Sets	VAX: Vaccine Response Gene Sets	"NAKAYA_PBMC_FLUARIX_FLUVIRIN_AGE_18_50YO_7DY_UP"
-C7: Immunologic Signature Gene Sets	VAX: Vaccine Response Gene Sets	"NAKAYA_PBMC_FLUARIX_FLUVIRIN_AGE_18_50YO_CORRELATED_WITH_HAI_28DY_RESPONSE_AT_3DY_NEGATIVE"
-C7: Immunologic Signature Gene Sets	VAX: Vaccine Response Gene Sets	"NAKAYA_PBMC_FLUARIX_FLUVIRIN_AGE_18_50YO_CORRELATED_WITH_HAI_28DY_RESPONSE_AT_3DY_POSITIVE"
-C7: Immunologic Signature Gene Sets	VAX: Vaccine Response Gene Sets	"NAKAYA_PBMC_FLUARIX_FLUVIRIN_AGE_18_50YO_CORRELATED_WITH_HAI_28DY_RESPONSE_AT_7DY_NEGATIVE"
-C7: Immunologic Signature Gene Sets	VAX: Vaccine Response Gene Sets	"NAKAYA_PBMC_FLUARIX_FLUVIRIN_AGE_18_50YO_CORRELATED_WITH_HAI_28DY_RESPONSE_AT_7DY_POSITIVE"
-C7: Immunologic Signature Gene Sets	VAX: Vaccine Response Gene Sets	"NAKAYA_PBMC_FLUMIST_AGE_18_50YO_3DY_DN"
-C7: Immunologic Signature Gene Sets	VAX: Vaccine Response Gene Sets	"NAKAYA_PBMC_FLUMIST_AGE_18_50YO_3DY_IFN_SUBSET_UP"
-C7: Immunologic Signature Gene Sets	VAX: Vaccine Response Gene Sets	"NAKAYA_PBMC_FLUMIST_AGE_18_50YO_3DY_UP"
-C7: Immunologic Signature Gene Sets	VAX: Vaccine Response Gene Sets	"NAKAYA_PBMC_FLUMIST_AGE_18_50YO_7DY_DN"
-C7: Immunologic Signature Gene Sets	VAX: Vaccine Response Gene Sets	"NAKAYA_PBMC_FLUMIST_AGE_18_50YO_7DY_IFN_SUBSET_DN"
-C7: Immunologic Signature Gene Sets	VAX: Vaccine Response Gene Sets	"NAKAYA_PBMC_FLUMIST_AGE_18_50YO_7DY_IFN_SUBSET_UP"
-C7: Immunologic Signature Gene Sets	VAX: Vaccine Response Gene Sets	"NAKAYA_PBMC_FLUMIST_AGE_18_50YO_7DY_UP"
-C7: Immunologic Signature Gene Sets	VAX: Vaccine Response Gene Sets	"NAKAYA_PBMC_IMUVAC_MALE_AGE_14_27YO_1D_POSTBOOST_VS_0DY_PREIMM_TIV_UP"
-C7: Immunologic Signature Gene Sets	VAX: Vaccine Response Gene Sets	"NAKAYA_PLASMACYTOID_DENDRITIC_CELL_FLUARIX_FLUVIRIN_AGE_18_50YO_7DY_DN"
-C7: Immunologic Signature Gene Sets	VAX: Vaccine Response Gene Sets	"NAKAYA_PLASMACYTOID_DENDRITIC_CELL_FLUARIX_FLUVIRIN_AGE_18_50YO_7DY_UP"
-C7: Immunologic Signature Gene Sets	VAX: Vaccine Response Gene Sets	"NAKAYA_PLASMACYTOID_DENDRITIC_CELL_FLUMIST_AGE_18_50YO_7DY_DN"
-C7: Immunologic Signature Gene Sets	VAX: Vaccine Response Gene Sets	"NAKAYA_PLASMACYTOID_DENDRITIC_CELL_FLUMIST_AGE_18_50YO_7DY_UP"
+C7: Immunologic Signature Gene Sets	VAX: Vaccine Response Gene Sets	NAKAYA_B_CELL_FLUARIX_FLUVIRIN_AGE_18_50YO_7DY_DN
+C7: Immunologic Signature Gene Sets	VAX: Vaccine Response Gene Sets	NAKAYA_B_CELL_FLUARIX_FLUVIRIN_AGE_18_50YO_7DY_UP
+C7: Immunologic Signature Gene Sets	VAX: Vaccine Response Gene Sets	NAKAYA_B_CELL_FLUMIST_AGE_18_50YO_7DY_DN
+C7: Immunologic Signature Gene Sets	VAX: Vaccine Response Gene Sets	NAKAYA_B_CELL_FLUMIST_AGE_18_50YO_7DY_UP
+C7: Immunologic Signature Gene Sets	VAX: Vaccine Response Gene Sets	NAKAYA_MONOCYTE_FLUARIX_FLUVIRIN_AGE_18_50YO_7DY_DN
+C7: Immunologic Signature Gene Sets	VAX: Vaccine Response Gene Sets	NAKAYA_MONOCYTE_FLUARIX_FLUVIRIN_AGE_18_50YO_7DY_UP
+C7: Immunologic Signature Gene Sets	VAX: Vaccine Response Gene Sets	NAKAYA_MONOCYTE_FLUMIST_AGE_18_50YO_7DY_DN
+C7: Immunologic Signature Gene Sets	VAX: Vaccine Response Gene Sets	NAKAYA_MONOCYTE_FLUMIST_AGE_18_50YO_7DY_UP
+C7: Immunologic Signature Gene Sets	VAX: Vaccine Response Gene Sets	NAKAYA_MYELOID_DENDRITIC_CELL_FLUARIX_FLUVIRIN_AGE_18_50YO_7DY_DN
+C7: Immunologic Signature Gene Sets	VAX: Vaccine Response Gene Sets	NAKAYA_MYELOID_DENDRITIC_CELL_FLUARIX_FLUVIRIN_AGE_18_50YO_7DY_UP
+C7: Immunologic Signature Gene Sets	VAX: Vaccine Response Gene Sets	NAKAYA_MYELOID_DENDRITIC_CELL_FLUMIST_AGE_18_50YO_7DY_DN
+C7: Immunologic Signature Gene Sets	VAX: Vaccine Response Gene Sets	NAKAYA_MYELOID_DENDRITIC_CELL_FLUMIST_AGE_18_50YO_7DY_UP
+C7: Immunologic Signature Gene Sets	VAX: Vaccine Response Gene Sets	NAKAYA_PBMC_FLUAD_IMUVAC_MALE_AGE_14_27YO_CORRELATED_WITH_HAI_RESPONSE_MF59_ADJUVANTED_AND_NON_1DY_GENES_IN_BTM_M75_POSITIVE
+C7: Immunologic Signature Gene Sets	VAX: Vaccine Response Gene Sets	NAKAYA_PBMC_FLUAD_MALE_AGE_14_27YO_1D_POSTBOOST_VS_0D_PREIMM_MF59_ADJUVANTED_1DY_ATIV_UP
+C7: Immunologic Signature Gene Sets	VAX: Vaccine Response Gene Sets	NAKAYA_PBMC_FLUAD_MALE_AGE_14_27YO_1D_POSTBOOST_VS_0D_PREIMM_MF59_ADJUVANTED_1DY_GENES_IN_BTM_M40_AND_M53_DN
+C7: Immunologic Signature Gene Sets	VAX: Vaccine Response Gene Sets	NAKAYA_PBMC_FLUAD_MALE_AGE_14_27YO_1D_POSTBOOST_VS_0D_PREIMM_MF59_ADJUVANTED_1DY_GENES_IN_BTM_M40_AND_M53_UP
+C7: Immunologic Signature Gene Sets	VAX: Vaccine Response Gene Sets	NAKAYA_PBMC_FLUARIX_FLUVIRIN_AGE_18_50YO_3DY_DN
+C7: Immunologic Signature Gene Sets	VAX: Vaccine Response Gene Sets	NAKAYA_PBMC_FLUARIX_FLUVIRIN_AGE_18_50YO_3DY_UP
+C7: Immunologic Signature Gene Sets	VAX: Vaccine Response Gene Sets	NAKAYA_PBMC_FLUARIX_FLUVIRIN_AGE_18_50YO_7DY_DN
+C7: Immunologic Signature Gene Sets	VAX: Vaccine Response Gene Sets	NAKAYA_PBMC_FLUARIX_FLUVIRIN_AGE_18_50YO_7DY_UP
+C7: Immunologic Signature Gene Sets	VAX: Vaccine Response Gene Sets	NAKAYA_PBMC_FLUARIX_FLUVIRIN_AGE_18_50YO_CORRELATED_WITH_HAI_28DY_RESPONSE_AT_3DY_NEGATIVE
+C7: Immunologic Signature Gene Sets	VAX: Vaccine Response Gene Sets	NAKAYA_PBMC_FLUARIX_FLUVIRIN_AGE_18_50YO_CORRELATED_WITH_HAI_28DY_RESPONSE_AT_3DY_POSITIVE
+C7: Immunologic Signature Gene Sets	VAX: Vaccine Response Gene Sets	NAKAYA_PBMC_FLUARIX_FLUVIRIN_AGE_18_50YO_CORRELATED_WITH_HAI_28DY_RESPONSE_AT_7DY_NEGATIVE
+C7: Immunologic Signature Gene Sets	VAX: Vaccine Response Gene Sets	NAKAYA_PBMC_FLUARIX_FLUVIRIN_AGE_18_50YO_CORRELATED_WITH_HAI_28DY_RESPONSE_AT_7DY_POSITIVE
+C7: Immunologic Signature Gene Sets	VAX: Vaccine Response Gene Sets	NAKAYA_PBMC_FLUMIST_AGE_18_50YO_3DY_DN
+C7: Immunologic Signature Gene Sets	VAX: Vaccine Response Gene Sets	NAKAYA_PBMC_FLUMIST_AGE_18_50YO_3DY_IFN_SUBSET_UP
+C7: Immunologic Signature Gene Sets	VAX: Vaccine Response Gene Sets	NAKAYA_PBMC_FLUMIST_AGE_18_50YO_3DY_UP
+C7: Immunologic Signature Gene Sets	VAX: Vaccine Response Gene Sets	NAKAYA_PBMC_FLUMIST_AGE_18_50YO_7DY_DN
+C7: Immunologic Signature Gene Sets	VAX: Vaccine Response Gene Sets	NAKAYA_PBMC_FLUMIST_AGE_18_50YO_7DY_IFN_SUBSET_DN
+C7: Immunologic Signature Gene Sets	VAX: Vaccine Response Gene Sets	NAKAYA_PBMC_FLUMIST_AGE_18_50YO_7DY_IFN_SUBSET_UP
+C7: Immunologic Signature Gene Sets	VAX: Vaccine Response Gene Sets	NAKAYA_PBMC_FLUMIST_AGE_18_50YO_7DY_UP
+C7: Immunologic Signature Gene Sets	VAX: Vaccine Response Gene Sets	NAKAYA_PBMC_IMUVAC_MALE_AGE_14_27YO_1D_POSTBOOST_VS_0DY_PREIMM_TIV_UP
+C7: Immunologic Signature Gene Sets	VAX: Vaccine Response Gene Sets	NAKAYA_PLASMACYTOID_DENDRITIC_CELL_FLUARIX_FLUVIRIN_AGE_18_50YO_7DY_DN
+C7: Immunologic Signature Gene Sets	VAX: Vaccine Response Gene Sets	NAKAYA_PLASMACYTOID_DENDRITIC_CELL_FLUARIX_FLUVIRIN_AGE_18_50YO_7DY_UP
+C7: Immunologic Signature Gene Sets	VAX: Vaccine Response Gene Sets	NAKAYA_PLASMACYTOID_DENDRITIC_CELL_FLUMIST_AGE_18_50YO_7DY_DN
+C7: Immunologic Signature Gene Sets	VAX: Vaccine Response Gene Sets	NAKAYA_PLASMACYTOID_DENDRITIC_CELL_FLUMIST_AGE_18_50YO_7DY_UP
 C7: Immunologic Signature Gene Sets	VAX: Vaccine Response Gene Sets	OCONNOR_PBMC_MENVEO_ACWYVAX_AGE_30_70YO_7DY_AFTER_SECOND_DOSE_VS_7DY_AFTER_FIRST_DOSE_DN
 C7: Immunologic Signature Gene Sets	VAX: Vaccine Response Gene Sets	OCONNOR_PBMC_MENVEO_ACWYVAX_AGE_30_70YO_7DY_AFTER_SECOND_DOSE_VS_7DY_AFTER_FIRST_DOSE_UP
 C7: Immunologic Signature Gene Sets	VAX: Vaccine Response Gene Sets	OSMAN_BLOOD_CHAD63_KH_AGE_18_50YO_HIGH_DOSE_SUBJECTS_24HR_DN
@@ -32227,53 +32277,3 @@ C8: Cell Type Signatures Gene Sets	NA	ZHONG_PFC_MAJOR_TYPES_INTERNEURON
 C8: Cell Type Signatures Gene Sets	NA	ZHONG_PFC_MAJOR_TYPES_MICROGLIA
 C8: Cell Type Signatures Gene Sets	NA	ZHONG_PFC_MAJOR_TYPES_NPCS
 C8: Cell Type Signatures Gene Sets	NA	ZHONG_PFC_MAJOR_TYPES_OPC
-H: Hallmark Gene Sets	NA	HALLMARK_ADIPOGENESIS
-H: Hallmark Gene Sets	NA	HALLMARK_ALLOGRAFT_REJECTION
-H: Hallmark Gene Sets	NA	HALLMARK_ANDROGEN_RESPONSE
-H: Hallmark Gene Sets	NA	HALLMARK_ANGIOGENESIS
-H: Hallmark Gene Sets	NA	HALLMARK_APICAL_JUNCTION
-H: Hallmark Gene Sets	NA	HALLMARK_APICAL_SURFACE
-H: Hallmark Gene Sets	NA	HALLMARK_APOPTOSIS
-H: Hallmark Gene Sets	NA	HALLMARK_BILE_ACID_METABOLISM
-H: Hallmark Gene Sets	NA	HALLMARK_CHOLESTEROL_HOMEOSTASIS
-H: Hallmark Gene Sets	NA	HALLMARK_COAGULATION
-H: Hallmark Gene Sets	NA	HALLMARK_COMPLEMENT
-H: Hallmark Gene Sets	NA	HALLMARK_DNA_REPAIR
-H: Hallmark Gene Sets	NA	HALLMARK_E2F_TARGETS
-H: Hallmark Gene Sets	NA	HALLMARK_EPITHELIAL_MESENCHYMAL_TRANSITION
-H: Hallmark Gene Sets	NA	HALLMARK_ESTROGEN_RESPONSE_EARLY
-H: Hallmark Gene Sets	NA	HALLMARK_ESTROGEN_RESPONSE_LATE
-H: Hallmark Gene Sets	NA	HALLMARK_FATTY_ACID_METABOLISM
-H: Hallmark Gene Sets	NA	HALLMARK_G2M_CHECKPOINT
-H: Hallmark Gene Sets	NA	HALLMARK_GLYCOLYSIS
-H: Hallmark Gene Sets	NA	HALLMARK_HEDGEHOG_SIGNALING
-H: Hallmark Gene Sets	NA	HALLMARK_HEME_METABOLISM
-H: Hallmark Gene Sets	NA	HALLMARK_HYPOXIA
-H: Hallmark Gene Sets	NA	HALLMARK_IL2_STAT5_SIGNALING
-H: Hallmark Gene Sets	NA	HALLMARK_IL6_JAK_STAT3_SIGNALING
-H: Hallmark Gene Sets	NA	HALLMARK_INFLAMMATORY_RESPONSE
-H: Hallmark Gene Sets	NA	HALLMARK_INTERFERON_ALPHA_RESPONSE
-H: Hallmark Gene Sets	NA	HALLMARK_INTERFERON_GAMMA_RESPONSE
-H: Hallmark Gene Sets	NA	HALLMARK_KRAS_SIGNALING_DN
-H: Hallmark Gene Sets	NA	HALLMARK_KRAS_SIGNALING_UP
-H: Hallmark Gene Sets	NA	HALLMARK_MITOTIC_SPINDLE
-H: Hallmark Gene Sets	NA	HALLMARK_MTORC1_SIGNALING
-H: Hallmark Gene Sets	NA	HALLMARK_MYC_TARGETS_V1
-H: Hallmark Gene Sets	NA	HALLMARK_MYC_TARGETS_V2
-H: Hallmark Gene Sets	NA	HALLMARK_MYOGENESIS
-H: Hallmark Gene Sets	NA	HALLMARK_NOTCH_SIGNALING
-H: Hallmark Gene Sets	NA	HALLMARK_OXIDATIVE_PHOSPHORYLATION
-H: Hallmark Gene Sets	NA	HALLMARK_P53_PATHWAY
-H: Hallmark Gene Sets	NA	HALLMARK_PANCREAS_BETA_CELLS
-H: Hallmark Gene Sets	NA	HALLMARK_PEROXISOME
-H: Hallmark Gene Sets	NA	HALLMARK_PI3K_AKT_MTOR_SIGNALING
-H: Hallmark Gene Sets	NA	HALLMARK_PROTEIN_SECRETION
-H: Hallmark Gene Sets	NA	HALLMARK_REACTIVE_OXYGEN_SPECIES_PATHWAY
-H: Hallmark Gene Sets	NA	HALLMARK_SPERMATOGENESIS
-H: Hallmark Gene Sets	NA	HALLMARK_TGF_BETA_SIGNALING
-H: Hallmark Gene Sets	NA	HALLMARK_TNFA_SIGNALING_VIA_NFKB
-H: Hallmark Gene Sets	NA	HALLMARK_UNFOLDED_PROTEIN_RESPONSE
-H: Hallmark Gene Sets	NA	HALLMARK_UV_RESPONSE_DN
-H: Hallmark Gene Sets	NA	HALLMARK_UV_RESPONSE_UP
-H: Hallmark Gene Sets	NA	HALLMARK_WNT_BETA_CATENIN_SIGNALING
-H: Hallmark Gene Sets	NA	HALLMARK_XENOBIOTIC_METABOLISM
