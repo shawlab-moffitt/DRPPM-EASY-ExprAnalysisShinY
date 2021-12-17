@@ -1,5 +1,6 @@
 
 
+
 ####----Install and load packages----####
 
 packages <- c("shiny","shinythemes","shinyjqui","pheatmap","RColorBrewer","clusterProfiler",
@@ -11,6 +12,7 @@ if (any(installed_packages == FALSE)) {
 }
 
 invisible(lapply(packages, library, character.only = TRUE))
+
 
 
 
@@ -95,15 +97,16 @@ if (human == FALSE) {
 
 ##read files
 
-#expression data
+##reading expression data
 expr <- read.delim(expr_file, sep = '\t', header = T, strip.white = T)
 colnames(expr)[1] <- "Gene"
 expr <- expr %>%
-    drop_na(Gene)
-row.names(expr) <- expr[,1]
+    drop_na()
+row.names(expr) <- make.names(expr[,1], unique = T)
 expr <- expr[,-1]
 colnames(expr) <- gsub("[_.-]", "_", colnames(expr))
 A <- as.matrix(expr)
+
 #gene list file from expression data
 Gene <- rownames(expr)
 geneList <- as.data.frame(Gene)
@@ -115,6 +118,15 @@ meta[,1] <- gsub("[_.-]", "_", meta[,1])
 colnames(meta) <- c("SampleName","Group")
 metagroups <- as.vector(levels(factor(meta[,2])))
 
+
+
+#for heatmap sample selection
+sampsames <- intersect(colnames(expr),meta[,1])
+#ensure expression samples and meta are exact
+expr <- expr[,sampsames]
+meta <- meta[which(meta[,1] %in% sampsames),]
+
+
 #boxplot choices based on meta groups
 if (length(metagroups) == 2) {
     boxopt <- c("wilcox.test", "t.test", "none")
@@ -124,9 +136,6 @@ if (length(metagroups) >= 3) {
 }
 
 
-
-#for heatmap sample selection
-sampsames <- intersect(colnames(expr),meta[,1])
 
 
 #Enriched Signatures
@@ -330,6 +339,10 @@ ui <-
                                                                  choices = metagroups, selected = metagroups[1]),
                                                      selectInput("comparisonB2.path", "Comparison: GroupB",
                                                                  choices = metagroups, selected = metagroups[2]),
+                                                     numericInput("pathpval", "Adjusted P-Value Cutoff:",
+                                                                  min = 0, value = 0.05),
+                                                     numericInput("pathFC", "Log2 Fold Change Cutoff:",
+                                                                  min = 0, value = 1),
                                                      selectInput("SelectedPathway", "Select Pathway",
                                                                  choices = enrichRchoice)
                                     ),
@@ -343,7 +356,7 @@ ui <-
                                                      selectInput("comparisonB2.DEG", "Comparison: GroupB",
                                                                  choices = metagroups, selected = metagroups[2]),
                                                      h4("Download DEG Table as GMT File"),
-                                                     textInput("DEGfileName", "Input File Name:",value = "DEGgeneSet"),
+                                                     textInput("DEGfileName", "File Name for Download:",value = "DEGgeneSet"),
                                                      numericInput("fc_cutoff2", "LogFC Threshold",
                                                                   min = 0, max = 5, step = 0.1, value = 1),
                                                      selectInput("UpDnChoice","Up-regulated or Down-regulated:",
@@ -385,13 +398,17 @@ ui <-
                                                  downloadButton("geneScatterDownload", "Download Non-log2 Transformed .tsv"),
                                                  value = 26),
                                         tabPanel("Pathway Analysis",
-                                                 h3("Up-regulated pathway (> 1 logFC)"),
+                                                 #verbatimTextOutput("upregpathtitle"),
+                                                 #h3("Up-regulated pathway"),
+                                                 uiOutput("UpRegPathLabel"),
                                                  verbatimTextOutput("upregpath_text"),
                                                  withSpinner(plotOutput('UpRegPathway1'), type = 6),
                                                  div(DT::dataTableOutput("UpRegPathwayTable1"), style = "font-size:10px"),
                                                  downloadButton("UpRegPathDownload", "Download Table .tsv"),
                                                  downloadButton("UpRegPathDownloadgmt", "Download .gmt"),
-                                                 h3("Down-regulated pathway (< -1 logFC)"),
+                                                 #verbatimTextOutput("dnregpathtitle"),
+                                                 #h3("Down-regulated pathway"),
+                                                 uiOutput("DnRegPathLabel"),
                                                  verbatimTextOutput("downregpath_text"),
                                                  withSpinner(plotOutput('DnRegPathway1'), type = 6),
                                                  div(DT::dataTableOutput("DnRegPathwayTable1"), style = "font-size:10px"),
@@ -506,7 +523,6 @@ ui <-
                         )
                )
     )
-
 
 
 
@@ -696,7 +712,8 @@ server <- function(input, output, session) {
         A <- meta[,1][meta[,2] == input$comparisonA2]
         B <- meta[,1][meta[,2] == input$comparisonB2]
         #make top table
-        mat <- expr[,c(A,B)]
+        samples <- c(A,B)
+        mat <- expr[,which(colnames(expr) %in% samples)]
         mat <- log2(mat + 1.0)
         groupAOther <- factor(c(rep("A", length(A)), rep("B", length(B))))
         designA <- model.matrix(~0 + groupAOther)
@@ -967,8 +984,8 @@ server <- function(input, output, session) {
     
     #render DEG table
     output$DEGtable1 <- DT::renderDataTable({
-        A <- meta[,1][meta[,2] == input$comparisonA2]
-        B <- meta[,1][meta[,2] == input$comparisonB2]
+        A <- meta[,1][meta[,2] == input$comparisonA2.DEG]
+        B <- meta[,1][meta[,2] == input$comparisonB2.DEG]
         mat <- expr[,c(A,B)]
         mat <- log2(mat + 1.0)
         groupAOther <- factor(c(rep("A", length(A)), rep("B", length(B))))
@@ -982,10 +999,13 @@ server <- function(input, output, session) {
         DT::datatable(top1, options = list(lengthMenu = c(50,100,1000, 5000, 10000), pageLength = 100, scrollX = TRUE),
                       selection=list(mode = "multiple"))
     })
+    
     #render up regulated pathway enrichment data table
     output$UpRegPathwayTable1 <- DT::renderDataTable({
-        A <- meta[,1][meta[,2] == input$comparisonA2]
-        B <- meta[,1][meta[,2] == input$comparisonB2]
+        adjp <- input$pathpval
+        FC <- input$pathFC
+        A <- meta[,1][meta[,2] == input$comparisonA2.path]
+        B <- meta[,1][meta[,2] == input$comparisonB2.path]
         mat <- expr[,c(A,B)]
         mat <- log2(mat + 1.0)
         groupAOther <- factor(c(rep("A", length(A)), rep("B", length(B))))
@@ -996,7 +1016,7 @@ server <- function(input, output, session) {
         fit2 <- eBayes(fit2)
         options(digits = 4)
         top1 <- topTable(fit2, coef = 1, n = 300000, sort = "p", p.value = 1.0, adjust.method = "BH")
-        genes <- rownames(top1)[which(top1$adj.P.Val < 0.05 & top1$logFC > 1)]
+        genes <- rownames(top1)[which(top1$adj.P.Val < adjp & top1$logFC > FC)]
         dbs <- listEnrichrDbs() 
         enrichRLive <- TRUE 
         if (is.null(dbs)) { 
@@ -1010,8 +1030,10 @@ server <- function(input, output, session) {
     
     #render down regulated pathway enrichment data table
     output$DnRegPathwayTable1 <- DT::renderDataTable({
-        A <- meta[,1][meta[,2] == input$comparisonA2]
-        B <- meta[,1][meta[,2] == input$comparisonB2]
+        adjp <- input$pathpval
+        FC <- input$pathFC
+        A <- meta[,1][meta[,2] == input$comparisonA2.path]
+        B <- meta[,1][meta[,2] == input$comparisonB2.path]
         mat <- expr[,c(A,B)]
         mat <- log2(mat + 1.0)
         groupAOther <- factor(c(rep("A", length(A)), rep("B", length(B))))
@@ -1022,7 +1044,7 @@ server <- function(input, output, session) {
         fit2 <- eBayes(fit2)
         options(digits = 4)
         top1 <- topTable(fit2, coef = 1, n = 300000, sort = "p", p.value = 1.0, adjust.method = "BH")
-        genes <- rownames(top1)[which(top1$adj.P.Val < 0.05 & top1$logFC < -1)]
+        genes <- rownames(top1)[which(top1$adj.P.Val < adjp & top1$logFC < -FC)]
         dbs <- listEnrichrDbs() 
         enrichRLive <- TRUE 
         if (is.null(dbs)) { 
@@ -1367,8 +1389,9 @@ server <- function(input, output, session) {
                 genelist.ush <- input$heatmapGeneSelec
                 genelist.uih <- unlist(strsplit(input$userheatgenes, " "))
                 genelist.uih2 <- unlist(strsplit(input$userheatgenes, "\t"))
+                heatgenes <- c(genelist.ush,genelist.uih,genelist.uih2)
                 usersamps <- input$userheatsamp2
-                exp <- expr[,usersamps]
+                exp <- expr[heatgenes,usersamps]
                 meta <- meta[which(meta[,1] %in% usersamps),]
                 dataset <- exp
                 dataset <- log2(dataset + 1)
@@ -1477,6 +1500,13 @@ server <- function(input, output, session) {
     #render MA plot
     output$MAPlot1 <- renderPlot({
         top2 <- topgenereact()
+        #add color categories based on FC and pval
+        top2['threshold'] <- "none"
+        top2[which(top2$logFC > abs(input$fc_cutoff)), "threshold"] <- "up"
+        top2[which(top2$logFC < -abs(input$fc_cutoff)), "threshold"] <- "down"
+        upRed <- "lightcoral"
+        dnBlue <- "cadetblue3"
+        mdGray <- "gray70"
         top2u <- top2[order(top2[,1], decreasing = TRUE),]
         top2d <- top2[order(top2[,1]),]
         top_hits_up <- top2u[head(which(top2u$logFC > abs(input$fc_cutoff)), n = input$top_x),]
@@ -1491,12 +1521,12 @@ server <- function(input, output, session) {
         genesel.text <- c(genesel.s,genesel.t,genesel.u)
         top2_selec <- top2 %>%
             filter(GeneName %in% genesel.text)
-        Okabe_Ito <- c("#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7", "#000000")
         x <- ggplot(data = top2, aes(x = AveExpr, y = logFC)) +
             geom_point(size = 2, shape = 16) +
             theme_light(base_size = 16)
-        x <- x + aes(color = group2) +
-            scale_color_manual(values = Okabe_Ito)
+        #colors
+        x <- x + aes(color = threshold) +
+            scale_color_manual(values = c("up" = upRed,"down" = dnBlue, "none" = mdGray))
         x <- x + geom_hline(yintercept = c(-abs(input$fc_cutoff),abs(input$fc_cutoff)), linetype="dashed", color="gray20")
         x <- x + geom_text_repel(
             data =  top_hits_up,
@@ -1576,22 +1606,21 @@ server <- function(input, output, session) {
     
     #render up regulated pathway enrichment plot
     output$UpRegPathway1 <- renderPlot({
-        top1 <- topgenereact()
-        genes <- rownames(top1)[which(top1$adj.P.Val < 0.05 & top1$logFC > 1)]
-        dbs <- listEnrichrDbs() 
-        enrichRLive <- TRUE 
-        if (is.null(dbs)) { 
-            enrichRLive <- FALSE 
-        }
-        dbs <- "Genome_Browser_PWMs"
-        enriched <- enrichr(genes, dbs) # Plot top 20 GO-BP results ordered by P-value 
-        plotEnrich(enriched[[1]], showTerms = 20, numChar = 50, y = "Count", orderBy = "P.value") 
-    })
-    
-    #render down regulated pathway enrichment plot
-    output$DnRegPathway1 <- renderPlot({
-        top1 <-top2 <- topgenereact()
-        genes <- rownames(top1)[which(top1$adj.P.Val < 0.05 & top1$logFC < -1)]
+        adjp <- input$pathpval
+        FC <- input$pathFC
+        A <- meta[,1][meta[,2] == input$comparisonA2.path]
+        B <- meta[,1][meta[,2] == input$comparisonB2.path]
+        mat <- expr[,c(A,B)]
+        mat <- log2(mat + 1.0)
+        groupAOther <- factor(c(rep("A", length(A)), rep("B", length(B))))
+        designA <- model.matrix(~0 + groupAOther)
+        fit <- lmFit(mat, design = designA)
+        contrast.matrix <- makeContrasts(groupAOtherA - groupAOtherB, levels = designA)
+        fit2 <- contrasts.fit(fit, contrast.matrix)
+        fit2 <- eBayes(fit2)
+        options(digits = 4)
+        top1 <- topTable(fit2, coef = 1, n = 300000, sort = "p", p.value = 1.0, adjust.method = "BH")
+        genes <- rownames(top1)[which(top1$adj.P.Val < adjp & top1$logFC > FC)]
         dbs <- listEnrichrDbs() 
         enrichRLive <- TRUE 
         if (is.null(dbs)) { 
@@ -1599,7 +1628,34 @@ server <- function(input, output, session) {
         }
         dbs <- input$SelectedPathway
         enriched <- enrichr(genes, dbs) # Plot top 20 GO-BP results ordered by P-value 
-        plotEnrich(enriched[[1]], showTerms = 20, numChar = 50, y = "Count", orderBy = "P.value") 
+        plotEnrich(enriched[[1]], showTerms = 20, numChar = 50, y = "Count", orderBy = "P.value")
+    })
+    
+    #render up regulated pathway enrichment plot
+    output$DnRegPathway1 <- renderPlot({
+        adjp <- input$pathpval
+        FC <- input$pathFC
+        A <- meta[,1][meta[,2] == input$comparisonA2.path]
+        B <- meta[,1][meta[,2] == input$comparisonB2.path]
+        mat <- expr[,c(A,B)]
+        mat <- log2(mat + 1.0)
+        groupAOther <- factor(c(rep("A", length(A)), rep("B", length(B))))
+        designA <- model.matrix(~0 + groupAOther)
+        fit <- lmFit(mat, design = designA)
+        contrast.matrix <- makeContrasts(groupAOtherA - groupAOtherB, levels = designA)
+        fit2 <- contrasts.fit(fit, contrast.matrix)
+        fit2 <- eBayes(fit2)
+        options(digits = 4)
+        top1 <- topTable(fit2, coef = 1, n = 300000, sort = "p", p.value = 1.0, adjust.method = "BH")
+        genes <- rownames(top1)[which(top1$adj.P.Val < adjp & top1$logFC < -FC)]
+        dbs <- listEnrichrDbs() 
+        enrichRLive <- TRUE 
+        if (is.null(dbs)) { 
+            enrichRLive <- FALSE 
+        }
+        dbs <- input$SelectedPathway
+        enriched <- enrichr(genes, dbs) # Plot top 20 GO-BP results ordered by P-value 
+        plotEnrich(enriched[[1]], showTerms = 20, numChar = 50, y = "Count", orderBy = "P.value")
     })
     
     #render volcano plot
@@ -1714,7 +1770,7 @@ server <- function(input, output, session) {
                         geom_boxplot(width = 0.5, lwd = 1, fill = "white") +
                         geom_dotplot(binaxis = 'y', stackdir = "center", dotsize = input$boxplotDotss) +
                         labs(x = "Group", y = paste(colnames(ssgsea4)[2], " expression", sep = ""),
-                             title = paste("ssGSEA Expression Signature: ",colnames(ssgsea4)[2],sep = "")) +
+                             title = paste("ssGSEA Expression Signature: ", colnames(ssgsea4)[2],sep = "")) +
                         theme_bw() +
                         theme(axis.text.x = element_text(angle = 90, vjust = 0.25, hjust = 1),
                               text = element_text(size = input$boxplotFontss))
@@ -1724,7 +1780,7 @@ server <- function(input, output, session) {
                         geom_boxplot(width = 0.5, lwd = 1, fill = "white") +
                         geom_dotplot(binaxis = 'y', stackdir = "center", dotsize = input$boxplotDotss) +
                         labs(x = "Group", y = paste(colnames(ssgsea4)[2], " expression", sep = ""),
-                             title = paste("ssGSEA Expression Signature: ",colnames(ssgsea4)[2],sep = "")) +
+                             title = paste("ssGSEA Expression Signature: ", colnames(ssgsea4)[2],sep = "")) +
                         theme_bw() +
                         stat_compare_means(method = input$boxplotcompare) +
                         theme(axis.text.x = element_text(angle = 90, vjust = 0.25, hjust = 1),
@@ -2639,22 +2695,34 @@ server <- function(input, output, session) {
     })
     
     output$upregpath_text <- renderText({
-        paste("Genes in these enriched terms are upregulated in group A: ", input$comparisonA2, " group.", sep = "")
+        paste("Genes in these enriched terms are upregulated in group A: ", input$comparisonA2.path, " group.", sep = "")
     })
     
     output$downregpath_text <- renderText({
-        paste("Genes in these enriched terms are upregulated in group B: ", input$comparisonB2," group", sep = "")
+        paste("Genes in these enriched terms are upregulated in group B: ", input$comparisonB2.path," group", sep = "")
     })
     
     output$degtext <- renderText({
-        paste("This table represents differentially expressed genes when comparing group A: ",input$comparisonA2," and group B: ",input$comparisonB2,
-              ".\nGenes with a positive logFC, indicate an upregulation in group A: ", input$comparisonA2,
-              ".\nGenes with a negative logFC, indicate an upregulation in group B: ", input$comparisonB2,
-              ".\nThe 'AveExpr' column represents the log transformed average expression between group A: ",input$comparisonA2," and group B: ",input$comparisonB2,".", sep = "")
+        paste("This table represents differentially expressed genes when comparing group A: ",input$comparisonA2.DEG," and group B: ",input$comparisonB2.DEG,
+              ".\nGenes with a positive logFC, indicate an upregulation in group A: ", input$comparisonA2.DEG,
+              ".\nGenes with a negative logFC, indicate an upregulation in group B: ", input$comparisonB2.DEG,
+              ".\nThe 'AveExpr' column represents the log transformed average expression between group A: ",input$comparisonA2.DEG," and group B: ",input$comparisonB2.DEG,".", sep = "")
+    })
+    
+    output$UpRegPathLabel <- renderUI({
+        
+        FC <- input$pathFC
+        h3(paste("(Up-regulated pathway (> ",FC," logFC)",sep = ""))
+        
+    })
+    
+    output$DnRegPathLabel <- renderUI({
+        
+        FC <- input$pathFC
+        h3(paste("Down-regulated pathway (> -",FC," logFC)",sep = ""))
+        
     })
 }
-
-
 
 
 
