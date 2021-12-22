@@ -2,13 +2,15 @@
 
 # Introduction
 
-With the rapid generation of large datasets as a result of advancing next-generation sequecing (NGS) technologies, the need for quick and reproducible data analysis tools has become paramount. The ability to analyze both genomic and proteomic data sets can allow for the detection of compelling genes and features that may be of interest for further analysis. The General Expression Analysis App hosted in R Shiny does not require an extensive computation background to run these analyses. With user input of expression and meta data, along with gene set we have sourced and provided, the user may produce useful anaylsis and visualizations on a web-based interface within minutes. This method of reproducible data analysis generates a number of visualization to view Gene Set Enrichment (GSEA) and RNAseq analysis, as well as the ability to download various tables and gene sets that are produced by the App for further use.
+With the rapid generation of large datasets as a result of advancing next-generation sequecing (NGS) technologies, the need for quick and reproducible data analysis tools has become paramount. The ability to analyze both genomic and proteomic data sets can allow for the detection of compelling genes and features that may be of interest for further analysis. The General Expression Analysis App hosted in R Shiny does not require an extensive computation background to run these analyses. With user input of expression and meta data, along with gene set we have sourced and provided, the user may produce useful anaylsis and visualizations on a web-based interface within minutes. This method of reproducible data analysis generates a number of visualization to view Gene Set Enrichment (GSEA) and differential gene expression analysis, as well as the ability to download various tables and gene sets that are produced by the App for further use.
 
-Additional apps are being developed for the EASY family. [DRPPM-EASY-Integraction](https://github.com/shawlab-moffitt/DRPPM-EASY-Integration) allows users to further analyze data obtained from the main DRPPM-EASY app and compare expression data between two matrices. [DRPPM-EASY-CCLE](https://github.com/shawlab-moffitt/DRPPM-EASY-CCLE) integrates a sample selection tab which allows users to select expression and meta data from the Cancer Cell Line Encyclopedia (CCLE) based on cancer type or lineage and sample type for analysis within the DRPPM-EASY app.
+Additional apps are being developed for the EASY family. [DRPPM-EASY-Integraction](https://github.com/shawlab-moffitt/DRPPM-EASY-Integration) allows users to further analyze data obtained from the main DRPPM-EASY app and compare expression data between two matrices. [DRPPM-EASY-CCLE](https://github.com/shawlab-moffitt/DRPPM-EASY-CCLE) integrates a sample selection tab which allows users to select expression and meta data from the Cancer Cell Line Encyclopedia (CCLE) based on cancer type or lineage and sample type for analysis within the DRPPM-EASY app. The flow chart below gives a layout of the EASY app's family infrastructure which we will describe in further detail.
+
+![alt text](https://github.com/shawlab-moffitt/DRPPM-EASY-ExprAnalysisShinY/blob/main/App_Demo_Pictures/EASY_FlowChart.png?raw=true)
 
 # Installation
 
-* Download ZIP file from https://github.com/shawlab-moffitt/GeneralExpressionAnalysisApp
+* Download ZIP file from https://github.com/shawlab-moffitt/DRPPM-EASY-ExprAnalysisShinY
 * Unzip and load into directory as a project in R Studio
 * Open the ‘App.R’ script and write in user input files and options as directed at the top of the script
   * ‘App.R’ script begins with example files loaded in from the ExampleData folder
