@@ -19,12 +19,12 @@ With the rapid generation of large datasets as a result of advancing next-genera
 
 # R Dependencies
 
-| test | test | test | test | test | test |
+|  |  |  |  |  |  |
 | --- | --- | --- | --- | --- | --- |
 | shiny_1.6.0 | shinythemes_1.2.0 | shinyjqui_0.4.0 | shinycssloaders_1.0.0 | tools_4.1.0 | BiocManager_1.30.16 |
 | dplyr_1.0.7 | tidyr_1.1.3 | readr_2.0.1 | tibble_3.1.3 | DT_0.18 | ggpubr_0.4.0 |
 | ggplot2_3.3.5 | plotly_4.9.4.1 | enrichplot_1.12.2 | pheatmap_1.0.12 | ggrepel_0.9.1 | reshape2_1.4.4 |
-| enrichR_3.0 | limma_3.48.3 | clusterProfiler_4.0.5 | limma_3.48.3 | GSVA_1.40.1 | --- |
+| enrichR_3.0 | limma_3.48.3 | clusterProfiler_4.0.5 | limma_3.48.3 | GSVA_1.40.1 |  |
 
 
 BiocManager_1.30.16
