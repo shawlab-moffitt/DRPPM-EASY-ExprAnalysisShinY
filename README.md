@@ -173,78 +173,72 @@ Differential gene expression analysis is performed between two groups of samples
 
 1. Users may search for and select a gene to view log2 transformed expression values as a box plot
 
+### Gene Expression Scatter Plot
+
 ![alt text](https://github.com/shawlab-moffitt/DRPPM-EASY-ExprAnalysisShinY/blob/main/App_Demo_Pictures/EASY_GeneExpScatter.png?raw=true)
 
+1. Users may select two genes they want to compare
+2. The expression data show will be originally un-logged, so the user may choose to log2 transform
+3. The user may download the table of expression values
+   * The table will be of un-logged values
 
+### EnrichR Pathway Analysis
 
+![alt text](https://github.com/shawlab-moffitt/DRPPM-EASY-ExprAnalysisShinY/blob/main/App_Demo_Pictures/EASY_GeneExpScatter.png?raw=true)
 
+1. Users may select the comparison groups for analysis
+2. Adjusted P-Value and logFC cutoff may be adjusted based on the users preference of significance
+   * Depending on the thresholds given an error might show if there are no genes that make this cutoff
+3. The user may select a pathway from the EnrichR database
+4. The up and down regulated pathway tables may be downloaded as they are or in GMT format
 
-![alt text](https://github.com/shawlab-moffitt/RShinyAnalysisGenerator/blob/main/App_Demo_Pictures/GSEA_Shiny_5.png?raw=true)
+### Differentially Expressed Genes Top Table
 
-1. Users may select specific genes from a list generated from the expression matrix.
-    * The starting values selected are genes involved in cytokines.
-    * The starting values may be deleted with backspace and new gene options will appear in a dropdown box when the box is selected or a gene of choice is typed in the box
-2. The user may also paste a list of genes in a text input box and those genes will be visualized in the heatmap
-    * Please note, the genes selected in the first and second box of this side panel are stacked and will show the genes selected in both boxes
-3. The heatmap will begin with all samples displayed but the user may delete ones that they do not wish to see in the Sample Selection box
+![alt text](https://github.com/shawlab-moffitt/DRPPM-EASY-ExprAnalysisShinY/blob/main/App_Demo_Pictures/EASY_GeneExpScatter.png?raw=true)
 
-![alt text](https://github.com/shawlab-moffitt/RShinyAnalysisGenerator/blob/main/App_Demo_Pictures/GSEA_Shiny_6.png?raw=true)
-
-1. To adjust the logFC the user must enter the absolute value of the desired fold change and it will adjust the vertical dashed line on the volcano plot and the horizontal dashed lines on the MA plot
-    * The data point colors will also be adjusted based on where the points lie
-2. The user may adjust the significance threshold by entering the desired P-value, where the value will be calculated as -log10 and adjust the horizontal line on the volcano plot accordingly
-3. The number of top hits begins at 10 genes in each fold change direction which can be seen labeled on the volcano and MA plots
-    * Please note that increasing the number of the labeled genes may decrease the visibility of the gene names depending on over lapping
-4. The user may select additional genes to be labeled on the volcano and MA plots by selecting from the available list or typing in a gene of interest
-5. At the top of the volcano and MA plots there will be a description based on the sample types selected.
-    * The user may select different sample types to compare in the 'RNAseq Parameters' tab of the side panel
-6. Below the plot will appear a text box based on the data point that the users mouse may be hovering over
-    * It will not appear if the mouse is not hovering a data point
-
-![alt text](https://github.com/shawlab-moffitt/RShinyAnalysisGenerator/blob/main/App_Demo_Pictures/GSEA_Shiny_7.png?raw=true)
-
-1. Users may select two genes from the expression matrix to view in a scatter plot
-2. These are from the base expression plot, so there is an option to log2+1 transform the data
-3. A table will show below with expression data for those genes which can be downloaded as a .tsv file
-
-![alt text](https://github.com/shawlab-moffitt/RShinyAnalysisGenerator/blob/main/App_Demo_Pictures/GSEA_Shiny_9.png?raw=true)
-
-1. The user may select pathways to visualize with Enrichr for their samples
-    * Below the upregulated visualization and table shows the downregulated pathway
-3. The pathway analysis table can be downloaded as a .tsv file or it can be formated into a .gmt file for the selected pathway based on the genes listed in the table
+1. The table displayed may be downloaded as a gmt file of one gene set based on the number of top hits input
+   * At the bottom of the table there is a download button for the entire top table
 
 ## Gene Set Enrichment Analysis
 
-In app, the user may select two comparison groups within the side panel which are based off of the meta file that was provided, as well a gene set by selecting from one of the gene set tables in the side panel. If the user uploads their own gene set data a table will appear based on the file input. 
+Gene set enrichment analysis (GSEA) is performed through signal-to-noise calculations on the expression matrix. This scales the difference of means by standard deviation, producing a ranked list of genes. The GSEA function identifies the enrichment score of a gene set by taking the ranked genes list into account.
 
-**Please note:** Depending on the designated P-value selected as well as the genes in the expression matrix, there will be some gene sets that may show errors. This is due to the genes within the gene set not being significantly enriched or available to produce any data or visualizations.
+### Enrichment Plot
 
-![alt text](https://github.com/shawlab-moffitt/RShinyAnalysisGenerator/blob/main/App_Demo_Pictures/GSEA_Shiny_1.png?raw=true)
+![alt text](https://github.com/shawlab-moffitt/DRPPM-EASY-ExprAnalysisShinY/blob/main/App_Demo_Pictures/EASY_EnrichPlot.png?raw=true)
 
-1. Select comparison groups base on types of samples from the meta data file
-2. Select stat comparison method for ssGSEA boxlots
-    * With 2 sample types it allows for Wilcos and t-test, with 3 or more types it allows for Kruskal-Wallis and ANOVA
-3. You may use your own gene set either in .gmt, .tsv. or .txt format as described in the [Required Files](https://github.com/shawlab-moffitt/RShinyAnalysisGenerator/blob/main/README.md#required-files) section
-4. You may search for a collection or gene set of interest
-5. The Normalized Enrichment Score (NES) and P-value appear at the top of the enrichment plot, as well as a message stating whether the selected gene set is up or down regulated in a sample type
-6. Below the plot will show a ranked list of leading edge genes based on a signal-2-noise calculation, which may be downloaded for the users desired use
+1. The user may select the P-Value cutoff for the significance of the gene when running through the ranked list during GSEA
+   * **Please note:** Depending on the designated P-value selected as well as the genes in the expression matrix, there will be some gene sets that may show errors. This is due to the genes within the gene set not being significantly enriched or available to produce any data or visualizations.
+2. Users may select a gene set to view in the enrichment plot from MSigDB or another database that is loaded in
+   * Initially the second tab has the Cell Marker database but that can be adjusted by the user
+3. The user may upload their own gene set file as one of the formats described in the gene set bullet point of [reqired files](https://github.com/shawlab-moffitt/DRPPM-EASY-ExprAnalysisShinY#required-files)
+4. The Normalized Enrichement Score (NES) and P-value will be annotated above the plot
+5. The leading edge gene list of the plot may be downloaded
 
-![alt text](https://github.com/shawlab-moffitt/RShinyAnalysisGenerator/blob/main/App_Demo_Pictures/GSEA_Shiny_2.png?raw=true)
+### GSEA Heatmap
 
-1. Based on the list of enriched signatures tables loaded into the app, their basenames will show up as a list that you may select from to view.
-    * Due to this, it is helpful to be descriptive in naming the files. The table generator script does take this into account when nameing the output files
+![alt text](https://github.com/shawlab-moffitt/DRPPM-EASY-ExprAnalysisShinY/blob/main/App_Demo_Pictures/EASY_GSEAheatmap.png?raw=true)
 
-![alt text](https://github.com/shawlab-moffitt/RShinyAnalysisGenerator/blob/main/App_Demo_Pictures/GSEA_Shiny_3.png?raw=true)
+1. The user may adjust figure parameters
+2. The user must choose a gene set to display
+3. The user may also upload there own, similar to the enrichment plot
 
-1. This tab allows you to upload your own gene set file and when uploaded it will display the list of gene sets within the file below. These can be selected to be viewed with other visualizations as well, such as the enrichment or volcano plot
-2. This screenshot is showcasing the enriched signature table generation in app if you choose to perform it there rather than prior to loading the app
-    * This is useful if you have a large number of sample types or if you have a specific comparison you are interested in with the gene set of your choice uploaded
-    * Please keep in mind that depending on the size of the gene set data or number of samples this may take several minutes
+### Enriched Signatures Table
 
-![alt text](https://github.com/shawlab-moffitt/RShinyAnalysisGenerator/blob/main/App_Demo_Pictures/GSEA_Shiny_8.png?raw=true)
+![alt text](https://github.com/shawlab-moffitt/DRPPM-EASY-ExprAnalysisShinY/blob/main/App_Demo_Pictures/EASY_EnrichTable.png?raw=true)
 
-1. When viewing the ssGSEA box plot for a specific gene set, the ssGSEA enrichment score table may be downloaded
-    * This can be used further in the ssGSEA analysis app that is being developed
+1. If multiple tables loaded into the app, the user may choose which to view based on file name
+2. The user may generate their own enriched signatures table with a gmt or gene set file of their choice
+
+### Singer Sample GSEA Box Plot
+
+![alt text](https://github.com/shawlab-moffitt/DRPPM-EASY-ExprAnalysisShinY/blob/main/App_Demo_Pictures/EASY_ssGSEAboxplot.png?raw=true)
+
+1. A single sample GSEA (ssGSEA) method may be chosen and a stat compare method to view in the boxplot
+2. The user may choose a gene set to view
+3. If the user chooses to use their own gene set they will have to upload here and select the button to generate an RData list
+4. The ssGSEA score file may be downloaded here
+   * This table may be used in the [DRPPM-EASY-Integration App](https://github.com/shawlab-moffitt/DRPPM-EASY-Integration) wher you can compare two of these types of files to each other, or you can compare one of the files to an expression matrix to generate a correlation ranking
 
 
 
