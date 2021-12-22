@@ -8,9 +8,6 @@ Additional apps are being developed for the EASY family. [DRPPM-EASY-Integractio
 
 <img src="https://github.com/shawlab-moffitt/DRPPM-EASY-ExprAnalysisShinY/blob/main/App_Demo_Pictures/EASY_FlowChart.png" width="900">
 
-
-#![alt text](https://github.com/shawlab-moffitt/DRPPM-EASY-ExprAnalysisShinY/blob/main/App_Demo_Pictures/EASY_FlowChart.png?raw=250x250)
-
 # Installation
 
 * Download ZIP file from https://github.com/shawlab-moffitt/DRPPM-EASY-ExprAnalysisShinY
