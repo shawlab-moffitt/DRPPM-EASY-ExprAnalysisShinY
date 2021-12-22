@@ -19,8 +19,8 @@ With the rapid generation of large datasets as a result of advancing next-genera
 
 # R Dependencies
 
-|  |  |  |  |  |  |
-| --- | --- | --- | --- | --- | --- |
+|  |  |  |  |  |
+| --- | --- | --- | --- | --- |
 | shiny_1.6.0 | shinythemes_1.2.0 | shinyjqui_0.4.0 | shinycssloaders_1.0.0 | tools_4.1.0 |
 | dplyr_1.0.7 | tidyr_1.1.3 | readr_2.0.1 | tibble_3.1.3 | DT_0.18 |
 | ggplot2_3.3.5 | plotly_4.9.4.1 | enrichplot_1.12.2 | pheatmap_1.0.12 | ggrepel_0.9.1 |
