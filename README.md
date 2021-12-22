@@ -137,7 +137,20 @@ Once the file names and choices are correctly written you should be able to hit 
 
 # Shiny App Features
 
-## RNAseq Analysis
+## Differential Gene expression Analysis
+
+Differential gene expression analysis is performed between two groups of samples chosen by the user within the apps interface. The expression data for these groups is log transformed (log2 + 1) followed by a model matrix designed from the meta groups chosen. The matrix is then used for LIMMA linear modeling followed by Bayes statistics to rank the genes based on statistical significance. Figures and tables produce through these methods include hetmaps, volcano, MA, and box plots, as well as a gene expression scatter plot and pathway analysis with enrichR.
+
+### Heatmaps
+
+![alt text](https://github.com/shawlab-moffitt/DRPPM-EASY-ExprAnalysisShinY/blob/main/App_Demo_Pictures/EASY_Heatmap.png?raw=true)
+
+This is an example of the heatmap produced through differential gene expression, below are some notable features:
+
+1. The option the display a custom heatmap of selected genes and samples
+2. Download sample cluster results based on cut tree and the clustering method chosen
+3. Download most variable genes list as a ranked table or as a .gmt file for GSEA
+  * Variance measure can be selected by user
 
 ![alt text](https://github.com/shawlab-moffitt/RShinyAnalysisGenerator/blob/main/App_Demo_Pictures/GSEA_Shiny_4.png?raw=true)
 
