@@ -150,7 +150,7 @@ This is an example of the heatmap produced through differential gene expression,
 1. The option the display a custom heatmap of selected genes and samples
 2. Download sample cluster results based on cut tree and the clustering method chosen
 3. Download most variable genes list as a ranked table or as a .gmt file for GSEA
-  * Variance measure can be selected by user
+   * Variance measure can be selected by user
 
 ![alt text](https://github.com/shawlab-moffitt/RShinyAnalysisGenerator/blob/main/App_Demo_Pictures/GSEA_Shiny_4.png?raw=true)
 
