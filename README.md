@@ -137,39 +137,6 @@ Once the file names and choices are correctly written you should be able to hit 
 
 # Shiny App Features
 
-## Gene Set Enrichment Analysis
-
-In app, the user may select two comparison groups within the side panel which are based off of the meta file that was provided, as well a gene set by selecting from one of the gene set tables in the side panel. If the user uploads their own gene set data a table will appear based on the file input. 
-
-**Please note:** Depending on the designated P-value selected as well as the genes in the expression matrix, there will be some gene sets that may show errors. This is due to the genes within the gene set not being significantly enriched or available to produce any data or visualizations.
-
-![alt text](https://github.com/shawlab-moffitt/RShinyAnalysisGenerator/blob/main/App_Demo_Pictures/GSEA_Shiny_1.png?raw=true)
-
-1. Select comparison groups base on types of samples from the meta data file
-2. Select stat comparison method for ssGSEA boxlots
-    * With 2 sample types it allows for Wilcos and t-test, with 3 or more types it allows for Kruskal-Wallis and ANOVA
-3. You may use your own gene set either in .gmt, .tsv. or .txt format as described in the [Required Files](https://github.com/shawlab-moffitt/RShinyAnalysisGenerator/blob/main/README.md#required-files) section
-4. You may search for a collection or gene set of interest
-5. The Normalized Enrichment Score (NES) and P-value appear at the top of the enrichment plot, as well as a message stating whether the selected gene set is up or down regulated in a sample type
-6. Below the plot will show a ranked list of leading edge genes based on a signal-2-noise calculation, which may be downloaded for the users desired use
-
-![alt text](https://github.com/shawlab-moffitt/RShinyAnalysisGenerator/blob/main/App_Demo_Pictures/GSEA_Shiny_2.png?raw=true)
-
-1. Based on the list of enriched signatures tables loaded into the app, their basenames will show up as a list that you may select from to view.
-    * Due to this, it is helpful to be descriptive in naming the files. The table generator script does take this into account when nameing the output files
-
-![alt text](https://github.com/shawlab-moffitt/RShinyAnalysisGenerator/blob/main/App_Demo_Pictures/GSEA_Shiny_3.png?raw=true)
-
-1. This tab allows you to upload your own gene set file and when uploaded it will display the list of gene sets within the file below. These can be selected to be viewed with other visualizations as well, such as the enrichment or volcano plot
-2. This screenshot is showcasing the enriched signature table generation in app if you choose to perform it there rather than prior to loading the app
-    * This is useful if you have a large number of sample types or if you have a specific comparison you are interested in with the gene set of your choice uploaded
-    * Please keep in mind that depending on the size of the gene set data or number of samples this may take several minutes
-
-![alt text](https://github.com/shawlab-moffitt/RShinyAnalysisGenerator/blob/main/App_Demo_Pictures/GSEA_Shiny_8.png?raw=true)
-
-1. When viewing the ssGSEA box plot for a specific gene set, the ssGSEA enrichment score table may be downloaded
-    * This can be used further in the ssGSEA analysis app that is being developed
-
 ## RNAseq Analysis
 
 ![alt text](https://github.com/shawlab-moffitt/RShinyAnalysisGenerator/blob/main/App_Demo_Pictures/GSEA_Shiny_4.png?raw=true)
@@ -217,6 +184,41 @@ These will be the RNAseq analysis parameters shown on the main side bar of this 
 1. The user may select pathways to visualize with Enrichr for their samples
     * Below the upregulated visualization and table shows the downregulated pathway
 3. The pathway analysis table can be downloaded as a .tsv file or it can be formated into a .gmt file for the selected pathway based on the genes listed in the table
+
+## Gene Set Enrichment Analysis
+
+In app, the user may select two comparison groups within the side panel which are based off of the meta file that was provided, as well a gene set by selecting from one of the gene set tables in the side panel. If the user uploads their own gene set data a table will appear based on the file input. 
+
+**Please note:** Depending on the designated P-value selected as well as the genes in the expression matrix, there will be some gene sets that may show errors. This is due to the genes within the gene set not being significantly enriched or available to produce any data or visualizations.
+
+![alt text](https://github.com/shawlab-moffitt/RShinyAnalysisGenerator/blob/main/App_Demo_Pictures/GSEA_Shiny_1.png?raw=true)
+
+1. Select comparison groups base on types of samples from the meta data file
+2. Select stat comparison method for ssGSEA boxlots
+    * With 2 sample types it allows for Wilcos and t-test, with 3 or more types it allows for Kruskal-Wallis and ANOVA
+3. You may use your own gene set either in .gmt, .tsv. or .txt format as described in the [Required Files](https://github.com/shawlab-moffitt/RShinyAnalysisGenerator/blob/main/README.md#required-files) section
+4. You may search for a collection or gene set of interest
+5. The Normalized Enrichment Score (NES) and P-value appear at the top of the enrichment plot, as well as a message stating whether the selected gene set is up or down regulated in a sample type
+6. Below the plot will show a ranked list of leading edge genes based on a signal-2-noise calculation, which may be downloaded for the users desired use
+
+![alt text](https://github.com/shawlab-moffitt/RShinyAnalysisGenerator/blob/main/App_Demo_Pictures/GSEA_Shiny_2.png?raw=true)
+
+1. Based on the list of enriched signatures tables loaded into the app, their basenames will show up as a list that you may select from to view.
+    * Due to this, it is helpful to be descriptive in naming the files. The table generator script does take this into account when nameing the output files
+
+![alt text](https://github.com/shawlab-moffitt/RShinyAnalysisGenerator/blob/main/App_Demo_Pictures/GSEA_Shiny_3.png?raw=true)
+
+1. This tab allows you to upload your own gene set file and when uploaded it will display the list of gene sets within the file below. These can be selected to be viewed with other visualizations as well, such as the enrichment or volcano plot
+2. This screenshot is showcasing the enriched signature table generation in app if you choose to perform it there rather than prior to loading the app
+    * This is useful if you have a large number of sample types or if you have a specific comparison you are interested in with the gene set of your choice uploaded
+    * Please keep in mind that depending on the size of the gene set data or number of samples this may take several minutes
+
+![alt text](https://github.com/shawlab-moffitt/RShinyAnalysisGenerator/blob/main/App_Demo_Pictures/GSEA_Shiny_8.png?raw=true)
+
+1. When viewing the ssGSEA box plot for a specific gene set, the ssGSEA enrichment score table may be downloaded
+    * This can be used further in the ssGSEA analysis app that is being developed
+
+
 
 # Quesions and Comments
 
