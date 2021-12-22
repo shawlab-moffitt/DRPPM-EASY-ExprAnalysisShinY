@@ -60,30 +60,21 @@ Additional apps are being developed for the EASY family. [DRPPM-EASY-Integractio
   * The tab 2 gene set initially written to show gene sets from the Cell Marker Database but can be adjusted by the user
   * We also provide LINCS L1000 gene sets derived from small molecule perturbations following drug treatment.
   * If the user choses to adjust this gene set they must also ensure there is an RData list file provided for it as well.
-    * This file can be generated with one of the getting started scripts we described previously.
-* This is a temporary file which is a subset of the MSigDB gene set collection. In the future it will be replaced with relevant gene sets that users may use when interacting with their data. Please keep in mind that this is from the Homo Sapien collection and will not generate results if you are observing mouse model data. The current gene set in this place is also included in the main MSigDB file, so idealy this tab can be ignored until it contains a more unique gene set.
+    * This file can be generated with one of the [getting started scripts](https://github.com/shawlab-moffitt/DRPPM-EASY-ExprAnalysisShinY/blob/main/GettingStartedScripts/GeneSetRDataListGen.R) we described previously.
 
-# Getting Started Scripts
+# Pre-Processing with Getting Started Scripts
 
-One of the required file inputs for the Shiny App is the GSEA enriched signatures table for your samples. The production of this table can take several minutes depending on the number of gene sets that are being ranked, but to save time we wrote a [script](https://github.com/shawlab-moffitt/RShinyAnalysisGenerator/blob/main/GettingStartedScripts/GSEA_Sig_Table_Gen.R) that requires just a few file inputs and does the rest for you! We use all of the collections from the Molecular Signatures Database (MSigDB) for the initial ranking but the getting started script and the Shiny App both allow for user input of gene set/gmt files.
+One of the file inputs for the Shiny App is the GSEA enriched signatures table for your samples. While it is not fully required to get the app running, it is a helpful tool to examine all of the gene sets in a ranked table format. The production of this table can take several minutes depending on the number of gene sets that are being ranked, but to save time we wrote a [script](https://github.com/shawlab-moffitt/DRPPM-EASY-ExprAnalysisShinY/blob/main/GettingStartedScripts/GSEA_Sig_Table_Gen.R) that requires just a few file inputs and does the rest for you! We use all of the collections from the Molecular Signatures Database (MSigDB) for the initial ranking but the getting started script and the Shiny App both allow for user input of gene set/gmt files.
 
 ### User Input for GSEA_Sig_Table_Gen.R Script
 
-More details on these file inputs in the [Required Files](https://github.com/shawlab-moffitt/RShinyAnalysisGenerator/blob/main/README.md#required-files) section.
+More details on these file inputs in the [Required Files](https://github.com/shawlab-moffitt/DRPPM-EASY-ExprAnalysisShinY#required-files) section.
 
 * `expr_file` - Expression matrix file
 * `meta_file` - Meta File
-  * Please note `TRUE` or `FALSE` in `header` if there is a header in the meta file
+* `GeneSet_file` - Gene set file as .gmt or tab delimited, as describe [here](https://github.com/shawlab-moffitt/DRPPM-EASY-ExprAnalysisShinY#required-by-user).
+  * Intial script uses MSigDB gene set file
 * `OutPath` - Text input of user defined outfile path - This is where your enriched signature table(s) will be written to. The specific file naming is taken care of in the script.
-* Gene Set File
-  * `MSigDB_file` - MSigDB Gene Set
-    * If you would like to use an [MSigDB gene set](https://github.com/shawlab-moffitt/RShinyAnalysisGenerator/tree/main/GeneSets) you must download and unzip the appropriate msigdb_gsNsym_\*.tsv file for either *Homo sapiens* (HS) or *Mus musculus* (MM).
-    * There is code included but commented out in regards to the msigdbr package which allows you to retreive gene sets based on certain species as well as from specific collections.
-    * Please note `TRUE` or `FALSE` if the sample data is human or not, so the correct gene set is located and used.
-  * User Provided Gene Set
-    * `GeneSet_file.u.gmt` - user provided .gmt file
-    * `GeneSet_file.u.gs` - user provided geneset file
-      * Please note `TRUE` or `FALSE` in `header.gs` if there is a header in the gene set file.
 
 ### Generating Enriched Signature Table(s)
 
@@ -91,35 +82,35 @@ Once these files are input in the script it can be run in its entirety. The scri
 
 ### Generating a Gene Set RData List for ssGSEA
 
-If you choose to use your own Gene Sets either in .gmt or tab delimited format as described above, in order to perform ssGSEA analysis the Gene Set must be converted into an RData list object when loaded into the app. This list can take several minutes to generate depending on the size of the gene set file, so there is a separate script to perform this with [GeneSetRDataListGen.R](https://github.com/shawlab-moffitt/RShinyAnalysisGenerator/blob/main/GettingStartedScripts/GeneSetRDataListGen.R). The only user input is the Gene Set file path and name, whether or not it has a header, and the desired outfile path and name. Once they are input, the code can be run as a whole and it will produce and save an RData list which can be input to the R Shiny app. These RData lists have already been generated for provided Gene Sets and can be found in the [data folder](https://github.com/shawlab-moffitt/RShinyAnalysisGenerator/tree/main/GeneSets) of this repsitory.
+If you choose to use your own Gene Sets either in .gmt or tab delimited format as described above, in order to perform ssGSEA analysis the Gene Set must be converted into an RData list object when loaded into the app. This list can take several minutes to generate depending on the size of the gene set file, so there is a separate script to perform this with [GeneSetRDataListGen.R](https://github.com/shawlab-moffitt/DRPPM-EASY-ExprAnalysisShinY/blob/main/GettingStartedScripts/GeneSetRDataListGen.R). The only user input is the Gene Set file path and name, whether or not it has a header, and the desired outfile path and name. Once they are input, the code can be run as a whole and it will produce and save an RData list which can be input to the R Shiny app. These RData lists have already been generated for provided Gene Sets and can be found in the [Gene Sets folder](https://github.com/shawlab-moffitt/DRPPM-EASY-ExprAnalysisShinY/tree/main/GeneSets) of this repsitory.
 
 # Prepping the R Shiny App
 
-Similar to generating the Enriched Signatures Table, the Shiny App requires just a few user inputs and it can be up and running. Once the [app](https://github.com/shawlab-moffitt/RShinyAnalysisGenerator/blob/main/App/app.R) script is loaded all that is needed is to update the user input and then it can be run!
+Similar to generating the Enriched Signatures Table, the Shiny App requires just a few user inputs and it can be up and running. Once the [app](https://github.com/shawlab-moffitt/DRPPM-EASY-ExprAnalysisShinY/blob/main/app.R) script is loaded all that is needed is to update the user input and then it can be run!
 
 ### User Input for R Shiny App
 
-Below is the begining chunk of code for the Shiny App and where the user will designate which files to use for the analysis. Here you designate the name for the app, your expression and meta data, a single or list of enriched signature tables to display, as well as your gene set seletion for the second tab of the GSEA section. Along with ansering a could `TRUE or FALSE` statements in this chunk, it should be the only secion that requires editing by the user, though to note, there is a section below in the script that calls on the MSigDB gene sets based on the 'Human' `TRUE or FALSE` statement. These files so not have paths so the app should either be ran in the same working directory as the data input files or you may add the paths to those file names.
+Below is the begining chunk of code for the Shiny App and where the user will designate which files to use for the analysis. Here you designate the name for the app, your expression and meta data, a single or list of enriched signature tables to display (if you do not provide one you can remove the content within the parentheses), as well as your gene set seletion for the second tab of the GSEA section (initially fill with Cell Marker Gene Set data). Along with answering some `TRUE or FALSE` statements in this chunk, it should be the only secion that requires editing by the user, though to note, there is a section below in the script that calls on the MSigDB gene sets based on the 'Human' `TRUE or FALSE` statement. These paths for these files are coded in to the proper path as long as the installation instructions are followed properly.
 
 ```{r}
 
 ####----User Data Input----####
 
-#Input desired project name for webpage - will be followed by 'RNAseq Analysis'
+#Input desired project name for webpage - will be followed by 'Expression Analysis'
 ProjectName <- "USP7 Human Demo"
 
 ##--User Input File Names--##
 
 #expression data
-expr_file <- "htseq_gene_level_fpkm_T_geneName_max_1cutoff_v2.txt"
+expr_file <- "~/R/DRPPM-EASY-ExprAnalysisShinY-main/ExampleData/htseq_gene_level_fpkm_T_geneName_max_1cutoff_v2.txt"
 
 #meta data
-meta_file <- "USP7_meta.tsv"
+meta_file <- "~/R/DRPPM-EASY-ExprAnalysisShinY-main/ExampleData/USP7_meta.tsv"
 #Is there a header?
 header <- TRUE
 
 #Enriched Signatures data table
-ES_tables <- c("USP7_Enrich_Sig.tsv")
+ES_tables <- c("~/R/DRPPM-EASY-ExprAnalysisShinY-main/ExampleData/USP7_Enrich_Sig.tsv")
 
 #If human: set TRUE
 #If mouse: set FALSE
@@ -131,12 +122,12 @@ human <- TRUE
 userGSlist_name <- 'CellMarker Gene Sets'
 
 #path to your gene set file .gmt or .txt/.tsv
-userGS_file <- 'CellMarker_gsNsym_HS.tsv'
+userGS_file <- '~/R/DRPPM-EASY-ExprAnalysisShinY-main/GeneSets/CellMarker_gsNsym_HS.tsv'
 #Does gene set file have header?
 header.gs <- TRUE
 
 #path to your R data list object for ssGSEA
-userRData_file <- 'CellMarker_GS_HS.RData'
+userRData_file <- '~/R/DRPPM-EASY-ExprAnalysisShinY-main/GeneSets/CellMarker_GS_HS.RData'
 
 ```
 
