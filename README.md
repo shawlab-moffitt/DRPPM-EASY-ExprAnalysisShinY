@@ -145,24 +145,39 @@ Differential gene expression analysis is performed between two groups of samples
 
 ![alt text](https://github.com/shawlab-moffitt/DRPPM-EASY-ExprAnalysisShinY/blob/main/App_Demo_Pictures/EASY_Heatmap.png?raw=true)
 
-This is an example of the heatmap produced through differential gene expression, below are some notable features:
-
 1. The option the display a custom heatmap of selected genes and samples
 2. Download sample cluster results based on cut tree and the clustering method chosen
 3. Download most variable genes list as a ranked table or as a .gmt file for GSEA
    * Variance measure can be selected by user
 
-![alt text](https://github.com/shawlab-moffitt/RShinyAnalysisGenerator/blob/main/App_Demo_Pictures/GSEA_Shiny_4.png?raw=true)
+![alt text](https://github.com/shawlab-moffitt/DRPPM-EASY-ExprAnalysisShinY/blob/main/App_Demo_Pictures/EASY_CustomHeatmap.png?raw=true)
 
-These will be the RNAseq analysis parameters shown on the main side bar of this tab.
+1. User may select or type in genes they wish to view
+   * This is initially filled with gene involved with tumor and immun cell interaction
+2. Specific samples may also be selected to view
+   * All samples are shows to start but within the box you may delete the name to un-select the sample
 
-1. Here you may select comparison sample types for the volcano and MA plots, as well as the pathway analysis and DEG table
-2. You may select the number of top genes to see displayed on the main heatmap
-3. Here you have the choice of variance measure between MAD, CV, and VAR
-4. The samples are able to to be clustered with multiple methods in a drop down box
-5. The Most Variable Genes will appear in the side bar below the sample cluster results
-    * This table may be downloaded as a tab delimited rank file or in .gmt format to be used as a gene set.
-6. Below the Most Variable Gene table are parameters to download a .gmt file based on the the Differentially Expressed Genes table
+### Volcano Plot
+
+![alt text](https://github.com/shawlab-moffitt/DRPPM-EASY-ExprAnalysisShinY/blob/main/App_Demo_Pictures/EASY_Volcano.png?raw=true)
+
+1. User may select sample groups by meta type to compare in the LIMMA analysis
+2. Log2FC and -log10(P.Value) may be adjusted to move the dashed lines on the plot
+3. The number of top hits displayed may be adjusted and the user may select hits to annotate by selecting or writing in a gene name
+   * Depending on how many genes being displayed, name may overlap
+4. Hovering over a poin/gene on the plot will display a text box below showing the name of the gene and statistical values
+
+### Box Plot
+
+![alt text](https://github.com/shawlab-moffitt/DRPPM-EASY-ExprAnalysisShinY/blob/main/App_Demo_Pictures/EASY_BoxPlot.png?raw=true)
+
+1. Users may search for and select a gene to view log2 transformed expression values as a box plot
+
+![alt text](https://github.com/shawlab-moffitt/DRPPM-EASY-ExprAnalysisShinY/blob/main/App_Demo_Pictures/EASY_GeneExpScatter.png?raw=true)
+
+
+
+
 
 ![alt text](https://github.com/shawlab-moffitt/RShinyAnalysisGenerator/blob/main/App_Demo_Pictures/GSEA_Shiny_5.png?raw=true)
 
