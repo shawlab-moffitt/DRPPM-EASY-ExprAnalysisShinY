@@ -13,6 +13,7 @@ Additional apps are being developed for the EASY family. [DRPPM-EASY-Integractio
 * Open the ‘App.R’ script and write in user input files and options as directed at the top of the script
   * ‘App.R’ script begins with example files loaded in from the ExampleData folder
 * Press ‘Run App’ button in R Studio to run in application or browser window and enjoy!
+  * The app script will install any missing packages that the user may not have locally
 
 # Requirements
 
@@ -33,10 +34,21 @@ Additional apps are being developed for the EASY family. [DRPPM-EASY-Integractio
 
 ## Required By User
 
-* **Expression Matrix (.tsv/.txt):** This is required for generating the enriched signatures table in the GettingStartedScript, `GSEA_Sig_Table_Gen.R`, as well for the Shiny app. The data should be in a tab delimited format with a header where the first column consists of the gene symbols and the following columns should start with the sample name followed by the expression data. It is requested that you filter out the lowly expressed genes prior to running this analysis, as when the files are too large it can cause memory issues for some computers.
-* **Meta Data (.tsv/.txt):** This is required for generating the enriched signatures table in the GettingStartedScript, `GSEA_Sig_Table_Gen.R`, as well for the Shiny app. This should be a tab delimited file with two columns, header is not necessary but you may dictate whether there is a header or not when adding your file to the `app.R` code. The first column should consist of column names and the second column should be the phenotype grouping for each sample.
-* **GMT file or Gene Set Data (optional):** This is an optional input when generating the enriched signatures table in the GettingStartedScript, `GSEA_Sig_Table_Gen.R`. There is a choice for the user to user their own .gmt file which should follow the format designated by the Broad Institute as seen [here](https://software.broadinstitute.org/cancer/software/gsea/wiki/index.php/Data_formats#GMT:_Gene_Matrix_Transposed_file_format_.28.2A.gmt.29). Furthermore, this .gmt file could be used as input when interacting with the Shiny app within the GSEA tab. Additionally, there is an option for the user to input a gene set file which would be a tab delimited, two column file. The first column being the gene set name repeating while the second column has a single gene symbol per row matched with the gene set name that it is within. 
-  *  If the user does not opt to include their own .gmt file or gene set data, the user may designate whether the samples are from a human or a mouse model and an MSigDB gmt file will be loaded consisting of all the MSigDB collections. Please note, this is a larger data set and  running the GSEA function can take a few minutes. Lastly, there is a commented out segment where the user can derive their own MSigDB gene set from the `msigdbr()` function if they may request a species other than the human or mouse model. To retrieve a list of available species users can run the `msigdbr_species()` function.
+* **Expression Matrix (.tsv/.txt):**
+  * Must be tab delimited with gene names as symbols located in the first column with subsequent columns consiting of the sample name as the header and expression data down the column.
+  *  The current App expects lowly expressed genes filtered out and normalized data either to FPKM or TMM.
+     * Larger files might inflict memory issues for you local computer.
+  *  This file type is required for the Getting Started Script, [GSEA_Sig_Table_Gen.R](https://github.com/shawlab-moffitt/DRPPM-EASY-ExprAnalysisShinY/blob/main/GettingStartedScripts/GSEA_Sig_Table_Gen.R) as well as for within the app.
+* **Meta Data (.tsv/.txt):**
+  * Must be tab delimited with two columns. First column of sasmple names and second column as phenotype grouping of the samples
+  * This file type is required for the Getting Started Script, [GSEA_Sig_Table_Gen.R](https://github.com/shawlab-moffitt/DRPPM-EASY-ExprAnalysisShinY/blob/main/GettingStartedScripts/GSEA_Sig_Table_Gen.R) as well as for within the app.
+* **GMT file or Gene Set Data (optional):**
+  * If the user chooses to user their own gene set file it must be formatted correctly.
+    * If using a .gmt file you can find example formatting by the Broad Institute as seen [here](https://software.broadinstitute.org/cancer/software/gsea/wiki/index.php/Data_formats#GMT:_Gene_Matrix_Transposed_file_format_.28.2A.gmt.29).
+    * The other option, usefull if generating your own gene sets, is making a two column tab delimited file with the first column being the gene set name repeating for every gene symbol that would be placed in the second column. Examples of this format can be seen in some of the gene set files we have provided [here](https://github.com/shawlab-moffitt/DRPPM-EASY-ExprAnalysisShinY/tree/main/GeneSets).
+  * If the user chooses to use their own gene set file, it is recommended that they use the Getting Started Script, [GeneSetRDataListGen.R](https://github.com/shawlab-moffitt/DRPPM-EASY-ExprAnalysisShinY/blob/main/GettingStartedScripts/GeneSetRDataListGen.R), to generate an R data list which is needed to perform ssGSEA analysis.
+  * These gene set files could be used for generating the enriched signatures table in the Getting Started Script, [GSEA_Sig_Table_Gen.R](https://github.com/shawlab-moffitt/DRPPM-EASY-ExprAnalysisShinY/blob/main/GettingStartedScripts/GSEA_Sig_Table_Gen.R) as well as replacing the gene set within the DRPPM-EASY app script.
+  * To simplify this optional input there is a tab within the app's GSEA section for the user to upload their own gene set file instead of hard coding it in.
 
 ## Required and Provided
 
