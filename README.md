@@ -6,7 +6,7 @@ With the rapid generation of large datasets as a result of advancing next-genera
 
 Additional apps are being developed for the EASY family. [DRPPM-EASY-Integraction](https://github.com/shawlab-moffitt/DRPPM-EASY-Integration) allows users to further analyze data obtained from the main DRPPM-EASY app and compare expression data between two matrices. [DRPPM-EASY-CCLE](https://github.com/shawlab-moffitt/DRPPM-EASY-CCLE) integrates a sample selection tab which allows users to select expression and meta data from the Cancer Cell Line Encyclopedia (CCLE) based on cancer type or lineage and sample type for analysis within the DRPPM-EASY app. The flow chart below gives a layout of the EASY app's family infrastructure which we will describe in further detail.
 
-![alt text](https://github.com/shawlab-moffitt/DRPPM-EASY-ExprAnalysisShinY/blob/main/App_Demo_Pictures/EASY_FlowChart.png?raw=true)
+![alt text](https://github.com/shawlab-moffitt/DRPPM-EASY-ExprAnalysisShinY/blob/main/App_Demo_Pictures/EASY_FlowChart.png?raw=700x700)
 
 # Installation
 
