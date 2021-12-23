@@ -244,4 +244,4 @@ Gene set enrichment analysis (GSEA) is performed through signal-to-noise calcula
 
 # Quesions and Comments
 
-Please email Alyssa Obermayer at alyssa.obermayer@moffitt.org if you have any further comments or questions in regards to the r Shiny Application.
+Please email Alyssa Obermayer at alyssa.obermayer@moffitt.org if you have any further comments or questions in regards to the R Shiny Application.
