@@ -230,7 +230,7 @@ Gene set enrichment analysis (GSEA) is performed through signal-to-noise calcula
 1. If multiple tables loaded into the app, the user may choose which to view based on file name
 2. The user may generate their own enriched signatures table with a gmt or gene set file of their choice
 
-### Singer Sample GSEA Box Plot
+### Single Sample GSEA Box Plot
 
 ![alt text](https://github.com/shawlab-moffitt/DRPPM-EASY-ExprAnalysisShinY/blob/main/App_Demo_Pictures/EASY_ssGSEAboxplot.png?raw=true)
 
