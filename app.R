@@ -303,6 +303,21 @@ ui <-
                                                      selectInput("scatterG2","Select Gene 2",
                                                                  choices = Gene, selected = Gene[2]),
                                                      checkboxInput("logask","Log2 Transform Expression Data")
+                                    ),
+                                    
+                                    ##--Boxplot side panel--##
+                                    
+                                    conditionalPanel(condition = "input.dataset == '34'",
+                                                     p(),
+                                                     h3("Select A Gene:"),
+                                                     div(DT::dataTableOutput("GeneListTable2"), style = "font-size:10px"),
+                                                     p(),
+                                                     sliderInput("boxplot.font2", "Font Size:",
+                                                                 min = 5, max = 75,
+                                                                 value = 15, step = 1),
+                                                     sliderInput("boxplotDot2", "Box Plot Dot Size:",
+                                                                 min = 0, max = 5,
+                                                                 value = 0.75, step = .25)
                                     )
                                 ),
                                 mainPanel(
@@ -319,14 +334,18 @@ ui <-
                                                  withSpinner(jqui_resizable(plotlyOutput("geneScatter0", height = "500px")), type = 6),
                                                  DT::dataTableOutput("geneScatterTable"),
                                                  downloadButton("geneScatterDownload", "Download Non-log2 Transformed .tsv"),
-                                                 value = 26)
+                                                 value = 26),
+                                        tabPanel("Box Plots",
+                                                 p(),
+                                                 withSpinner(jqui_resizable(plotOutput('boxplot3', width = "100%", height = "600px")), type = 6),
+                                                 value = 34)
                                     )
                                 )
                             )
                         )
                ),
                
-               ####----Differntial Expression Analysis----####
+               ####----Differential Expression Analysis----####
                
                tabPanel("Differential Expression Analysis",
                         fluidPage(
@@ -1088,6 +1107,16 @@ server <- function(input, output, session) {
                                      lengthMenu = c("10", "25", "50", "100")))
     })
     
+    #render gene list table for boxplot selection
+    output$GeneListTable2 <- DT::renderDataTable({
+        DT::datatable(geneList,
+                      selection = 'single',
+                      options = list(keys = TRUE,
+                                     searchHighlight = TRUE,
+                                     pageLength = 10,
+                                     lengthMenu = c("10", "25", "50", "100")))
+    })
+    
     #render gene scatter plot data table
     output$geneScatterTable <- DT::renderDataTable({
         #log if user designates
@@ -1629,6 +1658,29 @@ server <- function(input, output, session) {
                 labs(title= paste(gene, "Expression (log2)")) +
                 theme(axis.text.x = element_text(angle = 90, vjust = 0.25, hjust = 1),
                       text = element_text(size = input$boxplot.font))
+        }
+    })
+    
+    #render boxplot
+    output$boxplot3 <- renderPlot({
+        if (length(input$GeneListTable2_rows_selected) > 0){
+            gene <- geneList[input$GeneListTable2_rows_selected, 1]
+            min <- min(log2(expr[gene,] + 1.0))
+            max <- max(log2(expr[gene,] + 1.0))
+            meta_temp <- meta
+            rownames(meta_temp) <- meta[,1]
+            meta_temp <- meta_temp %>%
+                select(Group)
+            data = merge(t(expr[gene,]), meta_temp, by=0)
+            colnames(data) = c("SampleName", "GeneExpr", "Cluster")
+            ggplot(data, aes(x=Cluster, y=log2(GeneExpr + 1.0))) +
+                geom_boxplot(outlier.colour="red", outlier.shape=8, outlier.size=1) +
+                geom_dotplot(binaxis='y', stackdir='center', dotsize=input$boxplotDot2) +
+                stat_compare_means(label = "p.signif") + ylim(min * 0.9, max * 1.3) +
+                theme_bw() +
+                labs(title= paste(gene, "Expression (log2)")) +
+                theme(axis.text.x = element_text(angle = 90, vjust = 0.25, hjust = 1),
+                      text = element_text(size = input$boxplot.font2))
         }
     })
     
@@ -2751,6 +2803,7 @@ server <- function(input, output, session) {
         
     })
 }
+
 
 
 
