@@ -35,15 +35,15 @@ ProjectName <- "USP7 Human Demo"
 ##--User Input File Names--##
 
 #expression data
-expr_file <- "~/R/DRPPM-EASY-ExprAnalysisShinY-main/ExampleData/htseq_gene_level_fpkm_T_geneName_max_1cutoff_v2.txt"
+expr_file <- "~/R/DRPPM-EASY-ExprAnalysisShinY-main/ExampleData/USP7_RNAseq_expr.txt"
 
 #meta data
-meta_file <- "~/R/DRPPM-EASY-ExprAnalysisShinY-main/ExampleData/USP7_meta.tsv"
+meta_file <- "~/R/DRPPM-EASY-ExprAnalysisShinY-main/ExampleData/USP7_RNAseq_meta.tsv"
 #Is there a header?
 header <- TRUE
 
 #Enriched Signatures data table
-ES_tables <- c("~/R/DRPPM-EASY-ExprAnalysisShinY-main/ExampleData/USP7_Enrich_Sig.tsv")
+ES_tables <- c("~/R/DRPPM-EASY-ExprAnalysisShinY-main/ExampleData/USP7_Enrich_Sig_Table.tsv")
 
 #If human: set TRUE
 #If mouse: set FALSE
@@ -75,7 +75,7 @@ if (human == TRUE) {
     #MSigDB gene set FOR UI
     msigdb2 <- '~/R/DRPPM-EASY-ExprAnalysisShinY-main/GeneSets/msigdb_gsNcat_HS.tsv'
     #gene set list for ssGSEA
-    load('~/R/DRPPM-EASY-ExprAnalysisShinY-main/GeneSets/gs_list_HS.RData')
+    load('~/R/DRPPM-EASY-ExprAnalysisShinY-main/GeneSets/msigdb_gs_HS.RData')
     #Cytokine genes for human
     CTKgenes <- c("IL2","IL12A","IL12B","IL17A","IFNA1","IFNB1","IFNG","IFNGR","CD11b",
                   "ITGAM","CD33","ENTPD1","ICOSLG","CD275","CD278","TNFSF9","TNFRSF9",
@@ -90,7 +90,7 @@ if (human == FALSE) {
     #MSigDB gene set FOR UI
     msigdb2 <- '~/R/DRPPM-EASY-ExprAnalysisShinY-main/GeneSets/msigdb_gsNcat_MM.tsv'
     #gene set list for ssGSEA 
-    load('~/R/DRPPM-EASY-ExprAnalysisShinY-main/GeneSets/gs_list_MM.RData')
+    load('~/R/DRPPM-EASY-ExprAnalysisShinY-main/GeneSets/msigdb_gs_MM.RData')
     #Cytokiny genes for mouse
     CTKgenes <- c("Il2","Il12a","Il12b","Il17a","Ifna13","Ifnb1","Ifng","Ifngr1","Cd11b","Itgam",
                   "Cd33","Entpd1","Icosl","Icos","Tnfsf9","Tnfrsf9","Cd40","Cd40lg","Cd70","Cd27",
