@@ -25,10 +25,10 @@ invisible(lapply(packages, library, character.only = TRUE))
 ##User Input
 
 #Assign expression data path
-expr_file <- "~/R/GeneralExpressionAnalysisApp-main/ExampleData/htseq_gene_level_fpkm_T_geneName_max_1cutoff_v2.txt"
+expr_file <- "~/R/GeneralExpressionAnalysisApp-main/ExampleData/USP7_RNAseq_expr.txt"
 
 #Assign meta data path
-meta_file <- "~/R/GeneralExpressionAnalysisApp-main/ExampleData/USP7_meta.tsv"
+meta_file <- "~/R/GeneralExpressionAnalysisApp-main/ExampleData/USP7_RNAseq_meta.tsv"
 #Is there a header?
 header <- TRUE
 

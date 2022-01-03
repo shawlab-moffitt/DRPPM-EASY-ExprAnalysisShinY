@@ -35,15 +35,15 @@ ProjectName <- "USP7 Human Demo"
 ##--User Input File Names--##
 
 #expression data
-expr_file <- "~/R/DRPPM-EASY-ExprAnalysisShinY-main/ExampleData/htseq_gene_level_fpkm_T_geneName_max_1cutoff_v2.txt"
+expr_file <- "~/R/DRPPM-EASY-ExprAnalysisShinY-main/ExampleData/USP7_RNAseq_expr.txt"
 
 #meta data
-meta_file <- "~/R/DRPPM-EASY-ExprAnalysisShinY-main/ExampleData/USP7_meta.tsv"
+meta_file <- "~/R/DRPPM-EASY-ExprAnalysisShinY-main/ExampleData/USP7_RNAseq_meta.tsv"
 #Is there a header?
 header <- TRUE
 
 #Enriched Signatures data table
-ES_tables <- c("~/R/DRPPM-EASY-ExprAnalysisShinY-main/ExampleData/USP7_Enrich_Sig.tsv")
+ES_tables <- c("~/R/DRPPM-EASY-ExprAnalysisShinY-main/ExampleData/USP7_Enrich_Sig_Table.tsv")
 
 #If human: set TRUE
 #If mouse: set FALSE
@@ -75,7 +75,7 @@ if (human == TRUE) {
     #MSigDB gene set FOR UI
     msigdb2 <- '~/R/DRPPM-EASY-ExprAnalysisShinY-main/GeneSets/msigdb_gsNcat_HS.tsv'
     #gene set list for ssGSEA
-    load('~/R/DRPPM-EASY-ExprAnalysisShinY-main/GeneSets/gs_list_HS.RData')
+    load('~/R/DRPPM-EASY-ExprAnalysisShinY-main/GeneSets/msigdb_gs_HS.RData')
     #Cytokine genes for human
     CTKgenes <- c("IL2","IL12A","IL12B","IL17A","IFNA1","IFNB1","IFNG","IFNGR","CD11b",
                   "ITGAM","CD33","ENTPD1","ICOSLG","CD275","CD278","TNFSF9","TNFRSF9",
@@ -90,7 +90,7 @@ if (human == FALSE) {
     #MSigDB gene set FOR UI
     msigdb2 <- '~/R/DRPPM-EASY-ExprAnalysisShinY-main/GeneSets/msigdb_gsNcat_MM.tsv'
     #gene set list for ssGSEA 
-    load('~/R/DRPPM-EASY-ExprAnalysisShinY-main/GeneSets/gs_list_MM.RData')
+    load('~/R/DRPPM-EASY-ExprAnalysisShinY-main/GeneSets/msigdb_gs_MM.RData')
     #Cytokiny genes for mouse
     CTKgenes <- c("Il2","Il12a","Il12b","Il17a","Ifna13","Ifnb1","Ifng","Ifngr1","Cd11b","Itgam",
                   "Cd33","Entpd1","Icosl","Icos","Tnfsf9","Tnfrsf9","Cd40","Cd40lg","Cd70","Cd27",
@@ -234,72 +234,139 @@ ui <-
                tabPanel("Intro/Methodology",
                         fluidPage(
                             mainPanel(
-                                h2("GSEA and RNAseq Analysis Method"),
-                                p("Mapped reads were derived from BBSR and likely normalized to CPM. Pathway enrichment analysis was performed by GSEA [PMID: 16199517] and enrichR[PMID: 23586463]. Single-sample gene set enrichment analysis (ssGSEA) [PMID: 19847166, PMID: 30595505] was used to quantify the expression signatures. LIMMA was used to define differentially expressed genes [PMID: PMID: 25605792]"))
-                        )
-               ),
+                                h3("Introduction"),
+                                p("This is an extention of the DRPPM Expression Analysis ShinY (EASY) App which integrates data from the Cancer Cell Line Encyclopedia (CCLE) for sample selection perform differential gene expression and gene set enrichment analyses. This R Shiny app is very similar in features to the main app, expect for the addition of the first tab which allows for CCLE sample selection. Based on this selection, the expression and meta data will be subset and imported in the back end to the app for further analysis and visualization. Below is a schematic for the DRPPM-EASY-CCLE pipeline."),
+                                h3("Unsupervised Clustering Methods"),
+                                p("Unsupervised clustering is performed by calculating the top variable genes through MAD, CV, or VAR as the variance measure. The choice of variance measure and number to top genes/probes can be determined by the user, as well as the number of clusters with k-means. The identified most variable genes can be downloaded as a table for the user. The “complete” method was chosen as the default algorithm for clustering, but other methods such as Ward, average, and centroid could be chosen based on the ‘hclust()’ function in R."),
+                                h3("Differential Gene Expression Methods"),
+                                p("Differential gene expression analysis is performed on the expression data between two groups defined by the provided metadata file. The samples chosen are log-transformed (log2 + 1). A model matrix is then designed for LIMMA linear modeling followed by empirical Bayes statistics to moderate gene variance and modeling of the global characteristic of the data. Of note, the current pipeline expects the matrix input quantification are pre-normalized, such as in CPM, TMM, or FPKM."),
+                                h3("Gene Set Enrichment Analysis (GSEA) Methods"),
+                                p("Gene Set Enrichment Analysis (GSEA) is performed through signal-to-noise calculations on the expression matrix. This calculation requires at least two types of sample groups and at least three samples for each grouping. The signal-to-noise calculation scales the difference of means by standard deviation and generates a ranked list of genes, effectively capturing the differences between phenotypes. The GSEA identifies the enrichment score (ES) for a gene set, which indicates the extent that the gene set is overrepresented at the beginning or end of the list of ranked genes. The enrichment score is calculated by walking down the ranked gene list and increasing the running-sum statistic when a gene is in the gene set and decreasing when it is not. The maximum deviation from zero that is encountered through walking the list is the ES, where a positive ES indicates the gene set is enriched at the top of the ranked list and a negative ES indicates the gene set is enriched at the bottom of the ranked list. A leading-edge gene list is provided displaying a subset of the genes in the gene set that contribute the most to the ES."),
+                                h4("Gene Set Sources"),
+                                p("The Molecular Signatures Database (MSigDB) is a collection of over 32,000 annotated gene sets divided into 9 major collections as well as various sub-collections [PMID: 16199517, PMID: 12808457]. The MSigDB  gene sets were downloaded with the msigdbr package and processed through R using Tidyverse packages to combine the gene sets into a data frame."),
+                                p("The Cell Marker gene sets were derived from a comprehensive list of cell markers from cell types in various tissues obtained through manually curating over 100,000 published papers [PMID: 30289549]. This data was obtained as an extensive data frame and parsed to make gene sets with the tidyverse packages."),
+                                p("The Library of Integrated Network-based Cellular Signatures (LINCS) L1000 gene sets were derived from the Connectivity Map (CMAP) projects data which treated 4 human cell lines with ~1300 drugs followed by profiling genome-wide mRNA expression following small molecule perturbation [PMID: 24906883].")
+                                )
+                            )
+                        ),
                
-               ####----RNAseq Tab----####
+               ####----Data Exploration Tab----####
                
-               tabPanel("Standard Analysis",
+               tabPanel("Data Exploration",
                         fluidPage(
-                            title = "Standard Analysis",
+                            title = "Data Exploration",
                             sidebarLayout(
                                 sidebarPanel(
                                     
-                                    #heatmap side panel
+                                    ##--Unsupervised Clustering Heatmap--##
                                     
                                     conditionalPanel(condition = "input.dataset == '22'",
-                                                     tabsetPanel(id = "customs",
-                                                                 tabPanel("Parameters",
-                                                                          p(),
-                                                                          numericInput("NumFeatures", step = 1, label = "Number of Genes", value = 100),
-                                                                          h4("Clustering Parameters"),
-                                                                          selectInput("VarianceMeasure", "Select Variance Measure",
-                                                                                      choices = c("MAD","CV","VAR")),
-                                                                          selectInput("ClusteringMethod",
-                                                                                      "Select clustering Method",
-                                                                                      choices = c("complete", "ward.D", "ward.D2", "single", "average", "mcquitty", "median", "centroid")),
-                                                                          numericInput("NumClusters", step = 1, label = "Number of Clusters (Cut Tree with ~k)", value = 2),
-                                                                          h4("Download Cluster Result:"),
-                                                                          downloadButton("downloadClusters", "Download .tsv"),
-                                                                          h4("Download Most Variable Genes List:"),
-                                                                          downloadButton("MVGdownload", "Download MVG .tsv"),
-                                                                          downloadButton("MVGdownloadgmt", "Download MVG .gmt"),
-                                                                          p(),
-                                                                          sliderInput("heatmapFont2.c", "Heatmap Font Size (columns):",
-                                                                                      min = 5, max = 75,
-                                                                                      value = 12, step = 1),
-                                                                          sliderInput("heatmapFont2.r", "Heatmap Font Size (rows):",
-                                                                                      min = 5, max = 75,
-                                                                                      value = 9, step = 1),
-                                                                          value = 222
-                                                                 ),
-                                                                 tabPanel("Custom Heatmap",
-                                                                          p(),
-                                                                          selectizeInput("heatmapGeneSelec","Gene Selection:",
-                                                                                         choices = sort(as.vector(geneList[,1])),
-                                                                                         multiple = T, selected = CTKgenes),
-                                                                          textInput("userheatgenes", "Text Input of Gene List (space or tab delimited):", value = ""),
-                                                                          selectInput("ClusteringMethod2",
-                                                                                      "Select clustering Method",
-                                                                                      choices = c("complete", "ward.D", "ward.D2", "single", "average", "mcquitty", "median", "centroid")),
-                                                                          selectizeInput("userheatsamp2", "Samples Selection:",
-                                                                                         choices = sampsames, multiple = T, selected = sampsames),
-                                                                          sliderInput("heatmapFont3.c", "Heatmap Font Size (columns):",
-                                                                                      min = 5, max = 75,
-                                                                                      value = 12, step = 1),
-                                                                          sliderInput("heatmapFont3.r", "Heatmap Font Size (rows):",
-                                                                                      min = 5, max = 75,
-                                                                                      value = 12, step = 1),
-                                                                          value = 444
-                                                                 )
-                                                     )
+                                                     p(),
+                                                     numericInput("NumFeatures", step = 1, label = "Number of Genes", value = 100),
+                                                     h4("Clustering Parameters"),
+                                                     selectInput("VarianceMeasure", "Select Variance Measure",
+                                                                 choices = c("MAD","CV","VAR")),
+                                                     selectInput("ClusteringMethod",
+                                                                 "Select clustering Method",
+                                                                 choices = c("complete", "ward.D", "ward.D2", "single", "average", "mcquitty", "median", "centroid")),
+                                                     numericInput("NumClusters", step = 1, label = "Number of Clusters (Cut Tree with ~k)", value = 2),
+                                                     h4("Download Cluster Result:"),
+                                                     downloadButton("downloadClusters", "Download .tsv"),
+                                                     h4("Download Most Variable Genes List:"),
+                                                     downloadButton("MVGdownload", "Download MVG .tsv"),
+                                                     downloadButton("MVGdownloadgmt", "Download MVG .gmt"),
+                                                     p(),
+                                                     sliderInput("heatmapFont2.c", "Heatmap Font Size (columns):",
+                                                                 min = 5, max = 75,
+                                                                 value = 12, step = 1),
+                                                     sliderInput("heatmapFont2.r", "Heatmap Font Size (rows):",
+                                                                 min = 5, max = 75,
+                                                                 value = 9, step = 1)
                                     ),
                                     
-                                    #Volcano and MA plot side panel
+                                    ##--Custom Heatmap--##
                                     
-                                    conditionalPanel(condition = "input.dataset == '44' || input.dataset == '66'",
+                                    conditionalPanel(condition = "input.dataset == '33'",
+                                                     p(),
+                                                     selectizeInput("heatmapGeneSelec","Gene Selection:",
+                                                                    choices = sort(as.vector(geneList[,1])),
+                                                                    multiple = T, selected = CTKgenes),
+                                                     textInput("userheatgenes", "Text Input of Gene List (space or tab delimited):", value = ""),
+                                                     selectInput("ClusteringMethod2",
+                                                                 "Select clustering Method",
+                                                                 choices = c("complete", "ward.D", "ward.D2", "single", "average", "mcquitty", "median", "centroid")),
+                                                     selectizeInput("userheatsamp2", "Samples Selection:",
+                                                                    choices = sampsames, multiple = T, selected = sampsames),
+                                                     sliderInput("heatmapFont3.c", "Heatmap Font Size (columns):",
+                                                                 min = 5, max = 75,
+                                                                 value = 12, step = 1),
+                                                     sliderInput("heatmapFont3.r", "Heatmap Font Size (rows):",
+                                                                 min = 5, max = 75,
+                                                                 value = 12, step = 1)
+                                    ),
+                                    
+                                    ##--Gene scatter plot side panel--##
+                                    
+                                    conditionalPanel(condition = "input.dataset == '26'",
+                                                     p(),
+                                                     selectInput("scatterG1","Select Gene 1",
+                                                                 choices = Gene),
+                                                     selectInput("scatterG2","Select Gene 2",
+                                                                 choices = Gene, selected = Gene[2]),
+                                                     checkboxInput("logask","Log2 Transform Expression Data")
+                                    ),
+                                    
+                                    ##--Boxplot side panel--##
+                                    
+                                    conditionalPanel(condition = "input.dataset == '34'",
+                                                     p(),
+                                                     h3("Select A Gene:"),
+                                                     div(DT::dataTableOutput("GeneListTable2"), style = "font-size:10px"),
+                                                     p(),
+                                                     sliderInput("boxplot.font2", "Font Size:",
+                                                                 min = 5, max = 75,
+                                                                 value = 15, step = 1),
+                                                     sliderInput("boxplotDot2", "Box Plot Dot Size:",
+                                                                 min = 0, max = 5,
+                                                                 value = 0.75, step = .25)
+                                    )
+                                ),
+                                mainPanel(
+                                    tabsetPanel(
+                                        id = "dataset",
+                                        tabPanel("Unsupervised Clustering Heatmap",
+                                                 withSpinner(jqui_resizable(plotOutput("heatmap1", width = "100%", height = "1000px")), type = 6),
+                                                 value = 22),
+                                        tabPanel("Custom Heatmap",
+                                                 withSpinner(jqui_resizable(plotOutput("heatmap2", width = "100%", height = "1000px")), type = 6),
+                                                 value = 33),
+                                        tabPanel("Gene Scatter Plot",
+                                                 p(),
+                                                 withSpinner(jqui_resizable(plotlyOutput("geneScatter0", height = "500px")), type = 6),
+                                                 DT::dataTableOutput("geneScatterTable"),
+                                                 downloadButton("geneScatterDownload", "Download Non-log2 Transformed .tsv"),
+                                                 value = 26),
+                                        tabPanel("Box Plots",
+                                                 p(),
+                                                 withSpinner(jqui_resizable(plotOutput('boxplot3', width = "100%", height = "600px")), type = 6),
+                                                 value = 34)
+                                    )
+                                )
+                            )
+                        )
+               ),
+               
+               ####----Differential Expression Analysis----####
+               
+               tabPanel("Differential Expression Analysis",
+                        fluidPage(
+                            title = "Differential Expression Analysis",
+                            sidebarLayout(
+                                sidebarPanel(
+                                    
+                                    ##--Volcano and MA plot side panel--##
+                                    
+                                    conditionalPanel(condition = "input.datasettwo == '44' || input.datasettwo == '66'",
                                                      p(),
                                                      selectInput("comparisonA2", "Comparison: GroupA",
                                                                  choices = metagroups, selected = metagroups[1]),
@@ -316,9 +383,9 @@ ui <-
                                                      textInput("userGeneSelec2", "Text Input of Gene List (space or tab delimited):", value = "")
                                     ),
                                     
-                                    #Boxplot side panel
+                                    ##--Boxplot side panel--##
                                     
-                                    conditionalPanel(condition = "input.dataset == '88'",
+                                    conditionalPanel(condition = "input.datasettwo == '88'",
                                                      p(),
                                                      h3("Select A Gene:"),
                                                      div(DT::dataTableOutput("GeneListTable"), style = "font-size:10px"),
@@ -331,20 +398,9 @@ ui <-
                                                                  value = 0.75, step = .25)
                                     ),
                                     
-                                    #Gene scatter plot side panel
+                                    ##--EnrichR pathway side panel--##
                                     
-                                    conditionalPanel(condition = "input.dataset == '26'",
-                                                     p(),
-                                                     selectInput("scatterG1","Select Gene 1",
-                                                                 choices = Gene),
-                                                     selectInput("scatterG2","Select Gene 2",
-                                                                 choices = Gene, selected = Gene[2]),
-                                                     checkboxInput("logask","Log2 Transform Expression Data")
-                                    ),
-                                    
-                                    #EnrichR pathway side panel
-                                    
-                                    conditionalPanel(condition = "input.dataset == '28'",
+                                    conditionalPanel(condition = "input.datasettwo == '28'",
                                                      selectInput("comparisonA2.path", "Comparison: GroupA",
                                                                  choices = metagroups, selected = metagroups[1]),
                                                      selectInput("comparisonB2.path", "Comparison: GroupB",
@@ -357,9 +413,9 @@ ui <-
                                                                  choices = enrichRchoice)
                                     ),
                                     
-                                    #DEG table side panel
+                                    ##--DEG table side panel--##
                                     
-                                    conditionalPanel(condition = "input.dataset == '24'",
+                                    conditionalPanel(condition = "input.datasettwo == '24'",
                                                      p(),
                                                      selectInput("comparisonA2.DEG", "Comparison: GroupA",
                                                                  choices = metagroups, selected = metagroups[1]),
@@ -375,14 +431,11 @@ ui <-
                                                                   min = 0, max = 10, step = 0.1, value = 0.05),
                                                      numericInput("top_x2", "Number of Top Hits:", value = 100),
                                                      downloadButton("DEGgmtDownload", "Download DEG .gmt")
-                                    ),
+                                    )
                                 ),
                                 mainPanel(
                                     tabsetPanel(
-                                        id = "dataset",
-                                        tabPanel("Heatmap",
-                                                 withSpinner(jqui_resizable(plotOutput("heatmap1", width = "100%", height = "1000px")), type = 6),
-                                                 value = 22),
+                                        id = "datasettwo",
                                         tabPanel("Volcano Plot",
                                                  p(),
                                                  verbatimTextOutput("VolGroupsText"),
@@ -401,23 +454,13 @@ ui <-
                                                  p(),
                                                  withSpinner(jqui_resizable(plotOutput('boxplot1', width = "100%", height = "600px")), type = 6),
                                                  value = 88),
-                                        tabPanel("Gene Scatter Plot",
-                                                 p(),
-                                                 withSpinner(jqui_resizable(plotlyOutput("geneScatter0", height = "500px")), type = 6),
-                                                 DT::dataTableOutput("geneScatterTable"),
-                                                 downloadButton("geneScatterDownload", "Download Non-log2 Transformed .tsv"),
-                                                 value = 26),
                                         tabPanel("Pathway Analysis",
-                                                 #verbatimTextOutput("upregpathtitle"),
-                                                 #h3("Up-regulated pathway"),
                                                  uiOutput("UpRegPathLabel"),
                                                  verbatimTextOutput("upregpath_text"),
                                                  withSpinner(plotOutput('UpRegPathway1'), type = 6),
                                                  div(DT::dataTableOutput("UpRegPathwayTable1"), style = "font-size:10px"),
                                                  downloadButton("UpRegPathDownload", "Download Table .tsv"),
                                                  downloadButton("UpRegPathDownloadgmt", "Download .gmt"),
-                                                 #verbatimTextOutput("dnregpathtitle"),
-                                                 #h3("Down-regulated pathway"),
                                                  uiOutput("DnRegPathLabel"),
                                                  verbatimTextOutput("downregpath_text"),
                                                  withSpinner(plotOutput('DnRegPathway1'), type = 6),
@@ -535,7 +578,6 @@ ui <-
     )
 
 
-
 ####----Server----####
 
 
@@ -635,7 +677,7 @@ server <- function(input, output, session) {
         if (input$tables == 5) {
             GS <- RDataListGen()[(user_gs_mirror()[input$GStable.u_rows_selected,1])]
         }
-        gsva(A, GS, method = input$ssGSEAtype, verbose = F)
+        GSVA::gsva(A, GS, method = input$ssGSEAtype, verbose = F)
     })
     
     #create background GMT from user input gene set table
@@ -662,8 +704,8 @@ server <- function(input, output, session) {
     
     #perform sig2noise calculation and create GSEA result from user chosen gene set
     datasetInput <- reactive({
-        groupA <- meta[,1][meta[,2] == input$comparisonA]
-        groupB <- meta[,1][meta[,2] == input$comparisonB]
+        groupA <- meta[which(meta[,2] == input$comparisonA),1]
+        groupB <- meta[which(meta[,2] == input$comparisonB),1]
         ##----Signal-to-Noise Calculation----##
         A <- A + 0.00000001
         P = as.matrix(as.numeric(colnames(A) %in% groupA))
@@ -703,7 +745,7 @@ server <- function(input, output, session) {
         s2n.matrix.s <- sort(data.gsea, decreasing = T)
         ##----GSEA----##
         if (input$tables == 1){
-            GSEA(s2n.matrix.s, TERM2GENE = gmt[which(gmt$gs_name == msigdb.gsea2[input$msigdbTable_rows_selected,3]),],
+            GSEA(s2n.matrix.s, TERM2GENE = gmt[which(gmt$gs_name == as.character(msigdb.gsea2[input$msigdbTable_rows_selected,3])),],
                  verbose = F, pvalueCutoff = input$userPval)
         }
         else if (input$tables == 3){
@@ -719,8 +761,8 @@ server <- function(input, output, session) {
     #top genes data frame reactive
     topgenereact <- reactive({
         #make group based on user input
-        A <- meta[,1][meta[,2] == input$comparisonA2]
-        B <- meta[,1][meta[,2] == input$comparisonB2]
+        A <- meta[which(meta[,2] == input$comparisonA2),1]
+        B <- meta[which(meta[,2] == input$comparisonB2),1]
         #make top table
         samples <- c(A,B)
         mat <- expr[,which(colnames(expr) %in% samples)]
@@ -791,7 +833,7 @@ server <- function(input, output, session) {
             if (length(input$msigdbTable_rows_selected) > 0){
                 res <- datasetInput()
                 gsea.df <- as.data.frame(res@result)
-                GS <- msigdb.gsea2[input$msigdbTable_rows_selected,3]
+                GS <- as.character(msigdb.gsea2[input$msigdbTable_rows_selected,3])
                 ## Subset core enriched genes
                 genes1 <- as.matrix(gsea.df[which(gsea.df$Description==GS),"core_enrichment"])
                 genes2 <- strsplit(genes1,"/")
@@ -844,8 +886,8 @@ server <- function(input, output, session) {
     #render user generated enriched signature table based off other gmt
     output$enrich_sig_table_gen <- DT::renderDataTable({
         if (input$tables == 3) {
-            groupA <- meta[,1][meta[,2] == input$comparisonA]
-            groupB <- meta[,1][meta[,2] == input$comparisonB]
+            groupA <- meta[which(meta[,2] == input$comparisonA),1]
+            groupB <- meta[which(meta[,2] == input$comparisonB),1]
             ##----Signal-to-Noise Calculation----##
             A <- A + 0.00000001
             P = as.matrix(as.numeric(colnames(A) %in% groupA))
@@ -895,8 +937,8 @@ server <- function(input, output, session) {
                 formatRound(columns = c(2:10), digits = 2)
         }
         else if (input$tables == 5) {
-            groupA <- meta[,1][meta[,2] == input$comparisonA]
-            groupB <- meta[,1][meta[,2] == input$comparisonB]
+            groupA <- meta[which(meta[,2] == input$comparisonA),1]
+            groupB <- meta[which(meta[,2] == input$comparisonB),1]
             ##----Signal-to-Noise Calculation----##
             A <- A + 0.00000001
             P = as.matrix(as.numeric(colnames(A) %in% groupA))
@@ -947,55 +989,55 @@ server <- function(input, output, session) {
         }
     })
     
-    #render variable genes list in sidebar from heatmap
-    output$MostVariableGenesList <- DT::renderDataTable({
-        top_probes <- input$NumFeatures
-        col_labels <- colnames(expr)
-        isexpr <- rowSums(expr[,col_labels] > 1) >= length(col_labels)
-        exp <- expr[isexpr,]
-        mad <- NULL
-        var <- NULL
-        cv <- NULL
-        var_type <- input$VarianceMeasure
-        if (var_type == "MAD"){
-            mad <- apply(log2(exp + 1), 1, mad)
-            mad <- sort(mad, decreasing = T)
-            mad <- head(mad, n = (top_probes +1))
-            out <- cbind(names(mad), mad[names(mad)], exp[names(mad),])
-            colnames(out) <- c("Gene", "MAD", colnames(exp))
-            dataset <- exp[names(mad),]
-            variable_gene_list <- names(mad)
-        }
-        if (var_type == "VAR"){
-            var <- apply(log2(exp + 1), 1, var)
-            var <- sort(var, decreasing = T)
-            var <- head(var, n = (top_probes +1))
-            out <- cbind(names(var), var[names(var)], exp[names(var),])
-            colnames(out) <- c("Gene", "VAR", colnames(exp))
-            dataset <- exp[names(var),]
-            variable_gene_list <- names(var)
-        }
-        if (var_type == "CV"){
-            cv <- apply(log2(exp + 1), 1, cv)
-            cv <- sort(cv, decreasing = T)
-            cv <- head(cv, n = (top_probes +1))
-            out <- cbind(names(cv), cv[names(cv)], exp[names(cv),])
-            colnames(out) <- c("Gene", "VAR", colnames(exp))
-            dataset <- exp[names(cv),]
-            variable_gene_list <- names(cv)
-        }
-        variable_gene_list <- as.data.frame(variable_gene_list)
-        colnames(variable_gene_list)[1] <- "Genes"
-        variable_gene_list$Rank <- rownames(variable_gene_list)
-        variable_gene_list <- variable_gene_list %>%
-            select(Rank, Genes)
-        DT::datatable(variable_gene_list, options = list(paging = F), rownames = F)
-    })
+    ##render variable genes list in sidebar from heatmap
+    #output$MostVariableGenesList <- DT::renderDataTable({
+    #    top_probes <- input$NumFeatures
+    #    col_labels <- colnames(expr)
+    #    isexpr <- rowSums(expr[,col_labels] > 1) >= length(col_labels)
+    #    exp <- expr[isexpr,]
+    #    mad <- NULL
+    #    var <- NULL
+    #    cv <- NULL
+    #    var_type <- input$VarianceMeasure
+    #    if (var_type == "MAD"){
+    #        mad <- apply(log2(exp + 1), 1, mad)
+    #        mad <- sort(mad, decreasing = T)
+    #        mad <- head(mad, n = (top_probes +1))
+    #        out <- cbind(names(mad), mad[names(mad)], exp[names(mad),])
+    #        colnames(out) <- c("Gene", "MAD", colnames(exp))
+    #        dataset <- exp[names(mad),]
+    #        variable_gene_list <- names(mad)
+    #    }
+    #    if (var_type == "VAR"){
+    #        var <- apply(log2(exp + 1), 1, var)
+    #        var <- sort(var, decreasing = T)
+    #        var <- head(var, n = (top_probes +1))
+    #        out <- cbind(names(var), var[names(var)], exp[names(var),])
+    #        colnames(out) <- c("Gene", "VAR", colnames(exp))
+    #        dataset <- exp[names(var),]
+    #        variable_gene_list <- names(var)
+    #    }
+    #    if (var_type == "CV"){
+    #        cv <- apply(log2(exp + 1), 1, cv)
+    #        cv <- sort(cv, decreasing = T)
+    #        cv <- head(cv, n = (top_probes +1))
+    #        out <- cbind(names(cv), cv[names(cv)], exp[names(cv),])
+    #        colnames(out) <- c("Gene", "VAR", colnames(exp))
+    #        dataset <- exp[names(cv),]
+    #        variable_gene_list <- names(cv)
+    #    }
+    #    variable_gene_list <- as.data.frame(variable_gene_list)
+    #    colnames(variable_gene_list)[1] <- "Genes"
+    #    variable_gene_list$Rank <- rownames(variable_gene_list)
+    #    variable_gene_list <- variable_gene_list %>%
+    #        select(Rank, Genes)
+    #    DT::datatable(variable_gene_list, options = list(paging = F), rownames = F)
+    #})
     
     #render DEG table
     output$DEGtable1 <- DT::renderDataTable({
-        A <- meta[,1][meta[,2] == input$comparisonA2.DEG]
-        B <- meta[,1][meta[,2] == input$comparisonB2.DEG]
+        A <- meta[which(meta[,2] == input$comparisonA2.DEG),1]
+        B <- meta[which(meta[,2] == input$comparisonB2.DEG),1]
         mat <- expr[,c(A,B)]
         mat <- log2(mat + 1.0)
         groupAOther <- factor(c(rep("A", length(A)), rep("B", length(B))))
@@ -1014,8 +1056,8 @@ server <- function(input, output, session) {
     output$UpRegPathwayTable1 <- DT::renderDataTable({
         adjp <- input$pathpval
         FC <- input$pathFC
-        A <- meta[,1][meta[,2] == input$comparisonA2.path]
-        B <- meta[,1][meta[,2] == input$comparisonB2.path]
+        A <- meta[which(meta[,2] == input$comparisonA2.path),1]
+        B <- meta[which(meta[,2] == input$comparisonB2.path),1]
         mat <- expr[,c(A,B)]
         mat <- log2(mat + 1.0)
         groupAOther <- factor(c(rep("A", length(A)), rep("B", length(B))))
@@ -1042,8 +1084,8 @@ server <- function(input, output, session) {
     output$DnRegPathwayTable1 <- DT::renderDataTable({
         adjp <- input$pathpval
         FC <- input$pathFC
-        A <- meta[,1][meta[,2] == input$comparisonA2.path]
-        B <- meta[,1][meta[,2] == input$comparisonB2.path]
+        A <- meta[which(meta[,2] == input$comparisonA2.path),1]
+        B <- meta[which(meta[,2] == input$comparisonB2.path),1]
         mat <- expr[,c(A,B)]
         mat <- log2(mat + 1.0)
         groupAOther <- factor(c(rep("A", length(A)), rep("B", length(B))))
@@ -1070,7 +1112,20 @@ server <- function(input, output, session) {
     output$GeneListTable <- DT::renderDataTable({
         DT::datatable(geneList,
                       selection = 'single',
-                      options = list(keys = TRUE, searchHighlight = TRUE, pageLength = 10, lengthMenu = c("10", "25", "50", "100")))
+                      options = list(keys = TRUE,
+                                     searchHighlight = TRUE,
+                                     pageLength = 10,
+                                     lengthMenu = c("10", "25", "50", "100")))
+    })
+    
+    #render gene list table for boxplot selection
+    output$GeneListTable2 <- DT::renderDataTable({
+        DT::datatable(geneList,
+                      selection = 'single',
+                      options = list(keys = TRUE,
+                                     searchHighlight = TRUE,
+                                     pageLength = 10,
+                                     lengthMenu = c("10", "25", "50", "100")))
     })
     
     #render gene scatter plot data table
@@ -1201,7 +1256,7 @@ server <- function(input, output, session) {
             if (length(input$msigdbTable_rows_selected) > 0){
                 res <- datasetInput()
                 gsea.df <- as.data.frame(res@result)
-                geneset <- msigdb.gsea2[input$msigdbTable_rows_selected,3]
+                geneset <- as.character(msigdb.gsea2[input$msigdbTable_rows_selected,3])
                 title <- geneset
                 gseaplot2(res,
                           geneset,
@@ -1239,11 +1294,11 @@ server <- function(input, output, session) {
     output$heatmap0 <- renderPlot({
         if (input$tables == 1) {
             if (length(input$msigdbTable_rows_selected) > 0){
-                groupA <- meta[,1][meta[,2] == input$comparisonA]
-                groupB <- meta[,1][meta[,2] == input$comparisonB]
+                groupA <- meta[which(meta[,2] == input$comparisonA),1]
+                groupB <- meta[which(meta[,2] == input$comparisonB),1]
                 res <- datasetInput()
                 gsea.df <- as.data.frame(res@result)
-                GS <- msigdb.gsea2[input$msigdbTable_rows_selected,3]
+                GS <- as.character(msigdb.gsea2[input$msigdbTable_rows_selected,3])
                 genes1 <- as.matrix(gsea.df[which(gsea.df$Description==GS),"core_enrichment"])
                 genes2 <- strsplit(genes1,"/")
                 genes3 <- as.data.frame(genes2, col.names = "genes")
@@ -1275,7 +1330,7 @@ server <- function(input, output, session) {
                 minimum = -zscore_range;
                 maximum = zscore_range;
                 bk = c(seq(minimum,minimum/2, length=100), seq(minimum/2,maximum/2,length=100),seq(maximum/2,maximum,length=100))
-                hmcols<- colorRampPalette(c("dark blue","blue","white","red", "dark red"))(length(bk)-1)
+                hmcols <- colorRampPalette(c("dark blue","blue","white","red", "dark red"))(length(bk)-1)
                 pheatmap(dataset,            #data
                          cluster_cols = F,    #cluster columns - NO
                          cluster_row = F,     #cluster rows - YES
@@ -1289,8 +1344,8 @@ server <- function(input, output, session) {
         }
         else if (input$tables == 3) {
             if (length(input$tab2table_rows_selected) > 0){
-                groupA <- meta[,1][meta[,2] == input$comparisonA]
-                groupB <- meta[,1][meta[,2] == input$comparisonB]
+                groupA <- meta[which(meta[,2] == input$comparisonA),1]
+                groupB <- meta[which(meta[,2] == input$comparisonB),1]
                 res <- datasetInput()
                 gsea.df <- as.data.frame(res@result)
                 GS <- as.character(GeneSet2[input$tab2table_rows_selected,1])
@@ -1339,8 +1394,8 @@ server <- function(input, output, session) {
         }
         else if (input$tables == 5) {
             if (length(input$GStable.u_rows_selected) > 0){
-                groupA <- meta[,1][meta[,2] == input$comparisonA]
-                groupB <- meta[,1][meta[,2] == input$comparisonB]
+                groupA <- meta[which(meta[,2] == input$comparisonA),1]
+                groupB <- meta[which(meta[,2] == input$comparisonB),1]
                 res <- datasetInput()
                 gsea.df <- as.data.frame(res@result)
                 GS <- as.character(user_gs_mirror()[input$GStable.u_rows_selected,1])
@@ -1389,89 +1444,21 @@ server <- function(input, output, session) {
         }
     })
     
-    #render RNAseq heatmap
-    output$heatmap1 <- renderPlot({
-        if (input$customs == 444){
-            if (length(input$heatmapGeneSelec) >= 2 || length(input$userheatgenes) >= 1) {
-                genelist.uih <- NULL
-                genelist.ush <- NULL
-                genelist.uih2 <- NULL
-                genelist.ush <- input$heatmapGeneSelec
-                genelist.uih <- unlist(strsplit(input$userheatgenes, " "))
-                genelist.uih2 <- unlist(strsplit(input$userheatgenes, "\t"))
-                heatgenes <- c(genelist.ush,genelist.uih,genelist.uih2)
-                usersamps <- input$userheatsamp2
-                exp <- expr[heatgenes,usersamps]
-                meta <- meta[which(meta[,1] %in% usersamps),]
-                dataset <- exp
-                dataset <- log2(dataset + 1)
-                zdataset <- apply(dataset, 1, scale)
-                zdataset <- apply(zdataset, 1, rev)
-                colnames(zdataset) <- names(dataset)
-                dataset <- as.matrix(zdataset)
-                dataset[is.na(dataset)] <- 0
-                
-                dataset = dataset[apply(dataset[,-1], 1, function(x) !all(x==0)),]
-                minimum = -5;
-                maximum = 5;
-                if (abs(min(dataset)) > abs(max(dataset))) {
-                    dataset[dataset < -abs(max(dataset))] = -abs(max(dataset))
-                } else {
-                    dataset[dataset > abs(min(dataset))] = abs(min(dataset))
-                }
-                meta <- meta[order(meta[,2]),]
-                type <- meta[,2]
-                meta2 <- as.data.frame(type)
-                rownames(meta2) <- meta[,1]
-                bk = c(seq(minimum,minimum/2, length=100), seq(minimum/2,maximum/2,length=100),seq(maximum/2,maximum,length=100))
-                hmcols<- colorRampPalette(c("dark blue","blue","white","red", "dark red"))(length(bk)-1)
-                pheatmap(dataset,
-                         cluster_col = F,
-                         cluster_row = T,
-                         fontsize_row = input$heatmapFont3.r,
-                         fontsize_col = input$heatmapFont3.c,
-                         show_rownames = T ,
-                         show_colnames = T,
-                         annotation_col = meta2,
-                         clustering_method = input$ClusteringMethod2,
-                         color=hmcols,
-                         border_color = NA)
-            }
-        }
-        else {
-            top_probes <- input$NumFeatures
-            exp <- expr
-            mad <- NULL
-            var <- NULL
-            cv <- NULL
-            var_type <- input$VarianceMeasure
-            if (var_type == "MAD"){
-                mad <- apply(log2(exp + 1), 1, mad)
-                mad <- sort(mad, decreasing = T)
-                mad <- head(mad, n = (top_probes +1))
-                out <- cbind(names(mad), mad[names(mad)], exp[names(mad),])
-                colnames(out) <- c("Gene", "MAD", colnames(exp))
-                dataset <- exp[names(mad),]
-                variable_gene_list <- names(mad)
-            }
-            else if (var_type == "VAR"){
-                var <- apply(log2(exp + 1), 1, var)
-                var <- sort(var, decreasing = T)
-                var <- head(var, n = (top_probes +1))
-                out <- cbind(names(var), var[names(var)], exp[names(var),])
-                colnames(out) <- c("Gene", "VAR", colnames(exp))
-                dataset <- exp[names(var),]
-                variable_gene_list <- names(var)
-            }
-            else if (var_type == "CV"){
-                cv <- apply(log2(exp + 1), 1, cv)
-                cv <- sort(cv, decreasing = T)
-                cv <- head(cv, n = (top_probes +1))
-                out <- cbind(names(cv), cv[names(cv)], exp[names(cv),])
-                colnames(out) <- c("Gene", "VAR", colnames(exp))
-                dataset <- exp[names(cv),]
-                variable_gene_list <- names(cv)
-            }
+    #render custom DEG heatmap
+    output$heatmap2 <- renderPlot({
+        
+        if (length(input$heatmapGeneSelec) >= 2 || length(input$userheatgenes) >= 1) {
+            genelist.uih <- NULL
+            genelist.ush <- NULL
+            genelist.uih2 <- NULL
+            genelist.ush <- input$heatmapGeneSelec
+            genelist.uih <- unlist(strsplit(input$userheatgenes, " "))
+            genelist.uih2 <- unlist(strsplit(input$userheatgenes, "\t"))
+            heatgenes <- c(genelist.ush,genelist.uih,genelist.uih2)
+            usersamps <- input$userheatsamp2
+            exp <- expr[heatgenes,usersamps]
+            meta <- meta[which(meta[,1] %in% usersamps),]
+            dataset <- exp
             dataset <- log2(dataset + 1)
             zdataset <- apply(dataset, 1, scale)
             zdataset <- apply(zdataset, 1, rev)
@@ -1487,23 +1474,94 @@ server <- function(input, output, session) {
             } else {
                 dataset[dataset > abs(min(dataset))] = abs(min(dataset))
             }
+            meta <- meta[order(meta[,2]),]
             type <- meta[,2]
             meta2 <- as.data.frame(type)
             rownames(meta2) <- meta[,1]
             bk = c(seq(minimum,minimum/2, length=100), seq(minimum/2,maximum/2,length=100),seq(maximum/2,maximum,length=100))
             hmcols<- colorRampPalette(c("dark blue","blue","white","red", "dark red"))(length(bk)-1)
             pheatmap(dataset,
-                     cluster_col = T,
+                     cluster_col = F,
                      cluster_row = T,
-                     fontsize_row = input$heatmapFont2.r,
-                     fontsize_col = input$heatmapFont2.c,
+                     fontsize_row = input$heatmapFont3.r,
+                     fontsize_col = input$heatmapFont3.c,
                      show_rownames = T ,
-                     annotation_col = meta2,
                      show_colnames = T,
-                     clustering_method = input$ClusteringMethod,
+                     annotation_col = meta2,
+                     clustering_method = input$ClusteringMethod2,
                      color=hmcols,
                      border_color = NA)
         }
+        
+    })
+    
+    #render DEG heatmap
+    output$heatmap1 <- renderPlot({
+        
+        top_probes <- input$NumFeatures
+        exp <- expr
+        mad <- NULL
+        var <- NULL
+        cv <- NULL
+        var_type <- input$VarianceMeasure
+        if (var_type == "MAD"){
+            mad <- apply(log2(exp + 1), 1, mad)
+            mad <- sort(mad, decreasing = T)
+            mad <- head(mad, n = (top_probes +1))
+            out <- cbind(names(mad), mad[names(mad)], exp[names(mad),])
+            colnames(out) <- c("Gene", "MAD", colnames(exp))
+            dataset <- exp[names(mad),]
+            variable_gene_list <- names(mad)
+        }
+        else if (var_type == "VAR"){
+            var <- apply(log2(exp + 1), 1, var)
+            var <- sort(var, decreasing = T)
+            var <- head(var, n = (top_probes +1))
+            out <- cbind(names(var), var[names(var)], exp[names(var),])
+            colnames(out) <- c("Gene", "VAR", colnames(exp))
+            dataset <- exp[names(var),]
+            variable_gene_list <- names(var)
+        }
+        else if (var_type == "CV"){
+            cv <- apply(log2(exp + 1), 1, cv)
+            cv <- sort(cv, decreasing = T)
+            cv <- head(cv, n = (top_probes +1))
+            out <- cbind(names(cv), cv[names(cv)], exp[names(cv),])
+            colnames(out) <- c("Gene", "CV", colnames(exp))
+            dataset <- exp[names(cv),]
+            variable_gene_list <- names(cv)
+        }
+        dataset <- log2(dataset + 1)
+        zdataset <- apply(dataset, 1, scale)
+        zdataset <- apply(zdataset, 1, rev)
+        colnames(zdataset) <- names(dataset)
+        dataset <- as.matrix(zdataset)
+        dataset[is.na(dataset)] <- 0
+        
+        dataset = dataset[apply(dataset[,-1], 1, function(x) !all(x==0)),]
+        minimum = -5;
+        maximum = 5;
+        if (abs(min(dataset)) > abs(max(dataset))) {
+            dataset[dataset < -abs(max(dataset))] = -abs(max(dataset))
+        } else {
+            dataset[dataset > abs(min(dataset))] = abs(min(dataset))
+        }
+        type <- meta[,2]
+        meta2 <- as.data.frame(type)
+        rownames(meta2) <- meta[,1]
+        bk = c(seq(minimum,minimum/2, length=100), seq(minimum/2,maximum/2,length=100),seq(maximum/2,maximum,length=100))
+        hmcols<- colorRampPalette(c("dark blue","blue","white","red", "dark red"))(length(bk)-1)
+        pheatmap(dataset,
+                 cluster_col = T,
+                 cluster_row = T,
+                 fontsize_row = input$heatmapFont2.r,
+                 fontsize_col = input$heatmapFont2.c,
+                 show_rownames = T ,
+                 annotation_col = meta2,
+                 show_colnames = T,
+                 clustering_method = input$ClusteringMethod,
+                 color=hmcols,
+                 border_color = NA)
         
     })
     
@@ -1614,12 +1672,35 @@ server <- function(input, output, session) {
         }
     })
     
+    #render boxplot
+    output$boxplot3 <- renderPlot({
+        if (length(input$GeneListTable2_rows_selected) > 0){
+            gene <- geneList[input$GeneListTable2_rows_selected, 1]
+            min <- min(log2(expr[gene,] + 1.0))
+            max <- max(log2(expr[gene,] + 1.0))
+            meta_temp <- meta
+            rownames(meta_temp) <- meta[,1]
+            meta_temp <- meta_temp %>%
+                select(Group)
+            data = merge(t(expr[gene,]), meta_temp, by=0)
+            colnames(data) = c("SampleName", "GeneExpr", "Cluster")
+            ggplot(data, aes(x=Cluster, y=log2(GeneExpr + 1.0))) +
+                geom_boxplot(outlier.colour="red", outlier.shape=8, outlier.size=1) +
+                geom_dotplot(binaxis='y', stackdir='center', dotsize=input$boxplotDot2) +
+                stat_compare_means(label = "p.signif") + ylim(min * 0.9, max * 1.3) +
+                theme_bw() +
+                labs(title= paste(gene, "Expression (log2)")) +
+                theme(axis.text.x = element_text(angle = 90, vjust = 0.25, hjust = 1),
+                      text = element_text(size = input$boxplot.font2))
+        }
+    })
+    
     #render up regulated pathway enrichment plot
     output$UpRegPathway1 <- renderPlot({
         adjp <- input$pathpval
         FC <- input$pathFC
-        A <- meta[,1][meta[,2] == input$comparisonA2.path]
-        B <- meta[,1][meta[,2] == input$comparisonB2.path]
+        A <- meta[which(meta[,2] == input$comparisonA2.path),1]
+        B <- meta[which(meta[,2] == input$comparisonB2.path),1]
         mat <- expr[,c(A,B)]
         mat <- log2(mat + 1.0)
         groupAOther <- factor(c(rep("A", length(A)), rep("B", length(B))))
@@ -1645,8 +1726,8 @@ server <- function(input, output, session) {
     output$DnRegPathway1 <- renderPlot({
         adjp <- input$pathpval
         FC <- input$pathFC
-        A <- meta[,1][meta[,2] == input$comparisonA2.path]
-        B <- meta[,1][meta[,2] == input$comparisonB2.path]
+        A <- meta[which(meta[,2] == input$comparisonA2.path),1]
+        B <- meta[which(meta[,2] == input$comparisonB2.path),1]
         mat <- expr[,c(A,B)]
         mat <- log2(mat + 1.0)
         groupAOther <- factor(c(rep("A", length(A)), rep("B", length(B))))
@@ -1779,7 +1860,7 @@ server <- function(input, output, session) {
                     ggplot(ssgsea4, aes(factor(type), ssgsea4[,2], fill = type)) +
                         geom_boxplot(width = 0.5, lwd = 1, fill = "white") +
                         geom_dotplot(binaxis = 'y', stackdir = "center", dotsize = input$boxplotDotss) +
-                        labs(x = "Group", y = paste(colnames(ssgsea4)[2], " expression", sep = ""),
+                        labs(x = "Group", y = paste(colnames(ssgsea4)[2], " Score", sep = ""),
                              title = paste("ssGSEA Expression Signature: ", colnames(ssgsea4)[2],sep = "")) +
                         theme_bw() +
                         theme(axis.text.x = element_text(angle = 90, vjust = 0.25, hjust = 1),
@@ -1789,7 +1870,7 @@ server <- function(input, output, session) {
                     ggplot(ssgsea4, aes(factor(type), ssgsea4[,2], fill = type)) +
                         geom_boxplot(width = 0.5, lwd = 1, fill = "white") +
                         geom_dotplot(binaxis = 'y', stackdir = "center", dotsize = input$boxplotDotss) +
-                        labs(x = "Group", y = paste(colnames(ssgsea4)[2], " expression", sep = ""),
+                        labs(x = "Group", y = paste(colnames(ssgsea4)[2], " Score", sep = ""),
                              title = paste("ssGSEA Expression Signature: ", colnames(ssgsea4)[2],sep = "")) +
                         theme_bw() +
                         stat_compare_means(method = input$boxplotcompare) +
@@ -1817,7 +1898,7 @@ server <- function(input, output, session) {
                     ggplot(ssgsea4, aes(factor(type), ssgsea4[,2], fill = type)) +
                         geom_boxplot(width = 0.5, lwd = 1, fill = "white") +
                         geom_dotplot(binaxis = 'y', stackdir = "center", dotsize = input$boxplotDotss) +
-                        labs(x = "Group", y = paste(colnames(ssgsea4)[2], " expression", sep = ""),
+                        labs(x = "Group", y = paste(colnames(ssgsea4)[2], " Score", sep = ""),
                              title = paste("ssGSEA Expression Signature: ",colnames(ssgsea4)[2],sep = "")) +
                         theme_bw() +
                         theme(axis.text.x = element_text(angle = 90, vjust = 0.25, hjust = 1),
@@ -1827,7 +1908,7 @@ server <- function(input, output, session) {
                     ggplot(ssgsea4, aes(factor(type), ssgsea4[,2], fill = type)) +
                         geom_boxplot(width = 0.5, lwd = 1, fill = "white") +
                         geom_dotplot(binaxis = 'y', stackdir = "center", dotsize = input$boxplotDotss) +
-                        labs(x = "Group", y = paste(colnames(ssgsea4)[2], " expression", sep = ""),
+                        labs(x = "Group", y = paste(colnames(ssgsea4)[2], " Score", sep = ""),
                              title = paste("ssGSEA Expression Signature: ",colnames(ssgsea4)[2],sep = "")) +
                         theme_bw() +
                         stat_compare_means(method = input$boxplotcompare) +
@@ -1855,7 +1936,7 @@ server <- function(input, output, session) {
                     ggplot(ssgsea4, aes(factor(type), ssgsea4[,2], fill = type)) +
                         geom_boxplot(width = 0.5, lwd = 1, fill = "white") +
                         geom_dotplot(binaxis = 'y', stackdir = "center", dotsize = input$boxplotDotss) +
-                        labs(x = "Group", y = paste(colnames(ssgsea4)[2], " expression", sep = ""),
+                        labs(x = "Group", y = paste(colnames(ssgsea4)[2], " Score", sep = ""),
                              title = paste("ssGSEA Expression Signature: ",colnames(ssgsea4)[2],sep = "")) +
                         theme_bw() +
                         theme(axis.text.x = element_text(angle = 90, vjust = 0.25, hjust = 1),
@@ -1865,7 +1946,7 @@ server <- function(input, output, session) {
                     ggplot(ssgsea4, aes(factor(type), ssgsea4[,2], fill = type)) +
                         geom_boxplot(width = 0.5, lwd = 1, fill = "white") +
                         geom_dotplot(binaxis = 'y', stackdir = "center", dotsize = input$boxplotDotss) +
-                        labs(x = "Group", y = paste(colnames(ssgsea4)[2], " expression", sep = ""),
+                        labs(x = "Group", y = paste(colnames(ssgsea4)[2], " Score", sep = ""),
                              title = paste("ssGSEA Expression Signature: ",colnames(ssgsea4)[2],sep = "")) +
                         theme_bw() +
                         stat_compare_means(method = input$boxplotcompare) +
@@ -2076,61 +2157,61 @@ server <- function(input, output, session) {
             paste(input$DEGfileName,".gmt",sep = "")
         },
         content = function(file) {
-            top_probes <- input$NumFeatures
-            col_labels <- colnames(expr)
-            isexpr <- rowSums(expr[,col_labels] > 1) >= length(col_labels)
-            exp <- expr[isexpr,]
-            mad <- NULL
-            var <- NULL
-            cv <- NULL
-            var_type <- input$VarianceMeasure
-            if (var_type == "MAD"){
-                mad <- apply(log2(exp + 1), 1, mad)
-                mad <- sort(mad, decreasing = T)
-                mad <- head(mad, n = (top_probes +1))
-                out <- cbind(names(mad), mad[names(mad)], exp[names(mad),])
-                colnames(out) <- c("Gene", "MAD", colnames(exp))
-                dataset <- exp[names(mad),]
-                variable_gene_list <- names(mad)
-            }
-            if (var_type == "VAR"){
-                var <- apply(log2(exp + 1), 1, var)
-                var <- sort(var, decreasing = T)
-                var <- head(var, n = (top_probes +1))
-                out <- cbind(names(var), var[names(var)], exp[names(var),])
-                colnames(out) <- c("Gene", "VAR", colnames(exp))
-                dataset <- exp[names(var),]
-                variable_gene_list <- names(var)
-            }
-            if (var_type == "CV"){
-                cv <- apply(log2(exp + 1), 1, cv)
-                cv <- sort(cv, decreasing = T)
-                cv <- head(cv, n = (top_probes +1))
-                out <- cbind(names(cv), cv[names(cv)], exp[names(cv),])
-                colnames(out) <- c("Gene", "VAR", colnames(exp))
-                dataset <- exp[names(cv),]
-                variable_gene_list <- names(cv)
-            }
-            dataset <- log2(dataset + 1)
-            zdataset <- apply(dataset, 1, scale)
-            zdataset <- apply(zdataset, 1, rev)
-            colnames(zdataset) <- names(dataset)
-            dataset <- as.matrix(zdataset)
-            dataset[is.na(dataset)] <- 0
-            dataset = dataset[apply(dataset[,-1], 1, function(x) !all(x==0)),]
-            minimum = -5;
-            maximum = 5;
-            if (abs(min(dataset)) > abs(max(dataset))) {
-                dataset[dataset < -abs(max(dataset))] = -abs(max(dataset))
-            } else {
-                dataset[dataset > abs(min(dataset))] = abs(min(dataset))
-            }
-            results2 = hclust(dist(t(dataset)), method = input$ClusteringMethod)
-            m = sort(cutree(results2, k=input$NumClusters))
-            output = cbind(colnames(m), as.matrix(m))
-            colnames(output) = c("Cluster")
-            A <- meta[,1][meta[,2] == input$comparisonA2]
-            B <- meta[,1][meta[,2] == input$comparisonB2]
+            #top_probes <- input$NumFeatures
+            #col_labels <- colnames(expr)
+            #isexpr <- rowSums(expr[,col_labels] > 1) >= length(col_labels)
+            #exp <- expr[isexpr,]
+            #mad <- NULL
+            #var <- NULL
+            #cv <- NULL
+            #var_type <- input$VarianceMeasure
+            #if (var_type == "MAD"){
+            #    mad <- apply(log2(exp + 1), 1, mad)
+            #    mad <- sort(mad, decreasing = T)
+            #    mad <- head(mad, n = (top_probes +1))
+            #    out <- cbind(names(mad), mad[names(mad)], exp[names(mad),])
+            #    colnames(out) <- c("Gene", "MAD", colnames(exp))
+            #    dataset <- exp[names(mad),]
+            #    variable_gene_list <- names(mad)
+            #}
+            #if (var_type == "VAR"){
+            #    var <- apply(log2(exp + 1), 1, var)
+            #    var <- sort(var, decreasing = T)
+            #    var <- head(var, n = (top_probes +1))
+            #    out <- cbind(names(var), var[names(var)], exp[names(var),])
+            #    colnames(out) <- c("Gene", "VAR", colnames(exp))
+            #    dataset <- exp[names(var),]
+            #    variable_gene_list <- names(var)
+            #}
+            #if (var_type == "CV"){
+            #    cv <- apply(log2(exp + 1), 1, cv)
+            #    cv <- sort(cv, decreasing = T)
+            #    cv <- head(cv, n = (top_probes +1))
+            #    out <- cbind(names(cv), cv[names(cv)], exp[names(cv),])
+            #    colnames(out) <- c("Gene", "VAR", colnames(exp))
+            #    dataset <- exp[names(cv),]
+            #    variable_gene_list <- names(cv)
+            #}
+            #dataset <- log2(dataset + 1)
+            #zdataset <- apply(dataset, 1, scale)
+            #zdataset <- apply(zdataset, 1, rev)
+            #colnames(zdataset) <- names(dataset)
+            #dataset <- as.matrix(zdataset)
+            #dataset[is.na(dataset)] <- 0
+            #dataset = dataset[apply(dataset[,-1], 1, function(x) !all(x==0)),]
+            #minimum = -5;
+            #maximum = 5;
+            #if (abs(min(dataset)) > abs(max(dataset))) {
+            #    dataset[dataset < -abs(max(dataset))] = -abs(max(dataset))
+            #} else {
+            #    dataset[dataset > abs(min(dataset))] = abs(min(dataset))
+            #}
+            #results2 = hclust(dist(t(dataset)), method = input$ClusteringMethod)
+            #m = sort(cutree(results2, k=input$NumClusters))
+            #output = cbind(colnames(m), as.matrix(m))
+            #colnames(output) = c("Cluster")
+            A <- meta[which(meta[,2] == input$comparisonA2),1]
+            B <- meta[which(meta[,2] == input$comparisonB2),1]
             mat <- expr[,c(A,B)]
             mat <- log2(mat + 1.0)
             groupAOther <- factor(c(rep("A", length(A)), rep("B", length(B))))
@@ -2388,7 +2469,7 @@ server <- function(input, output, session) {
         filename = function() {
             if (input$tables == 1){
                 if (length(input$msigdbTable_rows_selected) > 0){
-                    GS <- msigdb.gsea2[input$msigdbTable_rows_selected,3]
+                    GS <- as.character(msigdb.gsea2[input$msigdbTable_rows_selected,3])
                 }
             }
             else if (input$tables == 3){
@@ -2406,7 +2487,7 @@ server <- function(input, output, session) {
         content = function(file){
             if (input$tables == 1){
                 if (length(input$msigdbTable_rows_selected) > 0){
-                    GS <- msigdb.gsea2[input$msigdbTable_rows_selected,3]
+                    GS <- as.character(msigdb.gsea2[input$msigdbTable_rows_selected,3])
                 }
             }
             else if (input$tables == 3){
@@ -2436,61 +2517,61 @@ server <- function(input, output, session) {
             paste("DEG_Table_",Sys.Date(), ".tsv", sep = "")
         },
         content = function(file){
-            top_probes <- input$NumFeatures
-            col_labels <- colnames(expr)
-            isexpr <- rowSums(expr[,col_labels] > 1) >= length(col_labels)
-            exp <- expr[isexpr,]
-            mad <- NULL
-            var <- NULL
-            cv <- NULL
-            var_type <- input$VarianceMeasure
-            if (var_type == "MAD"){
-                mad <- apply(log2(exp + 1), 1, mad)
-                mad <- sort(mad, decreasing = T)
-                mad <- head(mad, n = (top_probes +1))
-                out <- cbind(names(mad), mad[names(mad)], exp[names(mad),])
-                colnames(out) <- c("Gene", "MAD", colnames(exp))
-                dataset <- exp[names(mad),]
-                variable_gene_list <- names(mad)
-            }
-            if (var_type == "VAR"){
-                var <- apply(log2(exp + 1), 1, var)
-                var <- sort(var, decreasing = T)
-                var <- head(var, n = (top_probes +1))
-                out <- cbind(names(var), var[names(var)], exp[names(var),])
-                colnames(out) <- c("Gene", "VAR", colnames(exp))
-                dataset <- exp[names(var),]
-                variable_gene_list <- names(var)
-            }
-            if (var_type == "CV"){
-                cv <- apply(log2(exp + 1), 1, cv)
-                cv <- sort(cv, decreasing = T)
-                cv <- head(cv, n = (top_probes +1))
-                out <- cbind(names(cv), cv[names(cv)], exp[names(cv),])
-                colnames(out) <- c("Gene", "VAR", colnames(exp))
-                dataset <- exp[names(cv),]
-                variable_gene_list <- names(cv)
-            }
-            dataset <- log2(dataset + 1)
-            zdataset <- apply(dataset, 1, scale)
-            zdataset <- apply(zdataset, 1, rev)
-            colnames(zdataset) <- names(dataset)
-            dataset <- as.matrix(zdataset)
-            dataset[is.na(dataset)] <- 0
-            dataset = dataset[apply(dataset[,-1], 1, function(x) !all(x==0)),]
-            minimum = -5;
-            maximum = 5;
-            if (abs(min(dataset)) > abs(max(dataset))) {
-                dataset[dataset < -abs(max(dataset))] = -abs(max(dataset))
-            } else {
-                dataset[dataset > abs(min(dataset))] = abs(min(dataset))
-            }
-            results2 = hclust(dist(t(dataset)), method = input$ClusteringMethod)
-            m = sort(cutree(results2, k=input$NumClusters))
-            output = cbind(colnames(m), as.matrix(m))
-            colnames(output) = c("Cluster")
-            A <- meta[,1][meta[,2] == input$comparisonA2]
-            B <- meta[,1][meta[,2] == input$comparisonB2]
+            #top_probes <- input$NumFeatures
+            #col_labels <- colnames(expr)
+            #isexpr <- rowSums(expr[,col_labels] > 1) >= length(col_labels)
+            #exp <- expr[isexpr,]
+            #mad <- NULL
+            #var <- NULL
+            #cv <- NULL
+            #var_type <- input$VarianceMeasure
+            #if (var_type == "MAD"){
+            #    mad <- apply(log2(exp + 1), 1, mad)
+            #    mad <- sort(mad, decreasing = T)
+            #    mad <- head(mad, n = (top_probes +1))
+            #    out <- cbind(names(mad), mad[names(mad)], exp[names(mad),])
+            #    colnames(out) <- c("Gene", "MAD", colnames(exp))
+            #    dataset <- exp[names(mad),]
+            #    variable_gene_list <- names(mad)
+            #}
+            #if (var_type == "VAR"){
+            #    var <- apply(log2(exp + 1), 1, var)
+            #    var <- sort(var, decreasing = T)
+            #    var <- head(var, n = (top_probes +1))
+            #    out <- cbind(names(var), var[names(var)], exp[names(var),])
+            #    colnames(out) <- c("Gene", "VAR", colnames(exp))
+            #    dataset <- exp[names(var),]
+            #    variable_gene_list <- names(var)
+            #}
+            #if (var_type == "CV"){
+            #    cv <- apply(log2(exp + 1), 1, cv)
+            #    cv <- sort(cv, decreasing = T)
+            #    cv <- head(cv, n = (top_probes +1))
+            #    out <- cbind(names(cv), cv[names(cv)], exp[names(cv),])
+            #    colnames(out) <- c("Gene", "VAR", colnames(exp))
+            #    dataset <- exp[names(cv),]
+            #    variable_gene_list <- names(cv)
+            #}
+            #dataset <- log2(dataset + 1)
+            #zdataset <- apply(dataset, 1, scale)
+            #zdataset <- apply(zdataset, 1, rev)
+            #colnames(zdataset) <- names(dataset)
+            #dataset <- as.matrix(zdataset)
+            #dataset[is.na(dataset)] <- 0
+            #dataset = dataset[apply(dataset[,-1], 1, function(x) !all(x==0)),]
+            #minimum = -5;
+            #maximum = 5;
+            #if (abs(min(dataset)) > abs(max(dataset))) {
+            #    dataset[dataset < -abs(max(dataset))] = -abs(max(dataset))
+            #} else {
+            #    dataset[dataset > abs(min(dataset))] = abs(min(dataset))
+            #}
+            #results2 = hclust(dist(t(dataset)), method = input$ClusteringMethod)
+            #m = sort(cutree(results2, k=input$NumClusters))
+            #output = cbind(colnames(m), as.matrix(m))
+            #colnames(output) = c("Cluster")
+            A <- meta[which(meta[,2] == input$comparisonA2),1]
+            B <- meta[which(meta[,2] == input$comparisonB2),1]
             mat <- expr[,c(A,B)]
             mat <- log2(mat + 1.0)
             groupAOther <- factor(c(rep("A", length(A)), rep("B", length(B))))
@@ -2529,8 +2610,8 @@ server <- function(input, output, session) {
         },
         content = function(file) {
             if (input$tables == 3) {
-                groupA <- meta[,1][meta[,2] == input$comparisonA]
-                groupB <- meta[,1][meta[,2] == input$comparisonB]
+                groupA <- meta[which(meta[,2] == input$comparisonA),1]
+                groupB <- meta[which(meta[,2] == input$comparisonB),1]
                 ##----Signal-to-Noise Calculation----##
                 A <- A + 0.00000001
                 P = as.matrix(as.numeric(colnames(A) %in% groupA))
@@ -2575,8 +2656,8 @@ server <- function(input, output, session) {
                 write_delim(gsea.df, file, delim = '\t')
             }
             else if (input$tables == 5) {
-                groupA <- meta[,1][meta[,2] == input$comparisonA]
-                groupB <- meta[,1][meta[,2] == input$comparisonB]
+                groupA <- meta[which(meta[,2] == input$comparisonA),1]
+                groupB <- meta[which(meta[,2] == input$comparisonB),1]
                 ##----Signal-to-Noise Calculation----##
                 A <- A + 0.00000001
                 P = as.matrix(as.numeric(colnames(A) %in% groupA))
@@ -2633,7 +2714,7 @@ server <- function(input, output, session) {
             if (length(input$msigdbTable_rows_selected) > 0){
                 res <- datasetInput()
                 gsea.df <- as.data.frame(res@result)
-                GS = msigdb.gsea2[input$msigdbTable_rows_selected,3]
+                GS = as.character(msigdb.gsea2[input$msigdbTable_rows_selected,3])
                 NES = gsea.df$NES[which(gsea.df[,'ID']==GS)]
                 Pval = gsea.df$pvalue[which(gsea.df[,'ID']==GS)]
                 NES.o <- paste0("NES: ", NES)
@@ -2733,6 +2814,7 @@ server <- function(input, output, session) {
         
     })
 }
+
 
 
 
