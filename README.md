@@ -1,4 +1,4 @@
-# DRPPM Expression Analysis ShinY App - EASY
+# DRPPM Expression Analysis Shiny App
 
 # Introduction
 
