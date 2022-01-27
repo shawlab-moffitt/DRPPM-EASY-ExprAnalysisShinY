@@ -36,7 +36,7 @@ Finally, we developed an interface for exploration of complex hetergeneous data 
 
 # Required Files
 
-## Required By User
+## Required User Input Files
 
 * **Expression Matrix (.tsv/.txt):**
   * Must be tab delimited with gene names as symbols located in the first column with subsequent columns consiting of the sample name as the header and expression data down the column.
