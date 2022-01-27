@@ -46,6 +46,9 @@ Finally, we developed an interface for exploration of complex hetergeneous data 
 * **Meta Data (.tsv/.txt):**
   * Must be tab delimited with two columns. First column of sasmple names and second column as phenotype grouping of the samples
   * This file type is required for the Getting Started Script, [GSEA_Sig_Table_Gen.R](https://github.com/shawlab-moffitt/DRPPM-EASY-ExprAnalysisShinY/blob/main/GettingStartedScripts/GSEA_Sig_Table_Gen.R) as well as for within the app.
+  
+Example matrix and meta data inputs are listed https://github.com/shawlab-moffitt/DRPPM-EASY-ExprAnalysisShinY/tree/main/ExampleData
+
 * **GMT file or Gene Set Data (optional):**
   * If the user chooses to user their own gene set file it must be formatted correctly.
     * If using a .gmt file you can find example formatting by the Broad Institute as seen [here](https://software.broadinstitute.org/cancer/software/gsea/wiki/index.php/Data_formats#GMT:_Gene_Matrix_Transposed_file_format_.28.2A.gmt.29).
@@ -54,7 +57,7 @@ Finally, we developed an interface for exploration of complex hetergeneous data 
   * These gene set files could be used for generating the enriched signatures table in the Getting Started Script, [GSEA_Sig_Table_Gen.R](https://github.com/shawlab-moffitt/DRPPM-EASY-ExprAnalysisShinY/blob/main/GettingStartedScripts/GSEA_Sig_Table_Gen.R) as well as replacing the gene set within the DRPPM-EASY app script.
   * To simplify this optional input there is a tab within the app's GSEA section for the user to upload their own gene set file instead of hard coding it in.
 
-Example inputs are listed https://github.com/shawlab-moffitt/DRPPM-EASY-ExprAnalysisShinY/tree/main/ExampleData
+
 ## Required and Provided
 
 * **MSigDB Files:** 
