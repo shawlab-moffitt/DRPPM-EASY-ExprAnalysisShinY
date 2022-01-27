@@ -54,6 +54,7 @@ Finally, we developed an interface for exploration of complex hetergeneous data 
   * These gene set files could be used for generating the enriched signatures table in the Getting Started Script, [GSEA_Sig_Table_Gen.R](https://github.com/shawlab-moffitt/DRPPM-EASY-ExprAnalysisShinY/blob/main/GettingStartedScripts/GSEA_Sig_Table_Gen.R) as well as replacing the gene set within the DRPPM-EASY app script.
   * To simplify this optional input there is a tab within the app's GSEA section for the user to upload their own gene set file instead of hard coding it in.
 
+Example inputs are listed https://github.com/shawlab-moffitt/DRPPM-EASY-ExprAnalysisShinY/tree/main/ExampleData
 ## Required and Provided
 
 * **MSigDB Files:** 
