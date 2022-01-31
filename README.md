@@ -44,7 +44,7 @@ Finally, we developed an interface for exploration of complex hetergeneous data 
      * Larger files might inflict memory issues for you local computer.
   *  This file type is required for the Getting Started Script, [GSEA_Sig_Table_Gen.R](https://github.com/shawlab-moffitt/DRPPM-EASY-ExprAnalysisShinY/blob/main/GettingStartedScripts/GSEA_Sig_Table_Gen.R) as well as for within the app.
 * **Meta Data (.tsv/.txt):**
-  * Must be tab delimited with two columns. First column of sasmple names and second column as phenotype grouping of the samples
+  * Must be tab delimited with two columns. First column of sample names and second column as phenotype grouping of the samples
   * This file type is required for the Getting Started Script, [GSEA_Sig_Table_Gen.R](https://github.com/shawlab-moffitt/DRPPM-EASY-ExprAnalysisShinY/blob/main/GettingStartedScripts/GSEA_Sig_Table_Gen.R) as well as for within the app.
 
 ## Required for Setup - Provided
