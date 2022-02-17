@@ -16,7 +16,7 @@ The flow chart below gives a layout of the EASY app's family infrastructure whic
 
 ## Via Download
 
-* Download ZIP file from https://github.com/shawlab-moffitt/DRPPM-EASY-ExprAnalysisShinY
+* Download [ZIP file](https://github.com/shawlab-moffitt/DRPPM-EASY-ExprAnalysisShinY/archive/refs/heads/main.zip) from https://github.com/shawlab-moffitt/DRPPM-EASY-ExprAnalysisShinY
 * Unzip and load into directory as a project in R Studio
 * Open the ‘App.R’ script and write in user input files and options as directed at the top of the script
   * ‘App.R’ script begins with example files loaded in from the ExampleData folder
