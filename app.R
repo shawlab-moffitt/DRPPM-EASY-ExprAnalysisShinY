@@ -24,6 +24,9 @@ invisible(lapply(packages, library, character.only = TRUE))
 invisible(lapply(bioCpacks, library, character.only = TRUE))
 
 
+####
+# Make sure the 'DRPPM-EASY-ExprAnalysisShinY-main' Folder is set to be your working directory
+####
 
 
 ####----User Data Input----####
@@ -35,32 +38,35 @@ ProjectName <- "USP7 Human Demo"
 ##--User Input File Names--##
 
 #expression data
-expr_file <- "~/R/DRPPM-EASY-ExprAnalysisShinY-main/ExampleData/USP7_RNAseq_expr.txt"
+expr_file <- "ExampleData/USP7_RNAseq_expr.txt"
 
 #meta data
-meta_file <- "~/R/DRPPM-EASY-ExprAnalysisShinY-main/ExampleData/USP7_RNAseq_meta.tsv"
+meta_file <- "ExampleData/USP7_RNAseq_meta.tsv"
 #Is there a header?
 header <- TRUE
 
-#Enriched Signatures data table
-ES_tables <- c("~/R/DRPPM-EASY-ExprAnalysisShinY-main/ExampleData/USP7_Enrich_Sig_Table.tsv")
+#Enriched Signatures data table - OPTIONAL
+ES_tables <- c("ExampleData/USP7_Enrich_Sig_Table.tsv")
 
 #If human: set TRUE
 #If mouse: set FALSE
 human <- TRUE
 
-##--User Gene Set Input--##
+
+
+##--OPTIONAL User Gene Set Input--##
 
 #write in the name of your gene set list for shiny UI
 userGSlist_name <- 'CellMarker Gene Sets'
 
 #path to your gene set file .gmt or .txt/.tsv
-userGS_file <- '~/R/DRPPM-EASY-ExprAnalysisShinY-main/GeneSets/CellMarker_gsNsym_HS.tsv'
+userGS_file <- 'GeneSets/CellMarker_gsNsym_HS.tsv'
 #Does gene set file have header?
 header.gs <- TRUE
 
 #path to your R data list object for ssGSEA
-userRData_file <- '~/R/DRPPM-EASY-ExprAnalysisShinY-main/GeneSets/CellMarker_GS_HS.RData'
+userRData_file <- 'GeneSets/CellMarker_GS_HS.RData'
+
 
 
 
@@ -71,11 +77,11 @@ userRData_file <- '~/R/DRPPM-EASY-ExprAnalysisShinY-main/GeneSets/CellMarker_GS_
 
 if (human == TRUE) {
     #MSigDB gene set
-    msigdb <- '~/R/DRPPM-EASY-ExprAnalysisShinY-main/GeneSets/msigdb_gsNsym_HS.zip'
+    msigdb <- 'GeneSets/msigdb_gsNsym_HS.zip'
     #MSigDB gene set FOR UI
-    msigdb2 <- '~/R/DRPPM-EASY-ExprAnalysisShinY-main/GeneSets/msigdb_gsNcat_HS.tsv'
+    msigdb2 <- 'GeneSets/msigdb_gsNcat_HS.tsv'
     #gene set list for ssGSEA
-    load('~/R/DRPPM-EASY-ExprAnalysisShinY-main/GeneSets/msigdb_gs_HS.RData')
+    load('GeneSets/msigdb_gs_HS.RData')
     #Cytokine genes for human
     CTKgenes <- c("IL2","IL12A","IL12B","IL17A","IFNA1","IFNB1","IFNG","IFNGR","CD11b",
                   "ITGAM","CD33","ENTPD1","ICOSLG","CD275","CD278","TNFSF9","TNFRSF9",
@@ -86,11 +92,11 @@ if (human == TRUE) {
 }
 if (human == FALSE) {
     #MSigDB gene set
-    msigdb <- '~/R/DRPPM-EASY-ExprAnalysisShinY-main/GeneSets/msigdb_gsNsym_MM.zip'
+    msigdb <- 'GeneSets/msigdb_gsNsym_MM.zip'
     #MSigDB gene set FOR UI
-    msigdb2 <- '~/R/DRPPM-EASY-ExprAnalysisShinY-main/GeneSets/msigdb_gsNcat_MM.tsv'
+    msigdb2 <- 'GeneSets/msigdb_gsNcat_MM.tsv'
     #gene set list for ssGSEA 
-    load('~/R/DRPPM-EASY-ExprAnalysisShinY-main/GeneSets/msigdb_gs_MM.RData')
+    load('GeneSets/msigdb_gs_MM.RData')
     #Cytokiny genes for mouse
     CTKgenes <- c("Il2","Il12a","Il12b","Il17a","Ifna13","Ifnb1","Ifng","Ifngr1","Cd11b","Itgam",
                   "Cd33","Entpd1","Icosl","Icos","Tnfsf9","Tnfrsf9","Cd40","Cd40lg","Cd70","Cd27",
@@ -560,7 +566,9 @@ ui <-
                                                  downloadButton("enrich_sig_download","Download .tsv"),
                                                  value = 6),
                                         tabPanel("Generate Summary Table",
-                                                 p("Please note this may take several minutes depending on size and quantity of gene sets in GMT file."),
+                                                 p("Please note this may take several minutes depending on size of the GMT file and expression matrix."),
+                                                 uiOutput("genESTbutton"),
+                                                 p(),
                                                  withSpinner(DT::dataTableOutput("enrich_sig_table_gen"), type = 6),
                                                  downloadButton("enrich_sig_download.u","Download .tsv"),
                                                  value = 8),
@@ -585,6 +593,13 @@ server <- function(input, output, session) {
     
     
     ####----Render UI----####
+    
+    #render enrich signature table generation button for msigdb data
+    output$genESTbutton <- renderUI({
+        if (input$tables == 1) {
+            actionButton("GenerateEST", "Generate Enriched Signature Table with MSigDB Gene Sets")
+        }
+    })
     
     
     #render user gmt data upload if indicated
@@ -653,6 +668,56 @@ server <- function(input, output, session) {
     
     
     ####----Reactives----####
+    
+    GeneratedMSigDBEST <- reactive({
+        if (input$GenerateEST == TRUE) {
+            groupA <- meta[which(meta[,2] == input$comparisonA),1]
+            groupB <- meta[which(meta[,2] == input$comparisonB),1]
+            ##----Signal-to-Noise Calculation----##
+            A <- A + 0.00000001
+            P = as.matrix(as.numeric(colnames(A) %in% groupA))
+            n1 <- sum(P[,1])
+            M1 <- A %*% P
+            M1 <- M1/n1
+            A2 <- A*A
+            S1 <- A2 %*% P
+            S1 <- S1/n1 - M1*M1 
+            S1 <- sqrt(abs((n1/(n1-1)) * S1))
+            P = as.matrix(as.numeric(colnames(A) %in% groupB))
+            n2 <- sum(P[,1])
+            M2 <- A %*% P
+            M2 <- M2/n2
+            A2 <- A*A
+            S2 <- A2 %*% P
+            S2 <- S2/n2 - M2*M2
+            S2 <- sqrt(abs((n2/(n2-1)) * S2))
+            rm(A2)
+            # small sigma "fix" as used in GeneCluster
+            S2 <- ifelse(0.2*abs(M2) < S2, S2, 0.2*abs(M2))
+            S2 <- ifelse(S2 == 0, 0.2, S2)
+            S1 <- ifelse(0.2*abs(M1) < S1, S1, 0.2*abs(M1))
+            S1 <- ifelse(S1 == 0, 0.2, S1)
+            M1 <- M1 - M2
+            rm(M2)
+            S1 <- S1 + S2
+            rm(S2)
+            s2n.matrix <- M1/S1
+            ##----Reformatting----##
+            s2n.df <- as.data.frame(s2n.matrix)
+            s2n.df$GeneID <- rownames(s2n.df)
+            rownames(s2n.df) <- NULL
+            data <- dplyr::select(s2n.df, GeneID, V1)
+            data.gsea <- data$V1
+            names(data.gsea) <- as.character(data$GeneID)
+            s2n.matrix.s <- sort(data.gsea, decreasing = T)
+            ####----GSEA----####
+            #perform GSEA
+            gsea.res <- GSEA(s2n.matrix.s, TERM2GENE = gmt, verbose = F, pvalueCutoff = 1)
+            #extract results and convert to tibble
+            gsea.df <- gsea.res@result
+            gsea.df
+        }
+    })
     
     
     #reactive to generate RData list
@@ -986,6 +1051,19 @@ server <- function(input, output, session) {
                           caption = "Enriched Signatures",
                           options = list(keys = T, searchHighlight = T, pageLength = 10, lengthMenu = c("10", "25", "50", "100"), scrollX = T)) %>%
                 formatRound(columns = c(2:10), digits = 2)
+        }
+        else if (input$tables == 1) {
+            if (input$GenerateEST == TRUE) {
+                #extract results and convert to tibble
+                gsea.df <- GeneratedMSigDBEST()
+                gsea.df <- as_tibble(gsea.df)
+                ## displaying the GSEA results as interactive data table
+                DT::datatable(gsea.df,
+                              extensions = c("KeyTable", "FixedHeader"),
+                              caption = "Enriched Signatures",
+                              options = list(keys = T, searchHighlight = T, pageLength = 10, lengthMenu = c("10", "25", "50", "100"), scrollX = T)) %>%
+                    formatRound(columns = c(2:10), digits = 2)
+            }
         }
     })
     
@@ -2700,6 +2778,13 @@ server <- function(input, output, session) {
                 gsea.res <- GSEA(s2n.matrix.s, TERM2GENE = gmt.i, verbose = F, pvalueCutoff = input$userPval)
                 gsea.df <- as.data.frame(gsea.res@result)
                 write_delim(gsea.df, file, delim = '\t')
+            }
+            else if (input$tables == 1){
+                if (input$GenerateEST == TRUE) {
+                    gsea.df <- GeneratedMSigDBEST()
+                    gsea.df <- as.data.frame(gsea.df)
+                    write_delim(gsea.df, file, delim = '\t')
+                }
             }
         }
     )
