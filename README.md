@@ -14,8 +14,25 @@ The flow chart below gives a layout of the EASY app's family infrastructure whic
 
 # Installation
 
+## Via Download
+
 * Download ZIP file from https://github.com/shawlab-moffitt/DRPPM-EASY-ExprAnalysisShinY
 * Unzip and load into directory as a project in R Studio
+* Open the ‘App.R’ script and write in user input files and options as directed at the top of the script
+  * ‘App.R’ script begins with example files loaded in from the ExampleData folder
+* Press ‘Run App’ button in R Studio to run in application or browser window and enjoy!
+  * The app script will install any missing packages that the user may not have locally
+
+## Via Git Clone
+
+* Clone the [GitHub Repository](https://github.com/shawlab-moffitt/DRPPM-EASY-ExprAnalysisShinY.git) into the destination of your choice.
+```bash
+git clone https://github.com/shawlab-moffitt/DRPPM-EASY-ExprAnalysisShinY.git
+```
+* To run in R studio I recommend opening R Studio and starting a new project with a name of your choice
+* In the terminal tab at the bottom you can type in the git clone command from above
+* Make sure to set 'DRPPM-EASY-ExprAnalysisShinY-main' as your working directory
+  * You can do this in the 'More' drop down box from the 'Files' tab on the top of the bottom-right box in R Studio
 * Open the ‘App.R’ script and write in user input files and options as directed at the top of the script
   * ‘App.R’ script begins with example files loaded in from the ExampleData folder
 * Press ‘Run App’ button in R Studio to run in application or browser window and enjoy!
