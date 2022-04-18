@@ -117,7 +117,7 @@ if (human == FALSE) {
 expr <- read.delim(expr_file, sep = '\t', header = T, strip.white = T)
 colnames(expr)[1] <- "Gene"
 expr <- expr %>%
-    drop_na()
+  drop_na()
 row.names(expr) <- make.names(expr[,1], unique = T)
 expr <- expr[,-1]
 colnames(expr) <- gsub("[_.-]", "_", colnames(expr))
@@ -132,6 +132,7 @@ geneList <- as.data.frame(Gene)
 meta <- read.delim(meta_file, sep = '\t', header = header, strip.white = T)
 meta[,1] <- gsub("[_.-]", "_", meta[,1])
 colnames(meta) <- c("SampleName","Group")
+
 metagroups <- as.vector(levels(factor(meta[,2])))
 
 
@@ -829,8 +830,9 @@ server <- function(input, output, session) {
         A <- meta[which(meta[,2] == input$comparisonA2),1]
         B <- meta[which(meta[,2] == input$comparisonB2),1]
         #make top table
-        samples <- c(A,B)
-        mat <- expr[,which(colnames(expr) %in% samples)]
+        #samples <- c(A,B)
+        #mat <- expr[,which(colnames(expr) %in% samples)]
+        mat <- expr[,c(A,B)]
         mat <- log2(mat + 1.0)
         groupAOther <- factor(c(rep("A", length(A)), rep("B", length(B))))
         designA <- model.matrix(~0 + groupAOther)
