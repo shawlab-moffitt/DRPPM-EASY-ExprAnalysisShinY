@@ -115,6 +115,7 @@ expr <- expr %>%
   drop_na()
 row.names(expr) <- make.names(expr[,1], unique = T)
 expr <- expr[,-1]
+expr = expr[order(row.names(expr)), ]
 colnames(expr) <- gsub("[_.-]", "_", colnames(expr))
 A <- as.matrix(expr)
 
