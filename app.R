@@ -113,7 +113,12 @@ expr <- read.delim(expr_file, sep = '\t', header = T, strip.white = T)
 colnames(expr)[1] <- "Gene"
 expr <- expr %>%
   drop_na()
-row.names(expr) <- make.names(expr[,1], unique = T)
+if (TRUE %in% duplicated(expr[,1])) {
+  expr <- expr %>%
+    group_by(Gene) %>%
+    summarise_all(max)
+}
+rownames(expr) <- expr[,1]
 expr <- expr[,-1]
 expr = expr[order(row.names(expr)), ]
 colnames(expr) <- gsub("[_.-]", "_", colnames(expr))
