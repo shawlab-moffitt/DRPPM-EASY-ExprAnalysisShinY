@@ -1,3 +1,4 @@
+
 ####----User Data Input----####
 
 #Input desired project name for webpage - will be followed by 'Expression Analysis'
@@ -27,61 +28,6 @@ set.seed(02202023)
 
 
 
-##--OPTIONAL User Gene Set Input--##
-
-#write in the name of your gene set list for shiny UI
-userGSlist_name <- 'CellMarker Gene Sets'
-
-#path to your gene set file .gmt or .txt/.tsv
-userGS_file <- 'GeneSets/CellMarker_gsNsym_HS.tsv'
-#Does gene set file have header?
-header.gs <- TRUE
-
-#path to your R data list object for ssGSEA
-userRData_file <- 'GeneSets/CellMarker_GS_HS.RData'
-
-
-
-
-
-####----Backend Data Input----####
-
-loadRData <- function(fileName){
-  #loads an RData file, and returns it
-  load(fileName)
-  get(ls()[ls() != "fileName"])
-}
-
-if (human == TRUE) {
-  #MSigDB gene set
-  msigdb <- 'GeneSets/msigdb_gsNsym_HS.zip'
-  #MSigDB gene set FOR UI
-  msigdb2 <- 'GeneSets/msigdb_gsNcat_HS.tsv'
-  #gene set list for ssGSEA
-  gs <- loadRData('GeneSets/msigdb_gs_HS.RData')
-  #Cytokine genes for human
-  CTKgenes <- c("IL2","IL12A","IL12B","IL17A","IFNA1","IFNB1","IFNG","IFNGR","CD11b",
-                "ITGAM","CD33","ENTPD1","ICOSLG","CD275","CD278","TNFSF9","TNFRSF9",
-                "CD40","CD40LG","CD70","CD27","TNFSF18","TNFRSF18","TNFSF14","TNFRSF14",
-                "TNFSF4","TNFRSF4","HLA-A","CD3","CEACAM1","CD80","CD86","CTLA4","CD276",
-                "VTCN1","PVR","CD226","TIGIT","CD96","LGALS3","LGALS3BP","LGALS9","LGALS9C",
-                "HAVCR2","HHLA2","TMIGD2","CD274","PDCD1LG2","PDCD1","VSIR")
-}
-if (human == FALSE) {
-  #MSigDB gene set
-  msigdb <- 'GeneSets/msigdb_gsNsym_MM.zip'
-  #MSigDB gene set FOR UI
-  msigdb2 <- 'GeneSets/msigdb_gsNcat_MM.tsv'
-  #gene set list for ssGSEA 
-  gs <- loadRData('GeneSets/msigdb_gs_MM.RData')
-  #Cytokiny genes for mouse
-  CTKgenes <- c("Il2","Il12a","Il12b","Il17a","Ifna13","Ifnb1","Ifng","Ifngr1","Cd11b","Itgam",
-                "Cd33","Entpd1","Icosl","Icos","Tnfsf9","Tnfrsf9","Cd40","Cd40lg","Cd70","Cd27",
-                "Tnfsf18","Tnfrsf18","Tnfsf14","Tnfrsf14","Tnfsf4","Tnfrsf4","H2-K1","CD3G",
-                "Ceacam1","Cd80","Cd86","Ctla4","Cd276","Vtcn1","Pvr","Cd226","Tigit","Cd96","Lgals3",
-                "Lgals3bp","Lgals9","Lgals9c","Havcr2","Hhla2","Cd274","Pdcd1lg2","Pdcd1","Vsir")
-}
-
 
 ####----Install and load packages----####
 
@@ -103,25 +49,93 @@ if (any(installed_packages_BIOC == FALSE)) {
 invisible(lapply(bioCpacks, library, character.only = TRUE))
 
 
+##--User Gene Set Input (Optional)--##
+
+#write in the name of your gene set list for shiny UI
+userGSlist_name <- 'LINCS L1000'
+
+#path to your gene set file .gmt or .txt/.tsv
+userGS_file <- 'LINCS_L1000_gsNsym_HS_v2.zip'
+#Does gene set file have header?
+header.gs <- TRUE
+
+#path to your R data list object for ssGSEA
+userRData_file <- 'LINCS_L1000_gs_HS_v2.RData'
+
+
+
+
+
+####----Backend Data Input----####
+
+loadRData <- function(fileName){
+  #loads an RData file, and returns it
+  load(fileName)
+  get(ls()[ls() != "fileName"])
+}
+
+if (human == TRUE) {
+  #MSigDB gene set
+  msigdb <- 'msigdb_gsNsym_HS_v2.zip'
+  #MSigDB gene set FOR UI
+  msigdb2 <- 'msigdb_gsNcat_HS_v2.txt'
+  #gene set list for ssGSEA
+  gs <- loadRData('msigdb_gs_HS_v2.RData')
+  #Cytokine genes for human
+  CTKgenes <- c("IL2","IL12A","IL12B","IL17A","IFNA1","IFNB1","IFNG","IFNGR","CD11b",
+                "ITGAM","CD33","ENTPD1","ICOSLG","CD275","CD278","TNFSF9","TNFRSF9",
+                "CD40","CD40LG","CD70","CD27","TNFSF18","TNFRSF18","TNFSF14","TNFRSF14",
+                "TNFSF4","TNFRSF4","HLA-A","CD3","CEACAM1","CD80","CD86","CTLA4","CD276",
+                "VTCN1","PVR","CD226","TIGIT","CD96","LGALS3","LGALS3BP","LGALS9","LGALS9C",
+                "HAVCR2","HHLA2","TMIGD2","CD274","PDCD1LG2","PDCD1","VSIR")
+}
+if (human == FALSE) {
+  #MSigDB gene set
+  msigdb <- 'msigdb_gsNsym_MM.zip'
+  #MSigDB gene set FOR UI
+  msigdb2 <- 'msigdb_gsNcat_MM.tsv'
+  #gene set list for ssGSEA 
+  gs <- loadRData('msigdb_gs_MM.RData')
+  #Cytokine genes for mouse
+  CTKgenes <- c("Il2","Il12a","Il12b","Il17a","Ifna13","Ifnb1","Ifng","Ifngr1","Cd11b","Itgam",
+                "Cd33","Entpd1","Icosl","Icos","Tnfsf9","Tnfrsf9","Cd40","Cd40lg","Cd70","Cd27",
+                "Tnfsf18","Tnfrsf18","Tnfsf14","Tnfrsf14","Tnfsf4","Tnfrsf4","H2-K1","CD3G",
+                "Ceacam1","Cd80","Cd86","Ctla4","Cd276","Vtcn1","Pvr","Cd226","Tigit","Cd96","Lgals3",
+                "Lgals3bp","Lgals9","Lgals9c","Havcr2","Hhla2","Cd274","Pdcd1lg2","Pdcd1","Vsir")
+}
+
+
+
 ####----Read and Manipulate Files----####
 
 
 ##read files
 
 ##reading expression data
-expr <- read.delim(expr_file, sep = '\t', header = T, strip.white = T)
+expr <- as.data.frame(read_delim(expr_file, delim = '\t', col_names = T))
 colnames(expr)[1] <- "Gene"
+# Remove Expression with NA
 expr <- expr %>%
   drop_na()
+# Check that expression data is numeric
+isChar <- unname(which(sapply(expr, function(x) is.character(x))))
+isChar <-  isChar[-1]
+if (length(isChar) > 0) {
+  expr[isChar] <- sapply(expr[isChar],as.numeric)
+}
+# Remove Duplicate genes
 if (TRUE %in% duplicated(expr[,1])) {
   expr <- expr %>%
     group_by(Gene) %>%
     summarise_all(max)
 }
-rownames(expr) <- expr[,1]
+expr <- as.data.frame(expr)
+# Make rownames <- genenames
+row.names(expr) <- expr[,1]
 expr <- expr[,-1]
 expr = expr[order(row.names(expr)), ]
-colnames(expr) <- gsub("[_.-]", "_", colnames(expr))
+# Harmonize special characters in sample names
+colnames(expr) <- gsub("[[:punct:]]", "_", colnames(expr))
 A <- as.matrix(expr)
 
 #gene list file from expression data
@@ -189,10 +203,9 @@ cv <- function(x){
   (sd(x)/mean(x))*100
 }
 
-#enrichR pathway choices
-enrichRtab <- listEnrichrDbs()
-enrichRchoice <- enrichRtab[,"libraryName"]
-
+##enrichR pathway choices
+#enrichRtab <- listEnrichrDbs()
+#enrichRchoice <- enrichRtab[,"libraryName"]
 
 ####----Shiny UI----####
 
@@ -211,7 +224,7 @@ ui <-
                           h3("Introduction"),
                           p("With the rapid generation of large datasets as a result of advancing next-generation sequecing (NGS) technologies, the need for quick and reproducible data analysis tools has become paramount. The ability to analyze both genomic and proteomic data sets can allow for the detection of compelling genes and features that may be of interest for further analysis. The General Expression Analysis App hosted in R Shiny does not require an extensive computation background to run these analyses. With user input of expression and meta data, along with gene set we have sourced and provided, the user may produce useful anaylsis and visualizations on a web-based interface within minutes. This method of reproducible data analysis generates a number of visualization to view Gene Set Enrichment (GSEA) and differential gene expression analysis, as well as the ability to download various tables and gene sets that are produced by the App for further use. Additional apps are being developed for the EASY family. DRPPM-EASY-Integraction allows users to further analyze data obtained from the main DRPPM-EASY app and compare expression data between two matrices. DRPPM-EASY-CCLE integrates a sample selection tab which allows users to select expression and meta data from the Cancer Cell Line Encyclopedia (CCLE) based on cancer type or lineage and sample type for analysis within the DRPPM-EASY app. The flow chart below gives a layout of the EASY app's family infrastructure which we will describe in further detail."),
                           h3("Unsupervised Clustering Methods"),
-                          p("Unsupervised clustering is performed by calculating the top variable genes through MAD, CV, or VAR as the variance measure. The choice of variance measure and number to top genes/probes can be determined by the user, as well as the number of clusters with k-means. The identified most variable genes can be downloaded as a table for the user. The “complete” method was chosen as the default algorithm for clustering, but other methods such as Ward, average, and centroid could be chosen based on the ‘hclust()’ function in R."),
+                          p("Unsupervised clustering is performed by calculating the top variable genes through MAD, CV, or VAR as the variance measure. The choice of variance measure and number to top genes/probes can be determined by the user, as well as the number of clusters with k-means. The identified most variable genes can be downloaded as a table for the user. The â€œcompleteâ€ method was chosen as the default algorithm for clustering, but other methods such as Ward, average, and centroid could be chosen based on the â€˜hclust()â€™ function in R."),
                           h3("Differential Gene Expression Methods"),
                           p("Differential gene expression analysis is performed on the expression data between two groups defined by the provided metadata file. The samples chosen are log-transformed (log2 + 1). A model matrix is then designed for LIMMA linear modeling followed by empirical Bayes statistics to moderate gene variance and modeling of the global characteristic of the data. Of note, the current pipeline expects the matrix input quantification are pre-normalized, such as in CPM, TMM, or FPKM."),
                           h3("Gene Set Enrichment Analysis (GSEA) Methods"),
@@ -301,13 +314,13 @@ ui <-
                                                               selectInput("heatmapGeneSelec","Gene Selection:",
                                                                           choices = sort(as.vector(geneList[,1])),
                                                                           multiple = T, selected = CTKgenes),
-                                                              textInput("userheatgenes", "Text Input of Gene List (space or tab delimited):", value = ""),
+                                                              textInput("userheatgenes", "Text Input of Gene List (space delimited):", value = ""),
                                                               selectInput("userheatsamp2", "Samples Selection:",
                                                                           choices = sampsames, multiple = T, selected = sampsames),
                                                               h4("Clustering Parameters"),
                                                               fluidRow(
                                                                 column(6,
-                                                                       checkboxInput("ClusRowOptCust","Cluster Heatmap Rows", value = TRUE)
+                                                                       checkboxInput("ClusRowOptCust","Cluster Heatmap Rows", value = FALSE)
                                                                 ),
                                                                 column(6,
                                                                        checkboxInput("ClusColOptCust","Cluster Heatmap Columns", value = FALSE))
@@ -411,11 +424,11 @@ ui <-
                                                               selectizeInput("avgheatmapGeneSelec","Gene Selection:",
                                                                              choices = sort(as.vector(geneList[,1])),
                                                                              multiple = T, selected = CTKgenes),
-                                                              textInput("avguserheatgenes", "Text Input of Gene List (space or tab delimited):", value = ""),
+                                                              textInput("avguserheatgenes", "Text Input of Gene List (space delimited):", value = ""),
                                                               h4("Clustering Parameters"),
                                                               fluidRow(
                                                                 column(6,
-                                                                       checkboxInput("AvgClusRowOptCust","Cluster Heatmap Rows", value = TRUE)
+                                                                       checkboxInput("AvgClusRowOptCust","Cluster Heatmap Rows", value = FALSE)
                                                                 ),
                                                                 column(6,
                                                                        checkboxInput("AvgClusColOptCust","Cluster Heatmap Columns", value = FALSE))
@@ -603,7 +616,8 @@ ui <-
                                        value = 2),
                               tabPanel("Box Plot",
                                        p(),
-                                       withSpinner(jqui_resizable(plotOutput('boxplot3', width = "100%", height = "600px")), type = 6),
+                                       #withSpinner(jqui_resizable(plotOutput('boxplot3', width = "100%", height = "600px")), type = 6),
+                                       jqui_resizable(plotOutput('boxplot3', width = "100%", height = "600px")),
                                        fluidRow(
                                          downloadButton("dnldPlotSVG_exprBox","Download as SVG"),
                                          downloadButton("dnldPlotPDF_exprBox","Download as PDF")
@@ -654,19 +668,42 @@ ui <-
                                              selectizeInput("userGeneSelec", "User Selected Hits:",
                                                             choices = sort(as.vector(geneList[,1])), multiple = T, selected = "-"),
                                              textInput("userGeneSelec2", "Text Input of Gene List (space or tab delimited):", value = ""),
-                                             h4("Figure Parameters"),
-                                             numericInput("VolMAAxisSize","Axis Lable Font Size",
-                                                          value = 18, step = 1)
-                                             #fluidRow(
-                                             #  column(6,
-                                             #         numericInput("VolMATitleSize","Title Font Size",
-                                             #                      value = 16, step = 1)
-                                             #         ),
-                                             #  column(6,
-                                             #         numericInput("VolMAAxisSize","Axis Lable Font Size",
-                                             #                      value = 18, step = 1)
-                                             #         )
-                                             #)
+                                             #textInput("userGeneSelec2", "Text Input of Gene List (space or tab delimited):",
+                                             #          value = "Bcl11b Tcf7 Bcl6 Id3 Id2 Ahr Ahrr Prdm1 Kit Klrg1 Klrb1c Klrb1b Pdcd1 Ctla4 Btla Itga1 Itgam Itgax S1pr1 S1pr5 Ccr7 Klf2 Gzmb Gzma Bcl2 Prf1 Zeb2 Cx3Cr1 Bhlhe40 Bach2 Slamf6 Eomes Icosl Nr4a1 Sell Klrk1 Klrc2 Klrc3 Klrd1 Klre1 Fcer1g Ncr1 Lef1 Havcr2 CD244 Cxcr5 Il2 Zfp683 Ly6c2 Cd27 Cd5 Cd160 Lamp1 Il7r NT5E Entpd1 Tigit Cd38 P2rx7 Klf4 Elovl6 Cpt1a Slc27a Slc2a1 Slc2a3 Pgk1 Lipa Pnpla2 Tcf7 Bach2 Satb1 Ccr7 Il7r Jund Gzmc Gzmf Gzmm Gzma Prf1 Klrk1 Klrb1a Klrc3 Klrb1c Klrc2 Klra5 Klre1 Klrg1 Ncr1 Cd244a Itgax Cd7 Itga1 Tox Zeb2 Mafb Tcf4 Irf5 Hdac9 Ctla4 Il10 Arg1 Tgfbi Cd300a Vav3 Themis2"),
+                                             h4("Font Sizes"),
+                                             fluidRow(
+                                               column(4,
+                                                      numericInput("VolMAAxisSize","Axis Lable",
+                                                                   value = 18, step = 1)
+                                               ),
+                                               column(4,
+                                                      numericInput("VolMATickSize","Axis Tick",
+                                                                   value = 16, step = 1)
+                                               ),
+                                               column(4,
+                                                      numericInput("VolMAAnnoSize","Annotation Text",
+                                                                   value = 6, step = 1)
+                                               )
+                                               #column(3,
+                                               #       selectInput("VolMAAnnoFont","Annotation Font",
+                                               #                   choices = c("plain","bold","italic","bold.italic"))
+                                               #)
+                                             ),
+                                             h4("Download Parameters"),
+                                             fluidRow(
+                                               column(4,
+                                                      numericInput("VolMAdnldHeight","Plot Download Height",
+                                                                   value = 8, step = 1, min = 1)
+                                               ),
+                                               column(4,
+                                                      numericInput("VolMAdnldWidth","Plot Download Width",
+                                                                   value = 10, step = 1, min = 1)
+                                               ),
+                                               column(4,
+                                                      selectInput("VolMAdnldSizeUnits","Height/Width Units",
+                                                                  choices = c("in","cm","mm","px"))
+                                               )
+                                             )
                             ),
                             
                             ####----Boxplot side panel----####
@@ -726,36 +763,36 @@ ui <-
                                              uiOutput("hover_info3")
                             ),
                             
-                            ##--EnrichR pathway side panel--##
-                            
-                            conditionalPanel(condition = "input.datasettwo == '5'",
-                                             h4("Condition Selection:"),
-                                             uiOutput("rendEnrichRPathMetaCol"),
-                                             uiOutput("rendcomparisonA2.path"),
-                                             uiOutput("rendcomparisonB2.path"),
-                                             #selectInput("comparisonA2.path", "Comparison: GroupA",
-                                             #            choices = metagroups, selected = metagroups[1]),
-                                             #selectInput("comparisonB2.path", "Comparison: GroupB",
-                                             #            choices = metagroups, selected = metagroups[2]),
-                                             selectInput("SelectedPathway", "Select Pathway",
-                                                         choices = enrichRchoice),
-                                             h4("Threshold Parameters:"),
-                                             numericInput("pathpval", "P-Value Cutoff:",
-                                                          min = 0, value = 0.01),
-                                             numericInput("pathFC", "Log2 Fold Change Cutoff:",
-                                                          min = 0, value = 0),
-                                             h4("Figure Paramters"),
-                                             fluidRow(
-                                               column(6,
-                                                      numericInput("PathwayTitleSize","Title Font Size",
-                                                                   value = 18, step = 1)
-                                               ),
-                                               column(6,
-                                                      numericInput("PathwayAxisSize","Axis Lable Font Size",
-                                                                   value = 16, step = 1))
-                                             )
-                                             
-                            ),
+                            ###--EnrichR pathway side panel--##
+                            #
+                            #conditionalPanel(condition = "input.datasettwo == '5'",
+                            #                 h4("Condition Selection:"),
+                            #                 uiOutput("rendEnrichRPathMetaCol"),
+                            #                 uiOutput("rendcomparisonA2.path"),
+                            #                 uiOutput("rendcomparisonB2.path"),
+                            #                 #selectInput("comparisonA2.path", "Comparison: GroupA",
+                            #                 #            choices = metagroups, selected = metagroups[1]),
+                            #                 #selectInput("comparisonB2.path", "Comparison: GroupB",
+                            #                 #            choices = metagroups, selected = metagroups[2]),
+                            #                 selectInput("SelectedPathway", "Select Pathway",
+                            #                             choices = enrichRchoice),
+                            #                 h4("Threshold Parameters:"),
+                            #                 numericInput("pathpval", "P-Value Cutoff:",
+                            #                              min = 0, value = 0.01),
+                            #                 numericInput("pathFC", "Log2 Fold Change Cutoff:",
+                            #                              min = 0, value = 0),
+                            #                 h4("Figure Paramters"),
+                            #                 fluidRow(
+                            #                   column(6,
+                            #                          numericInput("PathwayTitleSize","Title Font Size",
+                            #                                       value = 18, step = 1)
+                            #                   ),
+                            #                   column(6,
+                            #                          numericInput("PathwayAxisSize","Axis Lable Font Size",
+                            #                                       value = 16, step = 1))
+                            #                 )
+                            #                 
+                            #),
                             
                             ##--DEG table side panel--##
                             
@@ -807,7 +844,8 @@ ui <-
                                        value = 2),
                               tabPanel("Box Plots",
                                        p(),
-                                       withSpinner(jqui_resizable(plotOutput('boxplot1', width = "100%", height = "600px")), type = 6),
+                                       #withSpinner(jqui_resizable(plotOutput('boxplot1', width = "100%", height = "600px")), type = 6),
+                                       jqui_resizable(plotOutput('boxplot1', width = "100%", height = "600px")),
                                        fluidRow(
                                          downloadButton("dnldPlotSVG_exprBox2","Download as SVG"),
                                          downloadButton("dnldPlotPDF_exprBox2","Download as PDF")
@@ -827,30 +865,30 @@ ui <-
                                        DT::dataTableOutput("AvggeneScatterTable"),
                                        downloadButton("AvggeneScatterDownload", "Download Non-log2 Transformed .tsv"),
                                        value = 4),
-                              tabPanel("Pathway Analysis",
-                                       p("If Pathway Enrichment Analysis shows errors please adjust the P.Value and Log FC parameters."),
-                                       uiOutput("UpRegPathLabel"),
-                                       verbatimTextOutput("upregpath_text"),
-                                       withSpinner(plotOutput('UpRegPathway1'), type = 6),
-                                       fluidRow(
-                                         downloadButton("dnldPlotSVG_upPath","Download as SVG"),
-                                         downloadButton("dnldPlotPDF_upPath","Download as PDF")
-                                       ),
-                                       div(DT::dataTableOutput("UpRegPathwayTable1"), style = "font-size:10px"),
-                                       downloadButton("UpRegPathDownload", "Download Table .tsv"),
-                                       downloadButton("UpRegPathDownloadgmt", "Download .gmt"),
-                                       uiOutput("DnRegPathLabel"),
-                                       verbatimTextOutput("downregpath_text"),
-                                       withSpinner(plotOutput('DnRegPathway1'), type = 6),
-                                       fluidRow(
-                                         downloadButton("dnldPlotSVG_dnPath","Download as SVG"),
-                                         downloadButton("dnldPlotPDF_dnPath","Download as PDF")
-                                       ),
-                                       div(DT::dataTableOutput("DnRegPathwayTable1"), style = "font-size:10px"),
-                                       downloadButton("DnRegPathDownload", "Download Table .tsv"),
-                                       downloadButton("DnRegPathDownloadgmt", "Download .gmt"),
-                                       p(),
-                                       value = 5),
+                              #tabPanel("Pathway Analysis",
+                              #         p("If Pathway Enrichment Analysis shows errors please adjust the P.Value and Log FC parameters."),
+                              #         uiOutput("UpRegPathLabel"),
+                              #         verbatimTextOutput("upregpath_text"),
+                              #         withSpinner(plotOutput('UpRegPathway1'), type = 6),
+                              #         fluidRow(
+                              #           downloadButton("dnldPlotSVG_upPath","Download as SVG"),
+                              #           downloadButton("dnldPlotPDF_upPath","Download as PDF")
+                              #         ),
+                              #         div(DT::dataTableOutput("UpRegPathwayTable1"), style = "font-size:10px"),
+                              #         downloadButton("UpRegPathDownload", "Download Table .tsv"),
+                              #         downloadButton("UpRegPathDownloadgmt", "Download .gmt"),
+                              #         uiOutput("DnRegPathLabel"),
+                              #         verbatimTextOutput("downregpath_text"),
+                              #         withSpinner(plotOutput('DnRegPathway1'), type = 6),
+                              #         fluidRow(
+                              #           downloadButton("dnldPlotSVG_dnPath","Download as SVG"),
+                              #           downloadButton("dnldPlotPDF_dnPath","Download as PDF")
+                              #         ),
+                              #         div(DT::dataTableOutput("DnRegPathwayTable1"), style = "font-size:10px"),
+                              #         downloadButton("DnRegPathDownload", "Download Table .tsv"),
+                              #         downloadButton("DnRegPathDownloadgmt", "Download .gmt"),
+                              #         p(),
+                              #         value = 5),
                               tabPanel("DEG Table",
                                        p(),
                                        verbatimTextOutput("degtext"),
@@ -1799,14 +1837,21 @@ server <- function(input, output, session) {
     options(digits = 4)
     top1 <- topTable(fit2, coef = 1, n = 300000, sort = "p", p.value = 1.0, adjust.method = "BH")
     top2 <- top1
+    
+    #top2 = read.delim("DEseq_BCL11BKO_CD8_Peritoneal_Tomas_analysis_20230406_max_v2.txt",
+    #                  sep = '\t', header = T, strip.white = T)
+    #colnames(top2)[7] <- "adj.P.Val"
+    #rownames(top2) = top2$GeneName
     top2["GeneName"] <- rownames(top2)
     Okabe_Ito <- c("#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7", "#000000")
     top2['group'] <- "NotSignificant"
-    top2[which(top2$P.Value < input$p_cutoff & abs(top2$logFC) < abs(input$fc_cutoff)), "group"] <- "Significant"
-    top2[which(top2$P.Value > input$p_cutoff & abs(top2$logFC) > abs(input$fc_cutoff)), "group"] <- "FoldChange"
-    top2[which(top2$P.Value < input$p_cutoff & abs(top2$logFC) > abs(input$fc_cutoff)), "group"] <- "Significant&FoldChange"
+    p_cut <- input$p_cutoff
+    f_cut <- input$fc_cutoff
+    top2[which(top2$P.Value < p_cut & abs(top2$logFC) < abs(f_cut)), "group"] <- "Significant"
+    top2[which(top2$P.Value > p_cut & abs(top2$logFC) > abs(f_cut)), "group"] <- "FoldChange"
+    top2[which(top2$P.Value < p_cut & abs(top2$logFC) > abs(f_cut)), "group"] <- "Significant&FoldChange"
     top2['FCgroup'] <- "NotSignificant"
-    top2[which(abs(top2$logFC) > abs(input$fc_cutoff)), "group2"] <- "FoldChange"
+    top2[which(abs(top2$logFC) > abs(f_cut)), "group2"] <- "FoldChange"
     top2
   })
   
@@ -1979,8 +2024,10 @@ server <- function(input, output, session) {
       genelist.uih2 <- NULL
       genelist.ush <- input$heatmapGeneSelec
       genelist.uih <- unlist(strsplit(input$userheatgenes, " "))
-      genelist.uih2 <- unlist(strsplit(input$userheatgenes, "\t"))
+      #genelist.uih2 <- unlist(strsplit(input$userheatgenes, "\t"))
       heatgenes <- c(genelist.ush,genelist.uih,genelist.uih2)
+      heatgenes <- heatgenes[!is.na(heatgenes)]
+      heatgenes <- heatgenes[!is.null(heatgenes)]
       usersamps <- input$userheatsamp2
       exp <- expr[heatgenes,usersamps]
       meta <- meta[which(meta[,1] %in% usersamps),]
@@ -2187,8 +2234,10 @@ server <- function(input, output, session) {
       genelist.uih2 <- NULL
       genelist.ush <- input$avgheatmapGeneSelec
       genelist.uih <- unlist(strsplit(input$avguserheatgenes, " "))
-      genelist.uih2 <- unlist(strsplit(input$avguserheatgenes, "\t"))
+      #genelist.uih2 <- unlist(strsplit(input$userheatgenes, "\t"))
       heatgenes <- c(genelist.ush,genelist.uih,genelist.uih2)
+      heatgenes <- heatgenes[!is.na(heatgenes)]
+      heatgenes <- heatgenes[!is.null(heatgenes)]
       
       if (ncol(meta) > 2) {
         metacol <- input$AvgHeatMetaCol
@@ -3807,7 +3856,7 @@ server <- function(input, output, session) {
     }
   })
   
-  #render boxplot
+  ####----Bar Plot----####
   barplot_react <- reactive({
     
     title_font <- input$barplot1TitleSize            # Title font size
@@ -3831,24 +3880,31 @@ server <- function(input, output, session) {
     else if (ncol(meta) == 2) {
       metacol <- colnames(meta)[2]
     }
+    meta_temp <- meta
+    rownames(meta_temp) <- meta[,1]
+    meta_temp <- meta_temp[,metacol,drop = F]
+    meta_temp[,metacol] <- as.factor(meta_temp[,metacol])
     
     if (length(input$GeneListTableBarPlot_rows_selected) > 0){
       
       gene <- geneList[input$GeneListTableBarPlot_rows_selected, 1]
       
-      expr_gene <- as.data.frame(t(expr[gene,]))
-      expr_gene$SampleName <- rownames(expr_gene)
-      expr_gene2 <- merge(expr_gene,meta,by = "SampleName", all = T)
+      expr_gene <- merge(as.data.frame(t(expr[gene,])), meta_temp, by=0)
+      colnames(expr_gene)[1] <- "SampleName"
+      
+      expr_gene2 <- merge(expr_gene,meta, all = T)
       plottitle <- paste(gene,"Average Gene Expression Across",metacol)
       genetitle <- paste(gene,"Average Expression")
       
       if (logchoice == T) {
-        expr_gene2[,2] <- log2(expr_gene2[,2] + 1)
+        expr_gene2[,gene] <- log2(expr_gene2[,gene] + 1)
         plottitle <- paste(gene,"Average Gene Expression (Log2) Across",metacol)
         genetitle <- paste(gene,"Average Expression (Log2)")
       }
       
-      colnames(expr_gene2) <- c("SampleName","GeneName","Type")
+      colnames(expr_gene2)[c(1,2,3)] <- c("SampleName","Type","GeneName")
+      expr_gene2 <- expr_gene2 %>%
+        relocate(SampleName,GeneName,Type)
       
       se <- function(x) sd(x)/sqrt(length(x))
       expr_gene_stats <- expr_gene2 %>%
@@ -4009,10 +4065,12 @@ server <- function(input, output, session) {
             plot.title = element_text(size = title_font))
   })
   
-  #render volcano plot
-  output$Volcano3 <- renderPlot({
+  Volcano3_react <- reactive({
     #title_font <- input$VolMATitleSize
     axis_font <- input$VolMAAxisSize
+    tick_font <- input$VolMATickSize
+    anno_font <- input$VolMAAnnoSize
+    anno_face <- input$VolMAAnnoFont
     top2 <- topgenereact()
     #add color categories based on FC and pval
     top2['threshold'] <- "none"
@@ -4048,35 +4106,41 @@ server <- function(input, output, session) {
     if (input$top_x > 0) { 
       x <- x + geom_text_repel(
         data =  top_hits_up,
+        #aes(label = rownames(top_hits_up), fontface = anno_face),
         aes(label = rownames(top_hits_up)),
-        size = 6,
+        size = anno_font,
         color="gray20",
+        min.segment.length = 0,
         nudge_x = 0.2,
         nudge_y=0.2,
         box.padding = unit(0.9, "lines"),
         point.padding = unit(.3+4*0.1, "lines"),
-        max.overlaps = 50)
+        max.overlaps = Inf)
       x <- x + geom_text_repel(
         data =  top_hits_dn,
+        #aes(label = rownames(top_hits_dn), fontface = anno_face),
         aes(label = rownames(top_hits_dn)),
-        size = 6,
+        size = anno_font,
         color="gray20",
+        min.segment.length = 0,
         nudge_x = 0.2,
         nudge_y=0.2,
         box.padding = unit(0.9, "lines"),
         point.padding = unit(.3+4*0.1, "lines"),
-        max.overlaps = 50)
+        max.overlaps = Inf)
     }
     x <- x + geom_text_repel(
       data =  top2_selec,
+      #aes(label = rownames(top2_selec), fontface = anno_face),
       aes(label = rownames(top2_selec)),
-      size = 6,
+      size = anno_font,
       color="gray20",
+      min.segment.length = 0,
       nudge_x = 0.2,
       nudge_y=0.2,
       box.padding = unit(0.9, "lines"),
       point.padding = unit(.3+4*0.1, "lines"),
-      max.overlaps = 50)
+      max.overlaps = Inf)
     #coloring selected points
     x <- x + geom_point(data = top2_selec,
                         aes(x = logFC, y = -log10(P.Value)),
@@ -4095,10 +4159,19 @@ server <- function(input, output, session) {
                         size = 2)
     #axis parameters
     x <- x + theme(legend.position="none")
-    x <- x + theme(axis.text = element_text(size=18))
-    x <- x + theme(axis.title = element_text(size = axis_font))
+    x <- x + theme(axis.text = element_text(size=tick_font),
+                   axis.title = element_text(size = axis_font))
+    #x <- x + theme(axis.title = element_text(size = axis_font))
     x <- x + labs(x = "log2FC", y = "-log10(P.Value)")
     x
+    
+    
+  })
+  
+  #render volcano plot
+  output$Volcano3 <- renderPlot({
+    plot <- Volcano3_react()
+    plot
   })
   
   #render ssGSEA boxplot
@@ -4547,92 +4620,12 @@ server <- function(input, output, session) {
       paste(gsub(" ","",ProjectName),"_VolcanoPlot.svg", sep = '')
     },
     content = function(file) {
-      top2 <- topgenereact()
-      #add color categories based on FC and pval
-      top2['threshold'] <- "none"
-      top2[which(top2$logFC > abs(input$fc_cutoff) & top2$P.Value < input$p_cutoff), "threshold"] <- "up"
-      top2[which(top2$logFC < -abs(input$fc_cutoff) & top2$P.Value < input$p_cutoff), "threshold"] <- "down"
-      upRed <- "lightcoral"
-      dnBlue <- "cadetblue3"
-      mdGray <- "gray70"
-      #select number of top hits based on input
-      top_hits_up <- top2[head(which(top2$logFC > abs(input$fc_cutoff) & top2$P.Value < input$p_cutoff), n = input$top_x),]
-      top_hits_dn <- top2[head(which(top2$logFC < -abs(input$fc_cutoff) & top2$P.Value < input$p_cutoff), n = input$top_x),]
-      #select genes to label based on user selection
-      genesel.s <- NULL
-      genesel.t <- NULL
-      genesel.u <- NULL
-      genesel.s <- unlist(strsplit(input$userGeneSelec2, " "))
-      genesel.t <- unlist(strsplit(input$userGeneSelec2, "\t"))
-      genesel.u <- input$userGeneSelec
-      genesel.text <- c(genesel.s,genesel.t,genesel.u)
-      top2_selec <- top2 %>%
-        filter(GeneName %in% genesel.text)
-      #create plot
-      x <- ggplot(data = top2, aes(x = logFC, y = -log10(P.Value))) +
-        geom_point(size = 2, shape = 16) +
-        theme_light(base_size = 16)
-      #colors
-      x <- x + aes(color = threshold) +
-        scale_color_manual(values = c("up" = upRed,"down" = dnBlue, "none" = mdGray))
-      #FC and pval lines
-      x <- x + geom_vline(xintercept = c(-abs(input$fc_cutoff),abs(input$fc_cutoff)), linetype="dashed", color="gray20")
-      x <- x + geom_hline(yintercept = -log10(input$p_cutoff), linetype="dashed", color="gray20")
-      #label top hits if needed
-      if (input$top_x > 0) { 
-        x <- x + geom_text_repel(
-          data =  top_hits_up,
-          aes(label = rownames(top_hits_up)),
-          size = 6,
-          color="gray20",
-          nudge_x = 0.2,
-          nudge_y=0.2,
-          box.padding = unit(0.9, "lines"),
-          point.padding = unit(.3+4*0.1, "lines"),
-          max.overlaps = 50)
-        x <- x + geom_text_repel(
-          data =  top_hits_dn,
-          aes(label = rownames(top_hits_dn)),
-          size = 6,
-          color="gray20",
-          nudge_x = 0.2,
-          nudge_y=0.2,
-          box.padding = unit(0.9, "lines"),
-          point.padding = unit(.3+4*0.1, "lines"),
-          max.overlaps = 50)
-      }
-      x <- x + geom_text_repel(
-        data =  top2_selec,
-        aes(label = rownames(top2_selec)),
-        size = 6,
-        color="gray20",
-        nudge_x = 0.2,
-        nudge_y=0.2,
-        box.padding = unit(0.9, "lines"),
-        point.padding = unit(.3+4*0.1, "lines"),
-        max.overlaps = 50)
-      #coloring selected points
-      x <- x + geom_point(data = top2_selec,
-                          aes(x = logFC, y = -log10(P.Value)),
-                          pch = 21,
-                          color = "black",
-                          size = 2)
-      x <- x + geom_point(data = top_hits_dn,
-                          aes(x = logFC, y = -log10(P.Value)),
-                          pch = 21,
-                          color = "black",
-                          size = 2)
-      x <- x + geom_point(data = top_hits_up,
-                          aes(x = logFC, y = -log10(P.Value)),
-                          pch = 21,
-                          color = "black",
-                          size = 2)
-      #axis parameters
-      x <- x + theme(legend.position="none")
-      x <- x + theme(axis.text = element_text(size=18))
-      x <- x + theme(axis.title = element_text(size=24))
-      x <- x + labs(x = "log2FC", y = "-log10(P.Value)")
-      ggsave(file,x, width = 10, height = 8)
+      
+      x <- Volcano3_react()
+      PlotH <- input$VolMAdnldHeight
+      PlotW <- input$VolMAdnldWidth
+      PlotU <- input$VolMAdnldSizeUnits
+      ggsave(file,x, width = PlotW, height = PlotH, units = PlotU)
     }
   )
   
@@ -5445,92 +5438,12 @@ server <- function(input, output, session) {
       paste(gsub(" ","",ProjectName),"_VolcanoPlot.pdf", sep = '')
     },
     content = function(file) {
-      top2 <- topgenereact()
-      #add color categories based on FC and pval
-      top2['threshold'] <- "none"
-      top2[which(top2$logFC > abs(input$fc_cutoff) & top2$P.Value < input$p_cutoff), "threshold"] <- "up"
-      top2[which(top2$logFC < -abs(input$fc_cutoff) & top2$P.Value < input$p_cutoff), "threshold"] <- "down"
-      upRed <- "lightcoral"
-      dnBlue <- "cadetblue3"
-      mdGray <- "gray70"
-      #select number of top hits based on input
-      top_hits_up <- top2[head(which(top2$logFC > abs(input$fc_cutoff) & top2$P.Value < input$p_cutoff), n = input$top_x),]
-      top_hits_dn <- top2[head(which(top2$logFC < -abs(input$fc_cutoff) & top2$P.Value < input$p_cutoff), n = input$top_x),]
-      #select genes to label based on user selection
-      genesel.s <- NULL
-      genesel.t <- NULL
-      genesel.u <- NULL
-      genesel.s <- unlist(strsplit(input$userGeneSelec2, " "))
-      genesel.t <- unlist(strsplit(input$userGeneSelec2, "\t"))
-      genesel.u <- input$userGeneSelec
-      genesel.text <- c(genesel.s,genesel.t,genesel.u)
-      top2_selec <- top2 %>%
-        filter(GeneName %in% genesel.text)
-      #create plot
-      x <- ggplot(data = top2, aes(x = logFC, y = -log10(P.Value))) +
-        geom_point(size = 2, shape = 16) +
-        theme_light(base_size = 16)
-      #colors
-      x <- x + aes(color = threshold) +
-        scale_color_manual(values = c("up" = upRed,"down" = dnBlue, "none" = mdGray))
-      #FC and pval lines
-      x <- x + geom_vline(xintercept = c(-abs(input$fc_cutoff),abs(input$fc_cutoff)), linetype="dashed", color="gray20")
-      x <- x + geom_hline(yintercept = -log10(input$p_cutoff), linetype="dashed", color="gray20")
-      #label top hits if needed
-      if (input$top_x > 0) { 
-        x <- x + geom_text_repel(
-          data =  top_hits_up,
-          aes(label = rownames(top_hits_up)),
-          size = 6,
-          color="gray20",
-          nudge_x = 0.2,
-          nudge_y=0.2,
-          box.padding = unit(0.9, "lines"),
-          point.padding = unit(.3+4*0.1, "lines"),
-          max.overlaps = 50)
-        x <- x + geom_text_repel(
-          data =  top_hits_dn,
-          aes(label = rownames(top_hits_dn)),
-          size = 6,
-          color="gray20",
-          nudge_x = 0.2,
-          nudge_y=0.2,
-          box.padding = unit(0.9, "lines"),
-          point.padding = unit(.3+4*0.1, "lines"),
-          max.overlaps = 50)
-      }
-      x <- x + geom_text_repel(
-        data =  top2_selec,
-        aes(label = rownames(top2_selec)),
-        size = 6,
-        color="gray20",
-        nudge_x = 0.2,
-        nudge_y=0.2,
-        box.padding = unit(0.9, "lines"),
-        point.padding = unit(.3+4*0.1, "lines"),
-        max.overlaps = 50)
-      #coloring selected points
-      x <- x + geom_point(data = top2_selec,
-                          aes(x = logFC, y = -log10(P.Value)),
-                          pch = 21,
-                          color = "black",
-                          size = 2)
-      x <- x + geom_point(data = top_hits_dn,
-                          aes(x = logFC, y = -log10(P.Value)),
-                          pch = 21,
-                          color = "black",
-                          size = 2)
-      x <- x + geom_point(data = top_hits_up,
-                          aes(x = logFC, y = -log10(P.Value)),
-                          pch = 21,
-                          color = "black",
-                          size = 2)
-      #axis parameters
-      x <- x + theme(legend.position="none")
-      x <- x + theme(axis.text = element_text(size=18))
-      x <- x + theme(axis.title = element_text(size=24))
-      x <- x + labs(x = "log2FC", y = "-log10(P.Value)")
-      ggsave(file,x, width = 10, height = 8)
+      
+      x <- Volcano3_react()
+      PlotH <- input$VolMAdnldHeight
+      PlotW <- input$VolMAdnldWidth
+      PlotU <- input$VolMAdnldSizeUnits
+      ggsave(file,x, width = PlotW, height = PlotH, units = PlotU)
     }
   )
   
@@ -7052,7 +6965,6 @@ server <- function(input, output, session) {
     
   })
 }
-
 
 
 # Run the application 
