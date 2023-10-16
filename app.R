@@ -55,12 +55,12 @@ invisible(lapply(bioCpacks, library, character.only = TRUE))
 userGSlist_name <- 'LINCS L1000'
 
 #path to your gene set file .gmt or .txt/.tsv
-userGS_file <- 'LINCS_L1000_gsNsym_HS.zip'
+userGS_file <- 'GeneSets/LINCS_L1000_gsNsym_HS.zip'
 #Does gene set file have header?
 header.gs <- TRUE
 
 #path to your R data list object for ssGSEA
-userRData_file <- 'LINCS_L1000_gs_HS.RData'
+userRData_file <- 'GeneSets/LINCS_L1000_gs_HS.RData'
 
 
 
@@ -76,11 +76,11 @@ loadRData <- function(fileName){
 
 if (human == TRUE) {
   #MSigDB gene set
-  msigdb <- 'msigdb_gsNsym_HS.zip'
+  msigdb <- 'GeneSets/msigdb_gsNsym_HS.zip'
   #MSigDB gene set FOR UI
-  msigdb2 <- 'msigdb_gsNcat_HS.tsv'
+  msigdb2 <- 'GeneSets/msigdb_gsNcat_HS.tsv'
   #gene set list for ssGSEA
-  gs <- loadRData('msigdb_gs_HS.RData')
+  gs <- loadRData('GeneSets/msigdb_gs_HS.RData')
   #Cytokine genes for human
   CTKgenes <- c("IL2","IL12A","IL12B","IL17A","IFNA1","IFNB1","IFNG","IFNGR","CD11b",
                 "ITGAM","CD33","ENTPD1","ICOSLG","CD275","CD278","TNFSF9","TNFRSF9",
@@ -91,11 +91,11 @@ if (human == TRUE) {
 }
 if (human == FALSE) {
   #MSigDB gene set
-  msigdb <- 'msigdb_gsNsym_MM.zip'
+  msigdb <- 'GeneSets/msigdb_gsNsym_MM.zip'
   #MSigDB gene set FOR UI
-  msigdb2 <- 'msigdb_gsNcat_MM.tsv'
+  msigdb2 <- 'GeneSets/msigdb_gsNcat_MM.tsv'
   #gene set list for ssGSEA 
-  gs <- loadRData('msigdb_gs_MM.RData')
+  gs <- loadRData('GeneSets/msigdb_gs_MM.RData')
   #Cytokine genes for mouse
   CTKgenes <- c("Il2","Il12a","Il12b","Il17a","Ifna13","Ifnb1","Ifng","Ifngr1","Cd11b","Itgam",
                 "Cd33","Entpd1","Icosl","Icos","Tnfsf9","Tnfrsf9","Cd40","Cd40lg","Cd70","Cd27",
