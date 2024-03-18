@@ -4,9 +4,9 @@
 # Project Name
 ProjectName <- 'USP7 Human Demo'
 # Expression Matrix
-expression_file <- 'ExampleData/USP7_RNAseq_expr.txt'
+expression_file <- '~/GitHub/DRPPM-EASY-ExprAnalysisShinY/ExampleData/USP7_RNAseq_expr.txt'
 # Meta data
-meta_file <- 'ExampleData/USP7_RNAseq_meta.tsv'
+meta_file <- '~/GitHub/DRPPM-EASY-ExprAnalysisShinY/ExampleData/USP7_RNAseq_meta.tsv'
 #If human: set TRUE
 #If mouse: set FALSE
 human <- TRUE
@@ -1477,15 +1477,15 @@ server <- function(input, output, session) {
             #write in the name of your gene set list for shiny UI
             #userGSlist_name <- 'Cell Marker'
             #path to your gene set file .gmt or .txt/.tsv
-            userGS_file <- 'CellMarker_gsNsym_MM.tsv'
+            userGS_file <- 'GeneSets/CellMarker_gsNsym_MM.tsv'
             #path to your R data list object for ssGSEA
-            userRData_file <- 'CellMarker_GS_MM.RData'
+            userRData_file <- 'GeneSets/CellMarker_GS_MM.RData'
             #MSigDB gene set
-            msigdb <- 'msigdb_gsNsym_MM.zip'
+            msigdb <- 'GeneSets/msigdb_gsNsym_MM.zip'
             #MSigDB gene set FOR UI
-            msigdb2 <- 'msigdb_gsNcat_MM.tsv'
+            msigdb2 <- 'GeneSets/msigdb_gsNcat_MM.tsv'
             #gene set list for ssGSEA
-            gs_file <- 'msigdb_gs_MM.RData'
+            gs_file <- 'GeneSets/msigdb_gs_MM.RData'
             #Cytokine genes for mouse
             CTKgenes <- c("Il2","Il12a","Il12b","Il17a","Ifna13","Ifnb1","Ifng","Ifngr1","Cd11b","Itgam",
                           "Cd33","Entpd1","Icosl","Icos","Tnfsf9","Tnfrsf9","Cd40","Cd40lg","Cd70","Cd27",
@@ -1497,15 +1497,15 @@ server <- function(input, output, session) {
             #write in the name of your gene set list for shiny UI
             #userGSlist_name <- 'LINCS L1000'
             #path to your gene set file .gmt or .txt/.tsv
-            userGS_file <- 'CellMarker_gsNsym_HS_v2.txt'
+            userGS_file <- 'GeneSets/CellMarker_gsNsym_HS.tsv'
             #path to your R data list object for ssGSEA
-            userRData_file <- 'CellMarker_GS_HS_v2.RData'
+            userRData_file <- 'GeneSets/CellMarker_GS_HS.RData'
             #MSigDB gene set
-            msigdb <- 'msigdb_gsNsym_HS_v2.zip'
+            msigdb <- 'GeneSets/msigdb_gsNsym_HS.zip'
             #MSigDB gene set FOR UI
-            msigdb2 <- 'msigdb_gsNcat_HS_v2.txt'
+            msigdb2 <- 'GeneSets/msigdb_gsNcat_HS.tsv'
             #gene set list for ssGSEA
-            gs_file <- 'msigdb_gs_HS_v2.RData'
+            gs_file <- 'GeneSets/msigdb_gs_HS_v2.RData'
             CTKgenes <- c("IL2","IL12A","IL12B","IL17A","IFNA1","IFNB1","IFNG","IFNGR","CD11b",
                           "ITGAM","CD33","ENTPD1","ICOSLG","CD275","CD278","TNFSF9","TNFRSF9",
                           "CD40","CD40LG","CD70","CD27","TNFSF18","TNFRSF18","TNFSF14","TNFRSF14",
@@ -1518,15 +1518,15 @@ server <- function(input, output, session) {
           #write in the name of your gene set list for shiny UI
           #userGSlist_name <- 'LINCS L1000'
           #path to your gene set file .gmt or .txt/.tsv
-          userGS_file <- 'CellMarker_gsNsym_HS_v2.txt'
+          userGS_file <- 'GeneSets/CellMarker_gsNsym_HS.tsv'
           #path to your R data list object for ssGSEA
-          userRData_file <- 'CellMarker_GS_HS_v2.RData'
+          userRData_file <- 'GeneSets/CellMarker_GS_HS.RData'
           #MSigDB gene set
-          msigdb <- 'msigdb_gsNsym_HS_v2.zip'
+          msigdb <- 'GeneSets/msigdb_gsNsym_HS.zip'
           #MSigDB gene set FOR UI
-          msigdb2 <- 'msigdb_gsNcat_HS_v2.txt'
+          msigdb2 <- 'GeneSets/msigdb_gsNcat_HS.tsv'
           #gene set list for ssGSEA
-          gs_file <- 'msigdb_gs_HS_v2.RData'
+          gs_file <- 'GeneSets/msigdb_gs_HS_v2.RData'
           CTKgenes <- c("IL2","IL12A","IL12B","IL17A","IFNA1","IFNB1","IFNG","IFNGR","CD11b",
                         "ITGAM","CD33","ENTPD1","ICOSLG","CD275","CD278","TNFSF9","TNFRSF9",
                         "CD40","CD40LG","CD70","CD27","TNFSF18","TNFRSF18","TNFSF14","TNFRSF14",
