@@ -4,9 +4,9 @@
 # Project Name
 ProjectName <- 'USP7 Human Demo'
 # Expression Matrix
-expression_file <- '~/GitHub/DRPPM-EASY-ExprAnalysisShinY/ExampleData/USP7_RNAseq_expr.txt'
+expression_file <- 'ExampleData/USP7_RNAseq_expr.txt'
 # Meta data
-meta_file <- '~/GitHub/DRPPM-EASY-ExprAnalysisShinY/ExampleData/USP7_RNAseq_meta.tsv'
+meta_file <- 'ExampleData/USP7_RNAseq_meta.tsv'
 #If human: set TRUE
 #If mouse: set FALSE
 human <- TRUE
