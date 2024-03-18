@@ -1,5 +1,6 @@
 
 
+
 # User Data Input --------------------------------------------------------------
 # Project Name
 ProjectName <- 'USP7 Human Demo'
@@ -20,6 +21,7 @@ Feature_Selected <- ''
 # Does user want password Protection?
 Password_Protected <- FALSE
 PasswordSet <- ''
+
 
 
 # Load Libraries ---------------------------------------------------------------
@@ -1344,8 +1346,10 @@ server <- function(input, output, session) {
           print(expr_file_react())
           print(meta_file_react())
           if (file.exists(expr_file_react())) {
-            if (tools::file_ext(expr_file_react()) %in% c("txt","tsv","zip","gz","TXT","TSV","ZIP","GZ")) {
+            if (tools::file_ext(expr_file_react()) %in% c("txt","tsv","TXT","TSV")) {
               expr <- as.data.frame(fread(expr_file_react(), sep = '\t', header = T))
+            } else if (tools::file_ext(expr_file_react()) %in% c("zip","gz","ZIP","GZ")) {
+              expr <- as.data.frame(read_delim(expr_file_react(), delim = '\t', col_names = T))
             } else if (tools::file_ext(expr_file_react()) %in% c("csv","CSV")) {
               expr <- as.data.frame(fread(expr_file_react(), sep = ',', header = T))
             } else if (tools::file_ext(expr_file_react()) %in% c("RData","rdata")) {
@@ -1400,8 +1404,10 @@ server <- function(input, output, session) {
           Gene_raw(Gene)
 
           if (file.exists(meta_file_react())) {
-            if (tools::file_ext(meta_file_react()) %in% c("txt","tsv","zip","gz","TXT","TSV","ZIP","GZ")) {
+            if (tools::file_ext(meta_file_react()) %in% c("txt","tsv","TXT","TSV")) {
               meta <- as.data.frame(fread(meta_file_react(), sep = '\t', header = T))
+            } else if (tools::file_ext(expr_file_react()) %in% c("zip","gz","ZIP","GZ")) {
+              expr <- as.data.frame(read_delim(meta_file_react(), delim = '\t', col_names = T))
             } else if (tools::file_ext(meta_file_react()) %in% c("csv","CSV")) {
               meta <- as.data.frame(fread(meta_file_react(), sep = ',', header = T))
             } else if (tools::file_ext(meta_file_react()) %in% c("RData","rdata")) {
@@ -1477,15 +1483,15 @@ server <- function(input, output, session) {
             #write in the name of your gene set list for shiny UI
             #userGSlist_name <- 'Cell Marker'
             #path to your gene set file .gmt or .txt/.tsv
-            userGS_file <- 'GeneSets/CellMarker_gsNsym_MM.tsv'
+            userGS_file <- 'CellMarker_gsNsym_MM.tsv'
             #path to your R data list object for ssGSEA
-            userRData_file <- 'GeneSets/CellMarker_GS_MM.RData'
+            userRData_file <- 'CellMarker_GS_MM.RData'
             #MSigDB gene set
-            msigdb <- 'GeneSets/msigdb_gsNsym_MM.zip'
+            msigdb <- 'msigdb_gsNsym_MM.zip'
             #MSigDB gene set FOR UI
-            msigdb2 <- 'GeneSets/msigdb_gsNcat_MM.tsv'
+            msigdb2 <- 'msigdb_gsNcat_MM.tsv'
             #gene set list for ssGSEA
-            gs_file <- 'GeneSets/msigdb_gs_MM.RData'
+            gs_file <- 'msigdb_gs_MM.RData'
             #Cytokine genes for mouse
             CTKgenes <- c("Il2","Il12a","Il12b","Il17a","Ifna13","Ifnb1","Ifng","Ifngr1","Cd11b","Itgam",
                           "Cd33","Entpd1","Icosl","Icos","Tnfsf9","Tnfrsf9","Cd40","Cd40lg","Cd70","Cd27",
@@ -1497,15 +1503,15 @@ server <- function(input, output, session) {
             #write in the name of your gene set list for shiny UI
             #userGSlist_name <- 'LINCS L1000'
             #path to your gene set file .gmt or .txt/.tsv
-            userGS_file <- 'GeneSets/CellMarker_gsNsym_HS.tsv'
+            userGS_file <- 'CellMarker_gsNsym_HS_v2.txt'
             #path to your R data list object for ssGSEA
-            userRData_file <- 'GeneSets/CellMarker_GS_HS.RData'
+            userRData_file <- 'CellMarker_GS_HS_v2.RData'
             #MSigDB gene set
-            msigdb <- 'GeneSets/msigdb_gsNsym_HS.zip'
+            msigdb <- 'msigdb_gsNsym_HS_v2.zip'
             #MSigDB gene set FOR UI
-            msigdb2 <- 'GeneSets/msigdb_gsNcat_HS.tsv'
+            msigdb2 <- 'msigdb_gsNcat_HS_v2.txt'
             #gene set list for ssGSEA
-            gs_file <- 'GeneSets/msigdb_gs_HS_v2.RData'
+            gs_file <- 'msigdb_gs_HS_v2.RData'
             CTKgenes <- c("IL2","IL12A","IL12B","IL17A","IFNA1","IFNB1","IFNG","IFNGR","CD11b",
                           "ITGAM","CD33","ENTPD1","ICOSLG","CD275","CD278","TNFSF9","TNFRSF9",
                           "CD40","CD40LG","CD70","CD27","TNFSF18","TNFRSF18","TNFSF14","TNFRSF14",
@@ -1518,15 +1524,15 @@ server <- function(input, output, session) {
           #write in the name of your gene set list for shiny UI
           #userGSlist_name <- 'LINCS L1000'
           #path to your gene set file .gmt or .txt/.tsv
-          userGS_file <- 'GeneSets/CellMarker_gsNsym_HS.tsv'
+          userGS_file <- 'CellMarker_gsNsym_HS_v2.txt'
           #path to your R data list object for ssGSEA
-          userRData_file <- 'GeneSets/CellMarker_GS_HS.RData'
+          userRData_file <- 'CellMarker_GS_HS_v2.RData'
           #MSigDB gene set
-          msigdb <- 'GeneSets/msigdb_gsNsym_HS.zip'
+          msigdb <- 'msigdb_gsNsym_HS_v2.zip'
           #MSigDB gene set FOR UI
-          msigdb2 <- 'GeneSets/msigdb_gsNcat_HS.tsv'
+          msigdb2 <- 'msigdb_gsNcat_HS_v2.txt'
           #gene set list for ssGSEA
-          gs_file <- 'GeneSets/msigdb_gs_HS_v2.RData'
+          gs_file <- 'msigdb_gs_HS_v2.RData'
           CTKgenes <- c("IL2","IL12A","IL12B","IL17A","IFNA1","IFNB1","IFNG","IFNGR","CD11b",
                         "ITGAM","CD33","ENTPD1","ICOSLG","CD275","CD278","TNFSF9","TNFRSF9",
                         "CD40","CD40LG","CD70","CD27","TNFSF18","TNFRSF18","TNFSF14","TNFRSF14",
