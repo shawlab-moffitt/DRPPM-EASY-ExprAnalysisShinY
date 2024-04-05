@@ -1,13 +1,12 @@
 
 
-
 # User Data Input --------------------------------------------------------------
 # Project Name
-ProjectName <- 'USP7 Human Demo'
+ProjectName <- ''
 # Expression Matrix
-expression_file <- 'ExampleData/USP7_RNAseq_expr.txt'
+expression_file <- ''
 # Meta data
-meta_file <- 'ExampleData/USP7_RNAseq_meta.tsv'
+meta_file <- ''
 #If human: set TRUE
 #If mouse: set FALSE
 human <- TRUE
@@ -17,12 +16,21 @@ set.seed(10242022)
 # Subsetting Feature
 Subsetting_Feature <- ''
 # Starting Feature
-Feature_Selected <- ''
+Feature_Selected <- 'FinalCellType'
 # Does user want password Protection?
 Password_Protected <- FALSE
 PasswordSet <- ''
 
 
+## Provided Input --------------------------------------------------------------
+## User make sure paths are correct
+ExampleExpr_File <- "Example_Data/TCGA_CHOL_Expression_PatientID.txt"
+ExampleClin_File <- "Example_Data/TCGA_CHOL_Clinical_PatientID.txt"
+
+
+#increase file upload size
+options(shiny.maxRequestSize=5000*1024^2)
+options("recount3_organism_human_project_homes_URL_http://duffel.rail.bio/recount3" = c("data_sources/sra", "data_sources/gtex", "data_sources/tcga"))
 
 # Load Libraries ---------------------------------------------------------------
 library("shiny")
@@ -53,54 +61,64 @@ library("limma")
 library("enrichplot")
 library("ComplexHeatmap")
 library("data.table")
+library("GEOquery")
+library("recount")
+library("recount3")
+library("edgeR")
+library("stringr")
 
 
-## Gene Set data ----------------------------------------------------------------
-#
-##write in the name of your gene set list for shiny UI
-#userGSlist_name <- 'LINCS L1000'
-#
-##path to your gene set file .gmt or .txt/.tsv
-#userGS_file <- 'LINCS_L1000_gsNsym_HS_v2.zip'
-#
-##path to your R data list object for ssGSEA
-#userRData_file <- 'LINCS_L1000_gs_HS_v2.RData'
-#
+## Gene Set data ---------------------------------------------------------------
+
 loadRData <- function(fileName){
   #loads an RData file, and returns it
   load(fileName)
   get(ls()[ls() != "fileName"])
 }
-#
-#if (human == TRUE) {
-#  #MSigDB gene set
-#  msigdb <- 'msigdb_gsNsym_HS_v2.zip'
-#  #MSigDB gene set FOR UI
-#  msigdb2 <- 'msigdb_gsNcat_HS_v2.txt'
-#  #gene set list for ssGSEA
-#  gs <- loadRData('msigdb_gs_HS_v2.RData')
-#  #Cytokine genes for human
-  CTKgenes <- c("IL2","IL12A","IL12B","IL17A","IFNA1","IFNB1","IFNG","IFNGR","CD11b",
-                "ITGAM","CD33","ENTPD1","ICOSLG","CD275","CD278","TNFSF9","TNFRSF9",
-                "CD40","CD40LG","CD70","CD27","TNFSF18","TNFRSF18","TNFSF14","TNFRSF14",
-                "TNFSF4","TNFRSF4","HLA-A","CD3","CEACAM1","CD80","CD86","CTLA4","CD276",
-                "VTCN1","PVR","CD226","TIGIT","CD96","LGALS3","LGALS3BP","LGALS9","LGALS9C",
-                "HAVCR2","HHLA2","TMIGD2","CD274","PDCD1LG2","PDCD1","VSIR")
-#}
-#if (human == FALSE) {
-#  #MSigDB gene set
-#  msigdb <- 'msigdb_gsNsym_MM.zip'
-#  #MSigDB gene set FOR UI
-#  msigdb2 <- 'msigdb_gsNcat_MM.tsv'
-#  #gene set list for ssGSEA
-#  gs <- loadRData('msigdb_gs_MM.RData')
-#  #Cytokine genes for mouse
-#  CTKgenes <- c("Il2","Il12a","Il12b","Il17a","Ifna13","Ifnb1","Ifng","Ifngr1","Cd11b","Itgam",
-#                "Cd33","Entpd1","Icosl","Icos","Tnfsf9","Tnfrsf9","Cd40","Cd40lg","Cd70","Cd27",
-#                "Tnfsf18","Tnfrsf18","Tnfsf14","Tnfrsf14","Tnfsf4","Tnfrsf4","H2-K1","CD3G",
-#                "Ceacam1","Cd80","Cd86","Ctla4","Cd276","Vtcn1","Pvr","Cd226","Tigit","Cd96","Lgals3",
-#                "Lgals3bp","Lgals9","Lgals9c","Havcr2","Hhla2","Cd274","Pdcd1lg2","Pdcd1","Vsir")
-#}
+CTKgenes <- c("IL2","IL12A","IL12B","IL17A","IFNA1","IFNB1","IFNG","IFNGR","CD11b",
+              "ITGAM","CD33","ENTPD1","ICOSLG","CD275","CD278","TNFSF9","TNFRSF9",
+              "CD40","CD40LG","CD70","CD27","TNFSF18","TNFRSF18","TNFSF14","TNFRSF14",
+              "TNFSF4","TNFRSF4","HLA-A","CD3","CEACAM1","CD80","CD86","CTLA4","CD276",
+              "VTCN1","PVR","CD226","TIGIT","CD96","LGALS3","LGALS3BP","LGALS9","LGALS9C",
+              "HAVCR2","HHLA2","TMIGD2","CD274","PDCD1LG2","PDCD1","VSIR")
+CTKgenes_hs <- c("IL2","IL12A","IL12B","IL17A","IFNA1","IFNB1","IFNG","IFNGR","CD11b",
+                 "ITGAM","CD33","ENTPD1","ICOSLG","CD275","CD278","TNFSF9","TNFRSF9",
+                 "CD40","CD40LG","CD70","CD27","TNFSF18","TNFRSF18","TNFSF14","TNFRSF14",
+                 "TNFSF4","TNFRSF4","HLA-A","CD3","CEACAM1","CD80","CD86","CTLA4","CD276",
+                 "VTCN1","PVR","CD226","TIGIT","CD96","LGALS3","LGALS3BP","LGALS9","LGALS9C",
+                 "HAVCR2","HHLA2","TMIGD2","CD274","PDCD1LG2","PDCD1","VSIR")
+
+CTKgenes_mm <- c("Il2","Il12a","Il12b","Il17a","Ifna13","Ifnb1","Ifng","Ifngr1","Cd11b","Itgam",
+                 "Cd33","Entpd1","Icosl","Icos","Tnfsf9","Tnfrsf9","Cd40","Cd40lg","Cd70","Cd27",
+                 "Tnfsf18","Tnfrsf18","Tnfsf14","Tnfrsf14","Tnfsf4","Tnfrsf4","H2-K1","CD3G",
+                 "Ceacam1","Cd80","Cd86","Ctla4","Cd276","Vtcn1","Pvr","Cd226","Tigit","Cd96","Lgals3",
+                 "Lgals3bp","Lgals9","Lgals9c","Havcr2","Hhla2","Cd274","Pdcd1lg2","Pdcd1","Vsir")
+
+if (!file.exists(expression_file)) {
+  FileProvided <- FALSE
+} else { FileProvided <- TRUE }
+
+if (!isTruthy(ProjectName)) {
+  ProjectNameHeader <- paste("{ Expression Analysis }")
+} else {
+  ProjectNameHeader <- paste("{",ProjectName,"Expression Analysis }")
+}
+
+if (!isTruthy(Subsetting_Feature)) {
+  Subsetting_Feature <- "Select All Samples"
+}
+if (!isTruthy(Feature_Selected)) {
+  Feature_Selected <- 1
+}
+if (!isTruthy(human)) {
+  mouse <- FALSE
+} else {
+  if (!as.logical(human)) {
+    mouse <- TRUE
+  } else {
+    mouse <- FALSE
+  }
+}
 
 
 # Functions --------------------------------------------------------------------
@@ -178,45 +196,17 @@ cv <- function(x){
   (sd(x)/mean(x))*100
 }
 
-
-if (!isTruthy(Subsetting_Feature)) {
-  Subsetting_Feature <- "Select All Samples"
-}
-if (!isTruthy(Feature_Selected)) {
-  Feature_Selected <- 1
-}
-if (!isTruthy(human)) {
-  mouse <- FALSE
-} else {
-  if (!as.logical(human)) {
-    mouse <- TRUE
-  } else {
-    mouse <- FALSE
-  }
+ExprFilter2 <- function(vec,criteria,proportion) {
+  Samp2meet <- length(vec)*proportion
+  meet <- sum(vec>criteria)
+  if (meet > Samp2meet) {
+    return(TRUE)
+  } else { return(FALSE) }
 }
 
 boxopt <- c("none","wilcox.test","t.test","kruskal.test","anova")
 
 
-### Gene Set Data -------------------------------------------------------------
-##MSigDB gene sets
-#msigdb.gsea <- as.data.frame(read_delim(msigdb, delim = '\t'))
-#gmt <- msigdb.gsea
-##MSigDB gene sets FOR UI
-#msigdb.gsea2 <- as.data.frame(read_delim(msigdb2, delim = '\t'))
-##tab2 User gene set
-#if (file_ext(userGS_file) == "gmt") {
-#  tab2 <- read.gmt(userGS_file)
-#}
-#if (file_ext(userGS_file) != "gmt") {
-#  tab2 <- as.data.frame(read_delim(userGS_file, col_names = T, delim = '\t'))
-#}
-##tab2 back end
-#GeneSet2 <- as.data.frame(unique(tab2[,1]))
-#rownames(GeneSet2) <- 1:nrow(GeneSet2)
-#colnames(GeneSet2)[1] <- "Gene_Set"
-##tab2 R Data list
-#gs2 <- loadRData(userRData_file)
 
 # Password Table ---------------------------------------------------------------
 # user database for logins
@@ -242,10 +232,6 @@ login_tab <- tabPanel(
 About_tab <- tabPanel("Intro/Methodology",
                       fluidPage(
                         mainPanel(
-                          uiOutput("rendtext1"),
-                          uiOutput("rendtext2"),
-                          #textInput("text1", "ExpressionMatrix", "", width = "50%"),
-                          #textInput("text2", "MetaFile", "", width = "50%"),
                           h3("Introduction"),
                           p("With the rapid generation of large datasets as a result of advancing next-generation sequecing (NGS) technologies, the need for quick and reproducible data analysis tools has become paramount. The ability to analyze both genomic and proteomic data sets can allow for the detection of compelling genes and features that may be of interest for further analysis. The General Expression Analysis App hosted in R Shiny does not require an extensive computation background to run these analyses. With user input of expression and meta data, along with gene set we have sourced and provided, the user may produce useful anaylsis and visualizations on a web-based interface within minutes. This method of reproducible data analysis generates a number of visualization to view Gene Set Enrichment (GSEA) and differential gene expression analysis, as well as the ability to download various tables and gene sets that are produced by the App for further use. Additional apps are being developed for the EASY family. DRPPM-EASY-Integraction allows users to further analyze data obtained from the main DRPPM-EASY app and compare expression data between two matrices. DRPPM-EASY-CCLE integrates a sample selection tab which allows users to select expression and meta data from the Cancer Cell Line Encyclopedia (CCLE) based on cancer type or lineage and sample type for analysis within the DRPPM-EASY app. The flow chart below gives a layout of the EASY app's family infrastructure which we will describe in further detail."),
                           h3("Unsupervised Clustering Methods"),
@@ -260,6 +246,90 @@ About_tab <- tabPanel("Intro/Methodology",
                           p("The Library of Integrated Network-based Cellular Signatures (LINCS) L1000 gene sets were derived from the Connectivity Map (CMAP) projects data which treated 4 human cell lines with ~1300 drugs followed by profiling genome-wide mRNA expression following small molecule perturbation [PMID: 24906883].")
                         )
                       )
+)
+
+## Data Input Tab --------------------------------------------------------------
+DataInput_tab <- tabPanel("Data Input",
+                          fluidPage(
+                            sidebarPanel(
+                              width = 3,
+                              id = "DataInputPanel",
+                              p(),
+                              textInput("UserProjectName","Project Name:", value = "Expression Analysis"),
+                              uiOutput("rendExprFileInput"),
+                              fluidRow(
+                                column(12, style = 'margin-top:-20px;',
+                                       checkboxGroupInput("RawCountQuantNorm",label = NULL,inline = TRUE,
+                                                              choices = c("Perform Normalization","Quantile Normalization")),
+                                       div(uiOutput("rendRawCountNorm"),style = "margin-top:-10px")
+                                )
+                              ),
+                              checkboxInput("FilterCheck","Filter Matrix",value = F),
+                              conditionalPanel("input.FilterCheck == true",
+                                               fluidRow(
+                                                 column(6,
+                                                        numericInput("FilterNum","Filter value:",value = NULL, min = 0)
+                                                        ),
+                                                 column(6,
+                                                        numericInput("FilterProp","Proportion of samples (%):",value = NULL, max = 100, min = 0)
+                                                        )
+                                                 )
+                                               ),
+                              uiOutput("rendClinFileInput"),
+                              div(uiOutput("rendMetaColOfInterest"), style = "margin-top:-20px"),
+                              fluidRow(
+                                column(12, style = 'margin-top:-10px;margin-bottom:-15px;',
+                                       actionButton("UseExpData","Load Example Data"),
+                                       tags$a(href="http://shawlab.science/shiny/PATH_SURVEYOR_ExampleData/PATH_SURVEYOR_App/", "Download example data", target='_blank'),
+                                )
+                              ),
+                              hr(),
+                              tabsetPanel(
+                                tabPanel("Split Columns",
+                                         p(),
+                                         fluidRow(
+                                           column(8, style = 'padding-right:2px',
+                                                  selectizeInput("ColToSplit","Column to split:",choices = NULL, selected = "")
+                                                  ),
+                                           column(4, style = 'padding-left:2px',
+                                                  textInput("SplitDelim","Split character:")
+                                                  )
+                                         ),
+                                         textInput("SplitNewColNames","New column names (comma delim)",
+                                                   placeholder = "NewColumn1,NewColumn2,NewColumn3"),
+                                         actionButton("SplitColumn","Click to split column")
+                                         ),
+                                tabPanel("Merge Columns",
+                                         p(),
+                                         fluidRow(
+                                           column(8, style = 'padding-right:2px',
+                                                  selectizeInput("ColsToMerge","Columns to merge:",choices = NULL, selected = "", multiple = T)
+                                           ),
+                                           column(4, style = 'padding-left:2px',
+                                                  textInput("MergeDelim","Merge character:")
+                                           )
+                                         ),
+                                         textInput("MergeNewColName","New column name:",
+                                                   placeholder = "New_Merged_Column"),
+                                         actionButton("MergeColumns","Click to merge columns")
+                                         )
+                              )
+                            ),
+                            mainPanel(
+                              fluidRow(
+                                column(2, style = 'margin-top:15px;',
+                                       uiOutput("renddownload_expr")
+                                ),
+                                column(2, style = 'margin-top:15px;',
+                                       uiOutput("renddownload_meta")
+                                )
+                              ),
+                              uiOutput("rendExprFilePrevHeader"),
+                              div(DT::dataTableOutput("ExprFile_Preview"), style = "font-size:10px"),
+                              uiOutput("rendClinFilePrevHeader"),
+                              div(DT::dataTableOutput("ClinFile_Preview"), style = "font-size:10px")
+                            )
+                          )
 )
 
 ## Data Exploration Tab -------------------------------------------------------------------
@@ -1178,21 +1248,8 @@ GSEA_tab <- tabPanel("GSEA Analysis",
 )
 
 
-# UI ---------------------------------------------------------------------------
-#if (Password_Protected) {
-#  ui <- navbarPage(paste("{",ProjectName,"Expression Analysis }", sep=" "),
-#                   id = "tabs",
-#                   collapsible = TRUE,
-#                   login_tab)
-#} else {
-#  ui <- navbarPage(paste("{",ProjectName,"Expression Analysis }", sep=" "),
-#                   id = "tabs",
-#                   collapsible = TRUE,
-#                   About_tab,
-#                   Data_Exploration_tab,
-#                   DGE_tab,
-#                   GSEA_tab)
-#}
+# Render UI ---------------------------------------------------------------------------
+
 
 if (Password_Protected) {
   ui <- navbarPage(paste("{ EASY Expression Analysis }", sep=" "),
@@ -1203,10 +1260,11 @@ if (Password_Protected) {
   ui <- navbarPage(paste("{ EASY Expression Analysis }", sep=" "),
                    id = "tabs",
                    collapsible = TRUE,
-                   About_tab,
+                   DataInput_tab,
                    Data_Exploration_tab,
                    DGE_tab,
-                   GSEA_tab)
+                   GSEA_tab,
+                   About_tab)
 }
 
 
@@ -1269,50 +1327,130 @@ server <- function(input, output, session) {
         # remove the login tab
         removeTab("tabs", "login")
         # add home tab
-        appendTab("tabs", About_tab, select = FALSE)
-        appendTab("tabs", Data_Exploration_tab, select = TRUE)
+        appendTab("tabs", DataInput_tab, select = TRUE)
+        appendTab("tabs", Data_Exploration_tab, select = FALSE)
         appendTab("tabs", DGE_tab, select = FALSE)
         appendTab("tabs", GSEA_tab, select = FALSE)
+        appendTab("tabs", About_tab, select = FALSE)
       }
     }
 
     if (credentials()$user_auth) {
 
-      # Set Reactive Vals ----------------------------------------------------------
-      expr_raw <- reactiveVal(NULL);
-      meta_raw <- reactiveVal(NULL);
-      A_raw <- reactiveVal(NULL);
-      geneList_raw <- reactiveVal(NULL);
-      Gene_raw <- reactiveVal(NULL);
-
-      SubCol_reactVal <- reactiveVal(Subsetting_Feature)
+      # Reactive Val Start ----------------------------------------------------------
+      ProjectName_react <- reactiveVal(ProjectName)
+      ExpressionMatrix_file_react <- reactiveVal(expression_file)
+      MetaData_file_react <- reactiveVal(meta_file)
+      MM_react <- reactiveVal(mouse)
+      Subsetting_Feature_react <- reactiveVal(Subsetting_Feature)
       SubCrit_reactVal <- reactiveVal(1)
-      metacol_reactVal <- reactiveVal(Feature_Selected)
+      Feature_Selected_react <- reactiveVal(Feature_Selected)
+      SubCol_reactVal <- reactiveVal(Subsetting_Feature_react())
+      SubCrit_reactVal <- reactiveVal(SubCrit_reactVal())
+      metacol_reactVal <- reactiveVal(Feature_Selected_react())
+      
+      gse_id_react <- reactiveVal()
+      recount_id_react <- reactiveVal()
+      recount_obj <- reactiveVal()
+      recount3_proj <- reactiveVal()
+      user_upload <- reactiveVal()
+      expr_input <- reactiveVal()
+      meta_input <- reactiveVal()
+      A_raw <- reactiveVal()
+      geneList_raw <- reactiveVal()
+      Gene_raw <- reactiveVal()
+      
+      # Data Input Tab ---------------------------------------------------------
+      
+      output$rendExprFileInput <- renderUI({
+        refresh <- input$UseExpData
+        fluidRow(
+          column(9,
+                 fileInput("ExprFileInput","Expression Matrix")
+                 ),
+          column(3, style = "margin-top:15px",
+                 shiny::radioButtons("HumanOrMouse",NULL,c("Human","Mouse"))
+                 )
+          )
+      })
+      output$rendRawCountNorm <- renderUI({
+        if ("Perform Normalization" %in% input$RawCountQuantNorm) {
+          if (isTruthy(recount_id_react()))  {
+            selectInput("RawCountNorm","Normalize Raw Counts By:",
+                        c("No Normalization" = "none",
+                          "TPM" = "TPM",
+                          "RPKM" = "RPKM",
+                          "TMM" = "TMM",
+                          "Upper Quartile" = "upperquartile"),
+                        selected = "TPM", width = "50%")
+          } else {
+            selectInput("RawCountNorm","Normalize Raw Counts By:",
+                        c("No Normalization" = "none",
+                          "TMM" = "TMM",
+                          "Upper Quartile" = "upperquartile"), width = "50%")
+          }
+          
+        }
+      })
+      output$rendClinFileInput <- renderUI({
+        refresh <- input$UseExpData
+        fileInput("ClinFileInput","Meta Data")
+      })
+      output$rendExprFilePrevHeader <- renderUI({
+        req(ExpressionMatrix_file_react())
+        h3("Expression File Preview")
+      })
+      output$rendClinFilePrevHeader <- renderUI({
+        req(MetaData_file_react())
+        h3("Meta File Preview")
+      })
+      
+      output$rendMetaColOfInterest <- renderUI({
+        req(meta_input())
+        selectizeInput("MetaColOfInterest","Meta column of interest:",choices = NULL, selected = "")
+      })
+      
+      metaCol_ofInt_Selected <- reactive(input$MetaColOfInterest)
+      observeEvent(meta_input(),{
+        if (isTruthy(metaCol_ofInt_Selected())) {
+          selectedFeat <- metaCol_ofInt_Selected()
+        } else { selectedFeat <- "" }
+        updateSelectizeInput(session,"MetaColOfInterest",choices = colnames(meta_input()), server = T,
+                             selected = selectedFeat)
+      })
+      observe({
+        if (isTruthy(input$MetaColOfInterest)) {
+          meta <- meta_input()
+          meta <- meta %>% relocate(any_of(input$MetaColOfInterest), .after = 1) %>% as.data.frame()
+          meta_input(meta)
+          Feature_Selected_react(input$MetaColOfInterest)
+          metacol_reactVal(input$MetaColOfInterest)
+        }
+      })
+      
+      observe({
+        req(meta_input())
+        updateSelectizeInput(session,"ColToSplit",choices = colnames(meta_input()), server = T, selected = "")
+        updateTextInput(session,"SplitDelim",value = "")
+        updateTextInput(session,"SplitNewColNames",value = "")
+      })
+      observe({
+        req(meta_input())
+        updateSelectizeInput(session,"ColsToMerge",choices = colnames(meta_input()), server = T)
+        updateTextInput(session,"MergeDelim",value = "")
+        updateTextInput(session,"MergeNewColName",value = "")
+      })
 
       # Observe URL input ----------------------------------------------------------
-
-      projectName_react <- reactiveVal(ProjectName)
-      expr_file_react <- reactiveVal(expression_file)
-      meta_file_react <- reactiveVal(meta_file)
-      MM_react <- reactiveVal(mouse)
-      Subsetting_Feature_react <- reactiveVal(NULL)
-      Feature_Selected_react <- reactiveVal(NULL)
-
-      output$rendtext1 <- renderUI({
-        p(paste0("Expression Matrix Path: ",expr_file_react()))
-      })
-      output$rendtext2 <- renderUI({
-        p(paste0("Meta Data Path: ",meta_file_react()))
-      })
 
       # Observe URL Inputs
       observe({
         query <- parseQueryString(session$clientData$url_search)
         print(query)
         if (!is.null(query[['expr']]) && !is.null(query[['meta']])) {
-          projectName_react(query[["proj"]])
-          expr_file_react(query[['expr']])
-          meta_file_react(query[['meta']])
+          ProjectName_react(query[["proj"]])
+          ExpressionMatrix_file_react(query[['expr']])
+          MetaData_file_react(query[['meta']])
           if ('mouse' %in% names(query)) {
             if (query[['mouse']] == "") {
               MM_react(TRUE)
@@ -1324,52 +1462,146 @@ server <- function(input, output, session) {
           }
           Subsetting_Feature_react(query[['subset']])
           Feature_Selected_react(query[['feature']])
+        } 
+        if (!is.null(query[['gseid']]) && is.null(query[['expr']]) && is.null(query[['meta']]) && is.null(query[['recount']])) {
+          gse_id_react(query[['gseid']])
+          print(gse_id_react)
+          ExpressionMatrix_file_react(query[['gseid']])
+          MetaData_file_react(query[['gseid']])
+          Subsetting_Feature_react(query[['subset']])
+          Feature_Selected_react(query[['feature']])
+        }
+        if (is.null(query[['gseid']]) && is.null(query[['expr']]) && is.null(query[['meta']]) && !is.null(query[['recount']])) {
+          recount_id_react(query[['recount']])
+          print(recount_id_react)
+          ExpressionMatrix_file_react(query[['recount']])
+          MetaData_file_react(query[['recount']])
+          Subsetting_Feature_react(query[['subset']])
+          Feature_Selected_react(query[['feature']])
         }
       })
-
-      observe({
-        if (isTruthy(Subsetting_Feature_react())) {
-          SubCol_reactVal(Subsetting_Feature_react())
-        }
+      
+      ### Example Data ---------------------------------------------------------
+      observeEvent(input$UseExpData, {
+        ProjectName_react("TCGA_CHOL")
+        ExpressionMatrix_file_react(ExampleExpr_File)
+        MetaData_file_react(ExampleClin_File)
+        metacol_reactVal("ajcc_pathologic_tumor_stage")
+        MM_react(FALSE)
+        updateTextInput(session,"UserProjectName",value = "TCGA_CHOL")
       })
+      
+      ### User Upload ----------------------------------------------------------
       observe({
-        if (isTruthy(Feature_Selected_react())) {
-          metacol_reactVal(Feature_Selected_react())
+        if (isTruthy(input$ExprFileInput$datapath) & isTruthy(input$ClinFileInput$datapath) & isTruthy(input$HumanOrMouse)) {
+          ProjectName_react(input$UserProjectName)
+          ExpressionMatrix_file_react(input$ExprFileInput$datapath)
+          MetaData_file_react(input$ClinFileInput$datapath)
+          if (input$HumanOrMouse == "Mouse") {
+            MM_react(TRUE)
+          } else {
+            MM_react(FALSE)
+          }
         }
       })
 
       # Load in URL or given file
-      observe(({
-
-        if (isTruthy(expr_file_react()) & isTruthy(meta_file_react())) {
+      observe({
+        
+        if (isTruthy(ExpressionMatrix_file_react()) & isTruthy(MetaData_file_react()) && !isTruthy(gse_id_react()) && !isTruthy(recount_id_react())) {
           # Expression file
-          print(expr_file_react())
-          print(meta_file_react())
-          if (file.exists(expr_file_react())) {
-            if (tools::file_ext(expr_file_react()) %in% c("txt","tsv","TXT","TSV")) {
-              expr <- as.data.frame(fread(expr_file_react(), sep = '\t', header = T))
-            } else if (tools::file_ext(expr_file_react()) %in% c("zip","gz","ZIP","GZ")) {
-              expr <- as.data.frame(read_delim(expr_file_react(), delim = '\t', col_names = T))
-            } else if (tools::file_ext(expr_file_react()) %in% c("csv","CSV")) {
-              expr <- as.data.frame(fread(expr_file_react(), sep = ',', header = T))
-            } else if (tools::file_ext(expr_file_react()) %in% c("RData","rdata")) {
-              expr <- loadRData(expr_file_react())
-            } else if (tools::file_ext(expr_file_react()) %in% c("rds","RDS")) {
-              expr <- readRDS(expr_file_react())
+          if (file.exists(ExpressionMatrix_file_react())) {
+            if (tools::file_ext(ExpressionMatrix_file_react()) %in% c("txt","tsv","zip","gz","TXT","TSV","ZIP","GZ")) {
+              expr <- as.data.frame(read_delim(ExpressionMatrix_file_react(), delim = '\t', col_names = T))
+            } else if (tools::file_ext(ExpressionMatrix_file_react()) %in% c("csv","CSV")) {
+              expr <- as.data.frame(read_delim(ExpressionMatrix_file_react(), delim = ',', col_names = T))
+            } else if (tools::file_ext(ExpressionMatrix_file_react()) %in% c("RData","rdata")) {
+              expr <- loadRData(ExpressionMatrix_file_react())
+            } else if (tools::file_ext(ExpressionMatrix_file_react()) %in% c("rds","RDS")) {
+              expr <- readRDS(ExpressionMatrix_file_react())
             }
           } else {
-            if (tools::file_ext(expr_file_react()) %in% c("txt","tsv","TXT","TSV")) {
-              expr <- as.data.frame(read_delim(url(expr_file_react()), delim = '\t', col_names = T))
-            } else if (tools::file_ext(expr_file_react()) %in% c("zip","gz","ZIP","GZ")) {
-              expr <- as.data.frame(read_delim(getZip(expr_file_react()), delim = '\t', col_names = T))
-            } else if (tools::file_ext(expr_file_react()) %in% c("csv","CSV")) {
-              expr <- as.data.frame(read_delim(url(expr_file_react()), delim = ',', col_names = T))
-            } else if (tools::file_ext(expr_file_react()) %in% c("RData","rdata")) {
-              expr <- loadRData(url(expr_file_react()))
-            } else if (tools::file_ext(expr_file_react()) %in% c("rds","RDS")) {
-              expr <- readRDS(url(expr_file_react()))
+            if (tools::file_ext(ExpressionMatrix_file_react()) %in% c("txt","tsv","TXT","TSV")) {
+              expr <- as.data.frame(read_delim(url(ExpressionMatrix_file_react()), delim = '\t', col_names = T))
+            } else if (tools::file_ext(ExpressionMatrix_file_react()) %in% c("zip","gz","ZIP","GZ")) {
+              expr <- as.data.frame(read_delim(getZip(ExpressionMatrix_file_react()), delim = '\t', col_names = T))
+            } else if (tools::file_ext(ExpressionMatrix_file_react()) %in% c("csv","CSV")) {
+              expr <- as.data.frame(read_delim(url(ExpressionMatrix_file_react()), delim = ',', col_names = T))
+            } else if (tools::file_ext(ExpressionMatrix_file_react()) %in% c("RData","rdata")) {
+              expr <- loadRData(url(ExpressionMatrix_file_react()))
+            } else if (tools::file_ext(ExpressionMatrix_file_react()) %in% c("rds","RDS")) {
+              expr <- readRDS(url(ExpressionMatrix_file_react()))
             }
           }
+          if (file.exists(MetaData_file_react())) {
+            if (tools::file_ext(MetaData_file_react()) %in% c("txt","tsv","zip","gz","TXT","TSV","ZIP","GZ")) {
+              meta <- as.data.frame(read_delim(MetaData_file_react(), delim = '\t', col_names = T))
+            } else if (tools::file_ext(MetaData_file_react()) %in% c("csv","CSV")) {
+              meta <- as.data.frame(read_delim(MetaData_file_react(), delim = ',', col_names = T))
+            } else if (tools::file_ext(MetaData_file_react()) %in% c("RData","rdata")) {
+              meta <- loadRData(MetaData_file_react())
+            } else if (tools::file_ext(MetaData_file_react()) %in% c("rds","RDS")) {
+              meta <- readRDS(MetaData_file_react())
+            }
+          } else {
+            if (tools::file_ext(MetaData_file_react()) %in% c("txt","tsv","TXT","TSV")) {
+              meta <- as.data.frame(read_delim(url(MetaData_file_react()), delim = '\t', col_names = T))
+            } else if (tools::file_ext(MetaData_file_react()) %in% c("zip","gz","ZIP","GZ")) {
+              meta <- as.data.frame(read_delim(getZip(MetaData_file_react()), delim = '\t', col_names = T))
+            } else if (tools::file_ext(MetaData_file_react()) %in% c("csv","CSV")) {
+              meta <- as.data.frame(read_delim(url(MetaData_file_react()), delim = ',', col_names = T))
+            } else if (tools::file_ext(MetaData_file_react()) %in% c("RData","rdata")) {
+              meta <- loadRData(url(MetaData_file_react()))
+            } else if (tools::file_ext(MetaData_file_react()) %in% c("rds","RDS")) {
+              meta <- readRDS(url(MetaData_file_react()))
+            }
+          }
+          user_upload(list(expr = expr,
+                           meta = meta))
+        } else if (isTruthy(ExpressionMatrix_file_react()) & isTruthy(MetaData_file_react()) & isTruthy(gse_id_react())) {
+          gse_id = as.character(gse_id_react())
+          gset <- getGEO(gse_id, GSEMatrix = TRUE, getGPL = TRUE)
+          gse <- getGEO(gse_id, GSEMatrix = FALSE, getGPL = TRUE)
+          user_upload(list(gset = gset,
+                           gse = gse))
+        } else if (isTruthy(ExpressionMatrix_file_react()) & isTruthy(MetaData_file_react()) & isTruthy(recount_id_react())) {
+          recount3_Projects <- available_projects()
+          recount3_proj(recount3_Projects)
+          RecountID <- recount_id_react()
+          if (RecountID %in% recount3_Projects$project) {
+            Proj_home <- recount3_Projects[which(recount3_Projects$project == RecountID),"project_home"]
+            Proj_org <- recount3_Projects[which(recount3_Projects$project == RecountID),"organism"]
+            Proj_source <- toupper(recount3_Projects[which(recount3_Projects$project == RecountID),"file_source"])
+            File_prefix <- paste0(Proj_source,"_",RecountID)
+            recount_rse <- recount3::create_rse_manual(
+              project = RecountID,
+              project_home = Proj_home,
+              organism = Proj_org,
+              annotation = "gencode_v26",
+              type = "gene",
+              verbose = TRUE
+            )
+            if (Proj_org == "mouse") {
+              MM_react(TRUE)
+            } else {
+              MM_react(FALSE)
+            }
+            user_upload(recount_rse)
+          }
+        }
+      })
+      
+      observe({
+        if (isTruthy(recount_id_react())) {
+          updateCheckboxGroupInput(session,"RawCountQuantNorm",selected = "Perform Normalization")
+        }
+      })
+      
+      observe({
+        if (isTruthy(ExpressionMatrix_file_react()) & isTruthy(MetaData_file_react()) && !isTruthy(gse_id_react()) && !isTruthy(recount_id_react())) {
+          req(user_upload())
+          expr <- user_upload()$expr
+          meta <- user_upload()$meta
           colnames(expr)[1] <- "Gene"
           expr[sapply(expr, is.infinite)] <- NA
           # Remove Expression with NA
@@ -1382,69 +1614,74 @@ server <- function(input, output, session) {
             expr[isChar] <- sapply(expr[isChar],as.numeric)
           }
           # Remove Duplicate genes
-          if (TRUE %in% duplicated(expr[,1])) {
-            expr <- expr %>%
+          expr_dup <- expr[which(expr[,1] %in% expr[,1][duplicated(expr[,1])]),]
+          expr_nondup <- expr[which(!expr[,1] %in% expr[,1][duplicated(expr[,1])]),]
+          if (nrow(expr_dup) > 0) {
+            expr_dup <- expr_dup %>%
               group_by(Gene) %>%
               summarise_all(max)
           }
+          expr <- rbind(expr_dup,expr_nondup)
           expr <- as.data.frame(expr)
           # Make rownames <- genenames
           row.names(expr) <- expr[,1]
           expr <- expr[,-1]
+          if ("Perform Normalization" %in% input$RawCountQuantNorm) {
+            if (isTruthy(input$RawCountNorm)) {
+              if (input$RawCountNorm %in% c("TMM","upperquartile")) {
+                mat <- as.matrix(expr)
+                mat_dgeList <- DGEList(counts = as.matrix(mat))
+                mat_dgeList_Norm <- edgeR::calcNormFactors(mat_dgeList, method = input$RawCountNorm)
+                expr <- edgeR::cpm(mat_dgeList_Norm)
+              }  else if (input$RawCountNorm == "none") {
+                expr <- expr
+              }
+            }
+          }
+          if ("Quantile Normalization" %in% input$RawCountQuantNorm) {
+            expr <- preprocessCore::normalize.quantiles(as.matrix(expr), keep.names = T)
+          }
+          if (input$FilterCheck & isTruthy(input$FilterNum) & isTruthy(input$FilterProp)) {
+            FilterProp <- input$FilterProp/100
+            expr_pass <- apply(expr,1,function(x) ExprFilter2(x, input$FilterNum, FilterProp))
+            expr <- expr[which(expr_pass == TRUE),]
+          }
           expr = expr[order(row.names(expr)), ]
+          print(head(expr,c(5,5)))
           # Harmonize special characters in sample names
           colnames(expr) <- gsub("[[:punct:]]", "_", colnames(expr))
-          A <- as.matrix(expr)
-          A_raw(A);
-
+          print(head(expr,c(5,5)))
+          
           #gene list file from expression data
           Gene <- rownames(expr)
           geneList <- as.data.frame(Gene)
           geneList_raw(geneList);
           Gene_raw(Gene)
-
-          if (file.exists(meta_file_react())) {
-            if (tools::file_ext(meta_file_react()) %in% c("txt","tsv","TXT","TSV")) {
-              meta <- as.data.frame(fread(meta_file_react(), sep = '\t', header = T))
-            } else if (tools::file_ext(expr_file_react()) %in% c("zip","gz","ZIP","GZ")) {
-              expr <- as.data.frame(read_delim(meta_file_react(), delim = '\t', col_names = T))
-            } else if (tools::file_ext(meta_file_react()) %in% c("csv","CSV")) {
-              meta <- as.data.frame(fread(meta_file_react(), sep = ',', header = T))
-            } else if (tools::file_ext(meta_file_react()) %in% c("RData","rdata")) {
-              meta <- loadRData(meta_file_react())
-            } else if (tools::file_ext(meta_file_react()) %in% c("rds","RDS")) {
-              meta <- readRDS(meta_file_react())
-            }
-          } else {
-            if (tools::file_ext(meta_file_react()) %in% c("txt","tsv","TXT","TSV")) {
-              meta <- as.data.frame(read_delim(url(meta_file_react()), delim = '\t', col_names = T))
-            } else if (tools::file_ext(meta_file_react()) %in% c("zip","gz","ZIP","GZ")) {
-              meta <- as.data.frame(read_delim(getZip(meta_file_react()), delim = '\t', col_names = T))
-            } else if (tools::file_ext(meta_file_react()) %in% c("csv","CSV")) {
-              meta <- as.data.frame(read_delim(url(meta_file_react()), delim = ',', col_names = T))
-            } else if (tools::file_ext(meta_file_react()) %in% c("RData","rdata")) {
-              meta <- loadRData(url(meta_file_react()))
-            } else if (tools::file_ext(meta_file_react()) %in% c("rds","RDS")) {
-              meta <- readRDS(url(meta_file_react()))
-            }
-          }
+          
           meta[,1] <- gsub("[_.-]", "_", meta[,1])
           colnames(meta)[1] <- "SampleName"
-
+          
           #for heatmap sample selection
           sampsames <- intersect(colnames(expr),meta[,1])
-
+          
           #ensure expression samples and meta are exact
           expr <- expr[,sampsames]
+          print(head(expr,c(5,5)))
           meta <- meta[which(meta[,1] %in% sampsames),]
-          expr_raw(expr)
-          meta_raw(meta)
+          expr_input(expr)
+          meta_input(meta)
           
-          if (ncol(meta) == 2) {
-            metacol <- metacol_reactVal(colnames(meta)[2])
+          if (isTruthy(MM_react())) {
+            if (as.logical(MM_react())) {
+              CTKgenes <- CTKgenes_mm
+            } else {
+              CTKgenes <- CTKgenes_hs
+            }
+          } else {
+            CTKgenes <- CTKgenes_hs
           }
-
-          CTKgenes <- CTKgenes[which(CTKgenes %in% toupper(Gene))]
+          
+          CTKgenes <- CTKgenes[which(CTKgenes %in% Gene)]
           updateSelectizeInput(session = session, inputId = "heatmapGeneSelec",
                                choices = Gene,selected = CTKgenes, server = T)
           updateSelectizeInput(session = session, inputId = "userheatsamp2",
@@ -1461,10 +1698,440 @@ server <- function(input, output, session) {
                                choices = rownames(expr),selected = NULL, server = T)
           updateSelectizeInput(session = session, inputId = "userheatsampSS",
                                choices = sampsames,selected = sampsames, server = T)
+          
+        } 
+        if (isTruthy(ExpressionMatrix_file_react()) & isTruthy(MetaData_file_react()) & isTruthy(gse_id_react())) {
+          req(user_upload())
+          gset <- user_upload()$gset
+          gse <- user_upload()$gse
+          
+          gse_id = as.character(gse_id_react())
+          platform <- names(GPLList(gse))
+          
+          if (length(gset) > 1) idx <- grep(platform, attr(gset, "names")) else idx <- 1
+          gset <- gset[[idx]]
+          expr <- exprs(gset)
+          df <- as.data.frame(expr)
+          df <- arrange(df)
+          df$ID <- rownames(df)
+          df <- df %>% relocate(ID)
+          df$ID <- trimws(df$ID)
+          df$ID <- as.character(df$ID)
+          
+          full_table <- read_delim(paste("https://raw.githubusercontent.com/shawlab-moffitt/GEO_DataDownload_Example/main/GPL_Files/", platform, ".txt", sep=""), delim = '\t', col_names = T)
+          #rownames(full_table) <- full_table[,1]
+          full_table[1] <- NULL
+          
+          head(full_table)
+          #full_table <- idmap(platform)
+          # full_table <- idmap(platform, type = 'pipe')
+          colnames(full_table)[1] = "ID"
+          colnames(full_table)[2] = "Symbol"
+          print(head(full_table))
+          full_table <- arrange(full_table)
+          full_table = data.frame(full_table)
+          full_table$ID <- as.character(full_table$ID)
+          head(full_table)
+          # convert id to symbol for expr matrix
+          converted_expr_matrix <- inner_join(df, full_table, by = "ID")
+          converted_expr_matrix <- relocate(converted_expr_matrix, "Symbol", .before = 1)
+          print(head(converted_expr_matrix,c(5,5)))
+          converted_expr_matrix$ID <- NULL
+          converted_expr_matrix <- converted_expr_matrix[complete.cases(converted_expr_matrix$Symbol), ]
+          converted_expr_matrix$Symbol <- trimws(converted_expr_matrix$Symbol)
+          colnames(converted_expr_matrix)[1] <- "Gene"
+          
+          # Remove Expression with NA
+          converted_expr_matrix <- converted_expr_matrix %>%
+            drop_na()
+          
+          # Check that expression data is numeric
+          isChar <- unname(which(sapply(converted_expr_matrix, function(x) is.character(x))))
+          isChar <-  isChar[-1]
+          if (length(isChar) > 0) {
+            converted_expr_matrix[isChar] <- sapply(converted_expr_matrix[isChar],as.numeric)
+          }
+          
+          expr <- as.data.frame(converted_expr_matrix)
 
+          colnames(expr)[1] <- "Gene"
+          expr[sapply(expr, is.infinite)] <- NA
+          # Remove Expression with NA
+          expr <- expr %>%
+            drop_na()
+          # Check that expression data is numeric
+          isChar <- unname(which(sapply(expr, function(x) is.character(x))))
+          isChar <-  isChar[-1]
+          if (length(isChar) > 0) {
+            expr[isChar] <- sapply(expr[isChar],as.numeric)
+          }
+          # Remove Duplicate genes
+          expr_dup <- expr[which(expr[,1] %in% expr[,1][duplicated(expr[,1])]),]
+          expr_nondup <- expr[which(!expr[,1] %in% expr[,1][duplicated(expr[,1])]),]
+          if (nrow(expr_dup) > 0) {
+            expr_dup <- expr_dup %>%
+              group_by(Gene) %>%
+              summarise_all(max)
+          }
+          expr <- rbind(expr_dup,expr_nondup)
+          expr <- as.data.frame(expr)
+          # Make rownames <- genenames
+          row.names(expr) <- expr[,1]
+          expr <- expr[,-1]
+          if ("Perform Normalization" %in% input$RawCountQuantNorm) {
+            if (isTruthy(input$RawCountNorm)) {
+              if (input$RawCountNorm %in% c("TMM","upperquartile")) {
+                mat <- as.matrix(expr)
+                mat_dgeList <- DGEList(counts = as.matrix(mat))
+                mat_dgeList_Norm <- edgeR::calcNormFactors(mat_dgeList, method = input$RawCountNorm)
+                expr <- edgeR::cpm(mat_dgeList_Norm)
+              }  else if (input$RawCountNorm == "none") {
+                expr <- expr
+              }
+            }
+          }
+          if ("Quantile Normalization" %in% input$RawCountQuantNorm) {
+            expr <- preprocessCore::normalize.quantiles(as.matrix(expr), keep.names = T)
+          }
+          if (input$FilterCheck & isTruthy(input$FilterNum) & isTruthy(input$FilterProp)) {
+            FilterProp <- input$FilterProp/100
+            expr_pass <- apply(expr,1,function(x) ExprFilter2(x, input$FilterNum, FilterProp))
+            expr <- expr[which(expr_pass == TRUE),]
+          }
+          expr = expr[order(row.names(expr)), ]
+          # Harmonize special characters in sample names
+          colnames(expr) <- gsub("[[:punct:]]", "_", colnames(expr))
+          
+          #gene list file from expression data
+          Gene <- rownames(expr)
+          geneList <- as.data.frame(Gene)
+          geneList_raw(geneList);
+          Gene_raw(Gene)
+          
+          meta <- pData(gset)
+          org <- meta[1,"organism_ch1"]
+          meta <- relocate(meta, geo_accession, .before = title)
+          # cleaning the meta data
+          # Select columns that start with "characteristic"
+          char_cols <- grep("^characteristic", colnames(meta), value = TRUE)
+          extr_meta <- meta[, c("geo_accession", char_cols)]
+          
+          original_df <- extr_meta
+          
+          # Initialize an empty data frame to store results
+          new_df <- data.frame(sample = character(0), title = character(0), value = character(0), stringsAsFactors = FALSE)
+          
+          # Iterate through rows and columns to extract values and create new rows
+          for (i in seq_along(original_df$geo_accession)) {
+            row_values <- as.character(original_df[i, -1])  # Convert to character
+            row_values <- row_values[which(!row_values == "")]
+            
+            for (j in seq_along(row_values)) {
+              split_value <- trimws(strsplit(row_values[j], ":")[[1]])
+              title <- split_value[1]
+              value <- paste(split_value[-1], collapse = ":")
+              
+              new_row <- data.frame(geo_accession = original_df$geo_accession[i], title = title, value = value, stringsAsFactors = FALSE)
+              new_df <- rbind(new_df, new_row)
+            }
+          }
+          
+          final_extr_meta <- tidyr::pivot_wider(new_df, names_from = title, values_from = value)
+          print(head(final_extr_meta, c(5,5)))
+          final_extr_meta <- as.data.frame(final_extr_meta)
+          meta_merged <- dplyr::full_join(final_extr_meta, meta[,which(!colnames(meta) %in% char_cols)], by = "geo_accession")
+          print(head(meta_merged,c(5,5)))
+          meta <- meta_merged
+          
+          meta[,1] <- gsub("[_.-]", "_", meta[,1])
+          print(head(meta))
+          colnames(meta)[1] <- "SampleName"
+          
+          #for heatmap sample selection
+          sampsames <- intersect(colnames(expr),meta[,1])
+          
+          #ensure expression samples and meta are exact
+          expr <- expr[,sampsames]
+          meta <- meta[which(meta[,1] %in% sampsames),]
+          expr_input(expr)
+          meta_input(meta)
+          
+          if (tolower(org) == "mus musculus") {
+            MM_react(TRUE)
+          } else (
+            MM_react(FALSE)
+          )
+          if (isTruthy(MM_react())) {
+            if (as.logical(MM_react())) {
+              CTKgenes <- CTKgenes_mm
+            } else {
+              CTKgenes <- CTKgenes_hs
+            }
+          } else {
+            CTKgenes <- CTKgenes_hs
+          }
+          
+          CTKgenes <- CTKgenes[which(CTKgenes %in% Gene)]
+          updateSelectizeInput(session = session, inputId = "heatmapGeneSelec",
+                               choices = Gene,selected = CTKgenes, server = T)
+          updateSelectizeInput(session = session, inputId = "userheatsamp2",
+                               choices = sampsames,selected = sampsames, server = T)
+          updateSelectizeInput(session = session, inputId = "avgheatmapGeneSelec",
+                               choices = Gene,selected = CTKgenes, server = T)
+          updateSelectizeInput(session = session, inputId = "scatterG1",
+                               choices = Gene,selected = Gene[1], server = T)
+          updateSelectizeInput(session = session, inputId = "scatterG2",
+                               choices = Gene,selected = Gene[2], server = T)
+          updateSelectizeInput(session = session, inputId = "userGeneSelec",
+                               choices = sort(as.vector(geneList[,1])),selected = NULL, server = T)
+          updateSelectizeInput(session = session, inputId = "scatterGeneSelec",
+                               choices = rownames(expr),selected = NULL, server = T)
+          updateSelectizeInput(session = session, inputId = "userheatsampSS",
+                               choices = sampsames,selected = sampsames, server = T)
+        }
+        
+        if (isTruthy(ExpressionMatrix_file_react()) & isTruthy(MetaData_file_react()) & isTruthy(recount_id_react())) {
+          req(user_upload())
+          
+          RecountID <- recount_id_react()
+          if (RecountID %in% recount3_proj()$project) {
+            Proj_home <- recount3_proj()[which(recount3_proj()$project == RecountID),"project_home"]
+            Proj_org <- recount3_proj()[which(recount3_proj()$project == RecountID),"organism"]
+            Proj_source <- toupper(recount3_proj()[which(recount3_proj()$project == RecountID),"file_source"])
+            File_prefix <- paste0(Proj_source,"_",RecountID)
+            
+            recount_rse <- user_upload()
+            expr <- assay(recount_rse)
+            if ("Perform Normalization" %in% input$RawCountQuantNorm) {
+              if (isTruthy(input$RawCountNorm)) {
+                if (input$RawCountNorm %in% c("TPM","RPKM")) {
+                  if (input$RawCountNorm == "TPM") {
+                    recount_rse <- user_upload()
+                    assays(recount_rse)$counts <- transform_counts(recount_rse)
+                    expr <- as.data.frame(recount::getTPM(recount_rse))
+                  } else if (input$RawCountNorm == "RPKM") {
+                    recount_rse <- user_upload()
+                    assays(recount_rse)$counts <- transform_counts(recount_rse)
+                    expr <- as.data.frame(recount::getRPKM(recount_rse))
+                  }  else if (input$RawCountNorm == "none") {
+                    recount_rse <- user_upload()
+                    expr <- assay(recount_rse)
+                  }
+                }
+              }
+            }
+            expr_col <- colnames(expr)
+            
+            if ("Perform Normalization" %in% input$RawCountQuantNorm) {
+              if (isTruthy(input$RawCountNorm)) {
+                if (input$RawCountNorm %in% c("TMM","upperquartile")) {
+                  recount_rse <- user_upload()
+                  expr <- assay(recount_rse)
+                  mat <- as.matrix(expr)
+                  mat_dgeList <- DGEList(counts = as.matrix(mat))
+                  mat_dgeList_Norm <- edgeR::calcNormFactors(mat_dgeList, method = input$RawCountNorm)
+                  expr <- edgeR::cpm(mat_dgeList_Norm)
+                }  else if (input$RawCountNorm == "none") {
+                  recount_rse <- user_upload()
+                  expr <- assays(recount_rse)
+                }
+              }
+            }
+            if ("Quantile Normalization" %in% input$RawCountQuantNorm) {
+              expr <- preprocessCore::normalize.quantiles(as.matrix(expr), keep.names = T)
+            }
+            if (input$FilterCheck & isTruthy(input$FilterNum) & isTruthy(input$FilterProp)) {
+              FilterProp <- input$FilterProp/100
+              expr_pass <- apply(expr,1,function(x) ExprFilter2(x, input$FilterNum, FilterProp))
+              expr <- expr[which(expr_pass == TRUE),]
+            }
+            
+            expr_anno <- as.data.frame(recount_rse@rowRanges@elementMetadata@listData)
+            expr <- merge(expr_anno[,c(5,7)],expr,by.x = "gene_id", by.y = 0,all.y = T)
+            expr <- expr[,-1]
+            
+            colnames(expr)[1] <- "Gene"
+            expr[sapply(expr, is.infinite)] <- NA
+            # Remove Expression with NA
+            expr <- expr %>%
+              drop_na()
+            # Check that expression data is numeric
+            isChar <- unname(which(sapply(expr, function(x) is.character(x))))
+            isChar <-  isChar[-1]
+            if (length(isChar) > 0) {
+              expr[isChar] <- sapply(expr[isChar],as.numeric)
+            }
+            # Remove Duplicate genes
+            expr_dup <- expr[which(expr[,1] %in% expr[,1][duplicated(expr[,1])]),]
+            expr_nondup <- expr[which(!expr[,1] %in% expr[,1][duplicated(expr[,1])]),]
+            if (nrow(expr_dup) > 0) {
+              expr_dup <- expr_dup %>%
+                group_by(Gene) %>%
+                summarise_all(max)
+            }
+            expr <- rbind(expr_dup,expr_nondup)
+            expr <- as.data.frame(expr)
+            # Make rownames <- genenames
+            row.names(expr) <- expr[,1]
+            expr <- expr[,-1]
+            expr = expr[order(row.names(expr)), ]
+            # Harmonize special characters in sample names
+            colnames(expr) <- gsub("[[:punct:]]", "_", colnames(expr))
+            
+            
+            
+            meta <- as.data.frame(t(do.call(rbind,recount_rse@colData@listData)))
+            
+            if (Proj_source == "TCGA") {
+              meta$external_id <- gsub("[[:punct:]]", "_", meta$external_id)
+              meta$tcga.tcga_barcode <- gsub("[[:punct:]]", "_", meta$tcga.tcga_barcode)
+              names(expr)[match(meta[,"external_id"], names(expr))] = meta[,"tcga.tcga_barcode"]
+              meta <- meta %>% relocate(tcga.tcga_barcode)
+            } else {
+              meta <- meta %>% relocate("external_id")
+            }
+            #gene list file from expression data
+            Gene <- rownames(expr)
+            geneList <- as.data.frame(Gene)
+            geneList_raw(geneList);
+            Gene_raw(Gene)
+            
+            meta[,1] <- gsub("[_.-]", "_", meta[,1])
+            colnames(meta)[1] <- "SampleName"
+            
+            #for heatmap sample selection
+            sampsames <- intersect(colnames(expr),meta[,1])
+            
+            #ensure expression samples and meta are exact
+            expr <- expr[,sampsames]
+            meta <- meta[which(meta[,1] %in% sampsames),]
+            expr_input(expr)
+            meta_input(meta)
+            
+            if (isTruthy(MM_react())) {
+              if (as.logical(MM_react())) {
+                CTKgenes <- CTKgenes_mm
+              } else {
+                CTKgenes <- CTKgenes_hs
+              }
+            } else {
+              CTKgenes <- CTKgenes_hs
+            }
+            
+            CTKgenes <- CTKgenes[which(CTKgenes %in% Gene)]
+            updateSelectizeInput(session = session, inputId = "heatmapGeneSelec",
+                                 choices = Gene,selected = CTKgenes, server = T)
+            updateSelectizeInput(session = session, inputId = "userheatsamp2",
+                                 choices = sampsames,selected = sampsames, server = T)
+            updateSelectizeInput(session = session, inputId = "avgheatmapGeneSelec",
+                                 choices = Gene,selected = CTKgenes, server = T)
+            updateSelectizeInput(session = session, inputId = "scatterG1",
+                                 choices = Gene,selected = Gene[1], server = T)
+            updateSelectizeInput(session = session, inputId = "scatterG2",
+                                 choices = Gene,selected = Gene[2], server = T)
+            updateSelectizeInput(session = session, inputId = "userGeneSelec",
+                                 choices = sort(as.vector(geneList[,1])),selected = NULL, server = T)
+            updateSelectizeInput(session = session, inputId = "scatterGeneSelec",
+                                 choices = rownames(expr),selected = NULL, server = T)
+            updateSelectizeInput(session = session, inputId = "userheatsampSS",
+                                 choices = sampsames,selected = sampsames, server = T)
+            
+          }
+            
+            
+          
         }
 
-      }))
+      })
+      
+      observeEvent(input$SplitColumn, {
+        req(meta_input())
+        meta <- meta_input()
+        meta_col_names_start <- colnames(meta)
+        Split_col_name <- input$ColToSplit
+        Split_by <- input$SplitDelim
+        New_col_names_in <- input$SplitNewColNames
+        New_col_names <- strsplit(New_col_names_in,",")[[1]]
+        if (isTruthy(Split_col_name) & isTruthy(Split_by) & length(New_col_names) > 1) {
+          meta <- meta %>%
+              separate_wider_delim(!!sym(Split_col_name),Split_by,names = New_col_names,cols_remove = FALSE,
+                                   too_few = "align_start", too_many = "merge", names_repair = "unique")
+          meta_col_names_end <- colnames(meta)
+          meta <- meta %>%
+            relocate(any_of(c(Split_col_name,setdiff(meta_col_names_end,meta_col_names_start))), .after = 1) %>%
+            as.data.frame()
+          meta_input(meta)
+        }
+      })
+      observeEvent(input$MergeColumns, {
+        req(meta_input())
+        meta <- meta_input()
+        Merg_col_name <- input$ColsToMerge
+        merge_with <- input$MergeDelim
+        New_col_name <- input$MergeNewColName
+        if (length(Merg_col_name) > 1 & isTruthy(merge_with) & isTruthy(New_col_name)) {
+          meta[,New_col_name] <- apply(meta[,Merg_col_name],1,function(x) {paste(x,collapse = merge_with)})
+          meta <- meta %>% relocate(any_of(c(Merg_col_name,New_col_name)),.after = 1) %>%
+            as.data.frame()
+          meta_input(meta)
+        }
+      })
+        
+      
+      ## Data Preview ----------------------------------------------------------
+      output$ExprFile_Preview <- DT::renderDataTable({
+        req(expr_input())
+        expr <- expr_input()
+        expr <- head(expr,c(100,100))
+        DT::datatable(expr,
+                      options = list(lengthMenu = c(5,10, 20, 100, 1000),
+                                     pageLength = 10,
+                                     scrollX = T),
+                      rownames = T) %>%
+          formatRound(columns = colnames(expr), digits = 4)
+      })
+      
+      output$ClinFile_Preview <- DT::renderDataTable({
+        req(meta_input())
+        clin <- meta_input()
+        DT::datatable(clin,
+                      options = list(lengthMenu = c(5,10, 20, 100, 1000),
+                                     pageLength = 10,
+                                     scrollX = T),
+                      rownames = F)
+      })
+      
+      output$renddownload_expr <- renderUI({
+        if (isTruthy(expr_input()) | isTruthy(meta_input())) {
+          downloadButton("download_expr","Download Expression")
+        }
+      })
+      output$renddownload_meta <- renderUI({
+        if (isTruthy(expr_input()) | isTruthy(meta_input())) {
+          downloadButton("download_meta","Download Meta")
+        }
+      })
+      
+      # Download handler for the button
+      output$download_expr <- downloadHandler(
+        filename = function() {
+          paste("expr_matrix_", ExpressionMatrix_file_react(), "_", Sys.Date(), ".tsv", sep = "")
+        },
+        content = function(file) {
+          gene_name = rownames(expr_input())
+          write_tsv(cbind(gene_name, expr_input()), file, col_names = T)
+        }
+      )
+      
+      output$download_meta <- downloadHandler(
+        filename = function() {
+          paste("meta_data_", MetaData_file_react(), "_", Sys.Date(), ".tsv", sep = "")
+        },
+        content = function(file) {
+          write_tsv(meta_input(), file, col_names = T)
+        }
+      )
+      
 
       # Gene Set Data -------------------------------------------------------------
       gmt <- reactiveVal()
@@ -1476,22 +2143,21 @@ server <- function(input, output, session) {
 
       observe({
 
-
         if (isTruthy(MM_react())) {
           if (as.logical(MM_react())) {
             print("Reading mouse gene sets")
             #write in the name of your gene set list for shiny UI
             #userGSlist_name <- 'Cell Marker'
             #path to your gene set file .gmt or .txt/.tsv
-            userGS_file <- 'CellMarker_gsNsym_MM.tsv'
+            userGS_file <- 'Genesets/CellMarker_gsNsym_MM.tsv'
             #path to your R data list object for ssGSEA
-            userRData_file <- 'CellMarker_GS_MM.RData'
+            userRData_file <- 'Genesets/CellMarker_GS_MM.RData'
             #MSigDB gene set
-            msigdb <- 'msigdb_gsNsym_MM.zip'
+            msigdb <- 'Genesets/msigdb_gsNsym_MM.zip'
             #MSigDB gene set FOR UI
-            msigdb2 <- 'msigdb_gsNcat_MM.tsv'
+            msigdb2 <- 'Genesets/msigdb_gsNcat_MM.tsv'
             #gene set list for ssGSEA
-            gs_file <- 'msigdb_gs_MM.RData'
+            gs_file <- 'Genesets/msigdb_gs_MM.RData'
             #Cytokine genes for mouse
             CTKgenes <- c("Il2","Il12a","Il12b","Il17a","Ifna13","Ifnb1","Ifng","Ifngr1","Cd11b","Itgam",
                           "Cd33","Entpd1","Icosl","Icos","Tnfsf9","Tnfrsf9","Cd40","Cd40lg","Cd70","Cd27",
@@ -1503,15 +2169,15 @@ server <- function(input, output, session) {
             #write in the name of your gene set list for shiny UI
             #userGSlist_name <- 'LINCS L1000'
             #path to your gene set file .gmt or .txt/.tsv
-            userGS_file <- 'CellMarker_gsNsym_HS_v2.txt'
+            userGS_file <- 'Genesets/CellMarker_gsNsym_HS_v2.txt'
             #path to your R data list object for ssGSEA
-            userRData_file <- 'CellMarker_GS_HS_v2.RData'
+            userRData_file <- 'Genesets/CellMarker_GS_HS_v2.RData'
             #MSigDB gene set
-            msigdb <- 'msigdb_gsNsym_HS_v2.zip'
+            msigdb <- 'Genesets/msigdb_gsNsym_HS_v2.zip'
             #MSigDB gene set FOR UI
-            msigdb2 <- 'msigdb_gsNcat_HS_v2.txt'
+            msigdb2 <- 'Genesets/msigdb_gsNcat_HS_v2.txt'
             #gene set list for ssGSEA
-            gs_file <- 'msigdb_gs_HS_v2.RData'
+            gs_file <- 'Genesets/msigdb_gs_HS_v2.RData'
             CTKgenes <- c("IL2","IL12A","IL12B","IL17A","IFNA1","IFNB1","IFNG","IFNGR","CD11b",
                           "ITGAM","CD33","ENTPD1","ICOSLG","CD275","CD278","TNFSF9","TNFRSF9",
                           "CD40","CD40LG","CD70","CD27","TNFSF18","TNFRSF18","TNFSF14","TNFRSF14",
@@ -1524,15 +2190,15 @@ server <- function(input, output, session) {
           #write in the name of your gene set list for shiny UI
           #userGSlist_name <- 'LINCS L1000'
           #path to your gene set file .gmt or .txt/.tsv
-          userGS_file <- 'CellMarker_gsNsym_HS_v2.txt'
+          userGS_file <- 'Genesets/CellMarker_gsNsym_HS_v2.txt'
           #path to your R data list object for ssGSEA
-          userRData_file <- 'CellMarker_GS_HS_v2.RData'
+          userRData_file <- 'Genesets/CellMarker_GS_HS_v2.RData'
           #MSigDB gene set
-          msigdb <- 'msigdb_gsNsym_HS_v2.zip'
+          msigdb <- 'Genesets/msigdb_gsNsym_HS_v2.zip'
           #MSigDB gene set FOR UI
-          msigdb2 <- 'msigdb_gsNcat_HS_v2.txt'
+          msigdb2 <- 'Genesets/msigdb_gsNcat_HS_v2.txt'
           #gene set list for ssGSEA
-          gs_file <- 'msigdb_gs_HS_v2.RData'
+          gs_file <- 'Genesets/msigdb_gs_HS_v2.RData'
           CTKgenes <- c("IL2","IL12A","IL12B","IL17A","IFNA1","IFNB1","IFNG","IFNGR","CD11b",
                         "ITGAM","CD33","ENTPD1","ICOSLG","CD275","CD278","TNFSF9","TNFRSF9",
                         "CD40","CD40LG","CD70","CD27","TNFSF18","TNFRSF18","TNFSF14","TNFRSF14",
@@ -1568,6 +2234,8 @@ server <- function(input, output, session) {
         gs2(gs2)
 
       })
+      
+      
 
 
       # Render UI ------------------------------------------------------------------
@@ -1595,7 +2263,7 @@ server <- function(input, output, session) {
       output$rendSubsetCrit <- renderUI({
 
         req(input$SubsetCol)
-        meta <- meta_raw()
+        meta <- meta_react()
         if (input$SubsetCol != "Select All Samples") {
           SubCrit <- unique(meta[,SubCol_reactVal()])
           selectInput("SubsetCrit","Sample Criteria:",choices = SubCrit, selected = SubCrit_reactVal())
@@ -1925,12 +2593,11 @@ server <- function(input, output, session) {
                     multiple = T)
 
       })
-
-
+      
       meta_react <- reactive({
-
-        req(meta_raw())
-        meta <- meta_raw()
+        
+        req(meta_input())
+        meta <- meta_input()
         if (ncol(meta) > 2) {
           meta2 <- meta
           SubCol <- SubCol_reactVal()
@@ -1942,27 +2609,17 @@ server <- function(input, output, session) {
           meta2 <- meta
         }
         meta2
-
-      })
-
-      observe({
-
-        meta <- meta_react()
-        expr <- expr_react()
-        sampsames <- intersect(meta[,1],colnames(expr))
-        updateSelectizeInput(session = session, inputId = "userheatsamp2",
-                             choices = sampsames,selected = sampsames, server = T)
-        updateSelectizeInput(session = session, inputId = "userheatsampSS",
-                             choices = sampsames,selected = sampsames, server = T)
-
+        
       })
 
 
       expr_react <- reactive({
 
         meta <- meta_react()
-        expr <- expr_raw()
+        expr <- expr_input()
         expr2 <- expr[,meta[,1]]
+        A <- as.matrix(expr2)
+        A_raw(A)
         expr2
 
       })
@@ -5728,7 +6385,7 @@ server <- function(input, output, session) {
 
       output$dnldPlotSVG_exprBar <- downloadHandler(
         filename = function() {
-          paste(gsub(" ","",projectName_react()),"_AvgExpression_Barplot.svg", sep = '')
+          paste(gsub(" ","",ProjectName_react()),"_AvgExpression_Barplot.svg", sep = '')
         },
         content = function(file) {
           bpplot <- barplot_react()
@@ -5738,7 +6395,7 @@ server <- function(input, output, session) {
 
       output$dnldPlotPDF_exprBar <- downloadHandler(
         filename = function() {
-          paste(gsub(" ","",projectName_react()),"_AvgExpression_Barplot.pdf", sep = '')
+          paste(gsub(" ","",ProjectName_react()),"_AvgExpression_Barplot.pdf", sep = '')
         },
         content = function(file) {
           bpplot <- barplot_react()
@@ -5748,7 +6405,7 @@ server <- function(input, output, session) {
 
       output$dnldPlotSVG_ssgseaHeat <- downloadHandler(
         filename = function() {
-          paste(gsub(" ","",projectName_react()),"_ssGSEA_Heatmap.svg", sep = '')
+          paste(gsub(" ","",ProjectName_react()),"_ssGSEA_Heatmap.svg", sep = '')
         },
         content = function(file) {
 
@@ -5760,7 +6417,7 @@ server <- function(input, output, session) {
 
       output$dnldPlotPDF_ssgseaHeat <- downloadHandler(
         filename = function() {
-          paste(gsub(" ","",projectName_react()),"_ssGSEA_Heatmap.pdf", sep = '')
+          paste(gsub(" ","",ProjectName_react()),"_ssGSEA_Heatmap.pdf", sep = '')
         },
         content = function(file) {
 
@@ -5771,7 +6428,7 @@ server <- function(input, output, session) {
 
       output$dnldPlotSVG_ssgseaHeat2 <- downloadHandler(
         filename = function() {
-          paste(gsub(" ","",projectName_react()),"_ssGSEA_Heatmap.svg", sep = '')
+          paste(gsub(" ","",ProjectName_react()),"_ssGSEA_Heatmap.svg", sep = '')
         },
         content = function(file) {
 
@@ -5783,7 +6440,7 @@ server <- function(input, output, session) {
 
       output$dnldPlotPDF_ssgseaHeat2 <- downloadHandler(
         filename = function() {
-          paste(gsub(" ","",projectName_react()),"_ssGSEA_Heatmap.pdf", sep = '')
+          paste(gsub(" ","",ProjectName_react()),"_ssGSEA_Heatmap.pdf", sep = '')
         },
         content = function(file) {
 
@@ -5794,7 +6451,7 @@ server <- function(input, output, session) {
 
       output$dnldPlotSVG_ssgseaHeat3 <- downloadHandler(
         filename = function() {
-          paste(gsub(" ","",projectName_react()),"_ssGSEA_Heatmap.svg", sep = '')
+          paste(gsub(" ","",ProjectName_react()),"_ssGSEA_Heatmap.svg", sep = '')
         },
         content = function(file) {
 
@@ -5806,7 +6463,7 @@ server <- function(input, output, session) {
 
       output$dnldPlotPDF_ssgseaHeat3 <- downloadHandler(
         filename = function() {
-          paste(gsub(" ","",projectName_react()),"_ssGSEA_Heatmap.pdf", sep = '')
+          paste(gsub(" ","",ProjectName_react()),"_ssGSEA_Heatmap.pdf", sep = '')
         },
         content = function(file) {
 
@@ -5818,7 +6475,7 @@ server <- function(input, output, session) {
 
       output$dnldPlotSVG_heat1 <- downloadHandler(
         filename = function() {
-          paste(gsub(" ","",projectName_react()),"_MVG_Heatmap.svg", sep = '')
+          paste(gsub(" ","",ProjectName_react()),"_MVG_Heatmap.svg", sep = '')
         },
         content = function(file) {
 
@@ -5833,7 +6490,7 @@ server <- function(input, output, session) {
 
       output$dnldPlotSVG_heat2 <- downloadHandler(
         filename = function() {
-          paste(gsub(" ","",projectName_react()),"_Custom_Heatmap.svg", sep = '')
+          paste(gsub(" ","",ProjectName_react()),"_Custom_Heatmap.svg", sep = '')
         },
         content = function(file) {
 
@@ -5847,7 +6504,7 @@ server <- function(input, output, session) {
 
       output$dnldPlotSVG_heat3 <- downloadHandler(
         filename = function() {
-          paste(gsub(" ","",projectName_react()),"_DEGExpr_Heatmap.svg", sep = '')
+          paste(gsub(" ","",ProjectName_react()),"_DEGExpr_Heatmap.svg", sep = '')
         },
         content = function(file) {
 
@@ -5862,7 +6519,7 @@ server <- function(input, output, session) {
 
       output$dnldPlotSVG_heat5 <- downloadHandler(
         filename = function() {
-          paste(gsub(" ","",projectName_react()),"_CustomAvgExpr_Heatmap.svg", sep = '')
+          paste(gsub(" ","",ProjectName_react()),"_CustomAvgExpr_Heatmap.svg", sep = '')
         },
         content = function(file) {
 
@@ -5875,7 +6532,7 @@ server <- function(input, output, session) {
 
       output$dnldPlotSVG_scatter <- downloadHandler(
         filename = function() {
-          paste(gsub(" ","",projectName_react()),"_2GeneExpression_ScatterPlot.svg", sep = '')
+          paste(gsub(" ","",ProjectName_react()),"_2GeneExpression_ScatterPlot.svg", sep = '')
         },
         content = function(file) {
           meta <- meta_react()
@@ -5924,7 +6581,7 @@ server <- function(input, output, session) {
 
       output$dnldPlotSVG_exprBox <- downloadHandler(
         filename = function() {
-          paste(gsub(" ","",projectName_react()),"_Expression_Boxplot.svg", sep = '')
+          paste(gsub(" ","",ProjectName_react()),"_Expression_Boxplot.svg", sep = '')
         },
         content = function(file) {
           if (length(input$GeneListTable2_rows_selected) > 0){
@@ -5953,7 +6610,7 @@ server <- function(input, output, session) {
 
       output$dnldPlotSVG_vol <- downloadHandler(
         filename = function() {
-          paste(gsub(" ","",projectName_react()),"_VolcanoPlot.svg", sep = '')
+          paste(gsub(" ","",ProjectName_react()),"_VolcanoPlot.svg", sep = '')
         },
         content = function(file) {
 
@@ -5967,7 +6624,7 @@ server <- function(input, output, session) {
 
       output$dnldPlotSVG_MA <- downloadHandler(
         filename = function() {
-          paste(gsub(" ","",projectName_react()),"_MA_Plot.svg", sep = '')
+          paste(gsub(" ","",ProjectName_react()),"_MA_Plot.svg", sep = '')
         },
         content = function(file) {
           top2 <- topgenereact()
@@ -6055,7 +6712,7 @@ server <- function(input, output, session) {
 
       output$dnldPlotSVG_exprBox2 <- downloadHandler(
         filename = function() {
-          paste(gsub(" ","",projectName_react()),"_ExpressionBoxplot.svg", sep = '')
+          paste(gsub(" ","",ProjectName_react()),"_ExpressionBoxplot.svg", sep = '')
         },
         content = function(file) {
           if (length(input$GeneListTable_rows_selected) > 0){
@@ -6084,7 +6741,7 @@ server <- function(input, output, session) {
 
       output$dnldPlotSVG_AvgScatter <- downloadHandler(
         filename = function() {
-          paste(gsub(" ","",projectName_react()),"_AvgExpression_ScatterPlot.svg", sep = '')
+          paste(gsub(" ","",ProjectName_react()),"_AvgExpression_ScatterPlot.svg", sep = '')
         },
         content = function(file) {
           A_choice <- input$comparisonA2.avg
@@ -6183,7 +6840,7 @@ server <- function(input, output, session) {
 
       output$dnldPlotSVG_upPath <- downloadHandler(
         filename = function() {
-          paste(gsub(" ","",projectName_react()),"_UpRegulated_Pathways.svg", sep = '')
+          paste(gsub(" ","",ProjectName_react()),"_UpRegulated_Pathways.svg", sep = '')
         },
         content = function(file) {
           adjp <- input$pathpval
@@ -6221,7 +6878,7 @@ server <- function(input, output, session) {
 
       output$dnldPlotSVG_dnPath <- downloadHandler(
         filename = function() {
-          paste(gsub(" ","",projectName_react()),"_DownRegulated_Pathways.svg", sep = '')
+          paste(gsub(" ","",ProjectName_react()),"_DownRegulated_Pathways.svg", sep = '')
         },
         content = function(file) {
           adjp <- input$pathpval
@@ -6259,7 +6916,7 @@ server <- function(input, output, session) {
 
       output$dnldPlotSVG_gsea <- downloadHandler(
         filename = function() {
-          paste(gsub(" ","",projectName_react()),"_GSEA_EnrichmentPlot.svg", sep = '')
+          paste(gsub(" ","",ProjectName_react()),"_GSEA_EnrichmentPlot.svg", sep = '')
         },
         content = function(file) {
           if (input$tables == 1){
@@ -6304,7 +6961,7 @@ server <- function(input, output, session) {
 
       output$dnldPlotSVG_gseaHeat <- downloadHandler(
         filename = function() {
-          paste(gsub(" ","",projectName_react()),"_GSEA_Heatmap.svg", sep = '')
+          paste(gsub(" ","",ProjectName_react()),"_GSEA_Heatmap.svg", sep = '')
         },
         content = function(file) {
           meta <- meta_react()
@@ -6529,7 +7186,7 @@ server <- function(input, output, session) {
 
       output$dnldPlotSVG_gseaBox <- downloadHandler(
         filename = function() {
-          paste(gsub(" ","",projectName_react()),"_ssGSEA_Boxplot.svg", sep = '')
+          paste(gsub(" ","",ProjectName_react()),"_ssGSEA_Boxplot.svg", sep = '')
         },
         content = function(file) {
           meta <- meta_react()
@@ -6655,7 +7312,7 @@ server <- function(input, output, session) {
 
       output$dnldPlotPDF_heat1 <- downloadHandler(
         filename = function() {
-          paste(gsub(" ","",projectName_react()),"_MVG_Heatmap.pdf", sep = '')
+          paste(gsub(" ","",ProjectName_react()),"_MVG_Heatmap.pdf", sep = '')
         },
         content = function(file) {
 
@@ -6667,7 +7324,7 @@ server <- function(input, output, session) {
 
       output$dnldPlotPDF_heat2 <- downloadHandler(
         filename = function() {
-          paste(gsub(" ","",projectName_react()),"_Custom_Heatmap.pdf", sep = '')
+          paste(gsub(" ","",ProjectName_react()),"_Custom_Heatmap.pdf", sep = '')
         },
         content = function(file) {
 
@@ -6679,7 +7336,7 @@ server <- function(input, output, session) {
 
       output$dnldPlotPDF_heat3 <- downloadHandler(
         filename = function() {
-          paste(gsub(" ","",projectName_react()),"_DEGExpr_Heatmap.pdf", sep = '')
+          paste(gsub(" ","",ProjectName_react()),"_DEGExpr_Heatmap.pdf", sep = '')
         },
         content = function(file) {
 
@@ -6691,7 +7348,7 @@ server <- function(input, output, session) {
 
       output$dnldPlotPDF_heat5 <- downloadHandler(
         filename = function() {
-          paste(gsub(" ","",projectName_react()),"_CustomAvgExpr_Heatmap.pdf", sep = '')
+          paste(gsub(" ","",ProjectName_react()),"_CustomAvgExpr_Heatmap.pdf", sep = '')
         },
         content = function(file) {
 
@@ -6704,7 +7361,7 @@ server <- function(input, output, session) {
 
       output$dnldPlotPDF_scatter <- downloadHandler(
         filename = function() {
-          paste(gsub(" ","",projectName_react()),"_2GeneExpression_ScatterPlot.pdf", sep = '')
+          paste(gsub(" ","",ProjectName_react()),"_2GeneExpression_ScatterPlot.pdf", sep = '')
         },
         content = function(file) {
           meta <- meta_react()
@@ -6753,7 +7410,7 @@ server <- function(input, output, session) {
 
       output$dnldPlotPDF_exprBox <- downloadHandler(
         filename = function() {
-          paste(gsub(" ","",projectName_react()),"_Expression_Boxplot.pdf", sep = '')
+          paste(gsub(" ","",ProjectName_react()),"_Expression_Boxplot.pdf", sep = '')
         },
         content = function(file) {
           if (length(input$GeneListTable2_rows_selected) > 0){
@@ -6782,7 +7439,7 @@ server <- function(input, output, session) {
 
       output$dnldPlotPDF_vol <- downloadHandler(
         filename = function() {
-          paste(gsub(" ","",projectName_react()),"_VolcanoPlot.pdf", sep = '')
+          paste(gsub(" ","",ProjectName_react()),"_VolcanoPlot.pdf", sep = '')
         },
         content = function(file) {
 
@@ -6796,7 +7453,7 @@ server <- function(input, output, session) {
 
       output$dnldPlotPDF_MA <- downloadHandler(
         filename = function() {
-          paste(gsub(" ","",projectName_react()),"_MA_Plot.pdf", sep = '')
+          paste(gsub(" ","",ProjectName_react()),"_MA_Plot.pdf", sep = '')
         },
         content = function(file) {
           top2 <- topgenereact()
@@ -6884,7 +7541,7 @@ server <- function(input, output, session) {
 
       output$dnldPlotPDF_exprBox2 <- downloadHandler(
         filename = function() {
-          paste(gsub(" ","",projectName_react()),"_ExpressionBoxplot.pdf", sep = '')
+          paste(gsub(" ","",ProjectName_react()),"_ExpressionBoxplot.pdf", sep = '')
         },
         content = function(file) {
           if (length(input$GeneListTable_rows_selected) > 0){
@@ -6913,7 +7570,7 @@ server <- function(input, output, session) {
 
       output$dnldPlotPDF_AvgScatter <- downloadHandler(
         filename = function() {
-          paste(gsub(" ","",projectName_react()),"_AvgExpression_ScatterPlot.pdf", sep = '')
+          paste(gsub(" ","",ProjectName_react()),"_AvgExpression_ScatterPlot.pdf", sep = '')
         },
         content = function(file) {
           A_choice <- input$comparisonA2.avg
@@ -7012,7 +7669,7 @@ server <- function(input, output, session) {
 
       output$dnldPlotPDF_upPath <- downloadHandler(
         filename = function() {
-          paste(gsub(" ","",projectName_react()),"_UpRegulated_Pathways.pdf", sep = '')
+          paste(gsub(" ","",ProjectName_react()),"_UpRegulated_Pathways.pdf", sep = '')
         },
         content = function(file) {
           adjp <- input$pathpval
@@ -7050,7 +7707,7 @@ server <- function(input, output, session) {
 
       output$dnldPlotPDF_dnPath <- downloadHandler(
         filename = function() {
-          paste(gsub(" ","",projectName_react()),"_DownRegulated_Pathways.pdf", sep = '')
+          paste(gsub(" ","",ProjectName_react()),"_DownRegulated_Pathways.pdf", sep = '')
         },
         content = function(file) {
           adjp <- input$pathpval
@@ -7088,7 +7745,7 @@ server <- function(input, output, session) {
 
       output$dnldPlotPDF_gsea <- downloadHandler(
         filename = function() {
-          paste(gsub(" ","",projectName_react()),"_GSEA_EnrichmentPlot.pdf", sep = '')
+          paste(gsub(" ","",ProjectName_react()),"_GSEA_EnrichmentPlot.pdf", sep = '')
         },
         content = function(file) {
           if (input$tables == 1){
@@ -7133,7 +7790,7 @@ server <- function(input, output, session) {
 
       output$dnldPlotPDF_gseaHeat <- downloadHandler(
         filename = function() {
-          paste(gsub(" ","",projectName_react()),"_GSEA_Heatmap.pdf", sep = '')
+          paste(gsub(" ","",ProjectName_react()),"_GSEA_Heatmap.pdf", sep = '')
         },
         content = function(file) {
           meta <- meta_react()
@@ -7358,7 +8015,7 @@ server <- function(input, output, session) {
 
       output$dnldPlotPDF_gseaBox <- downloadHandler(
         filename = function() {
-          paste(gsub(" ","",projectName_react()),"_ssGSEA_Boxplot.pdf", sep = '')
+          paste(gsub(" ","",ProjectName_react()),"_ssGSEA_Boxplot.pdf", sep = '')
         },
         content = function(file) {
           meta <- meta_react()
@@ -7484,7 +8141,7 @@ server <- function(input, output, session) {
 
       output$downloadClusters <- downloadHandler(
         filename = function() {
-          paste(projectName_react(),"_ClusterResults.tsv", sep = '')
+          paste(ProjectName_react(),"_ClusterResults.tsv", sep = '')
         },
         content = function(file) {
           top_probes <- input$NumFeatures
