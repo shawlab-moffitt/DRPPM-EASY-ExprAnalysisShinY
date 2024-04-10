@@ -68,6 +68,24 @@ library("edgeR")
 library("stringr")
 
 
+packages <- c("shiny","shinythemes","shinyjqui","pheatmap","BiocManager","RColorBrewer","data.table",
+              "dplyr","DT","ggplot2","ggpubr","reshape2","tibble","viridis","scales","edgeR",
+              "plotly","readr","enrichR","ggrepel","tidyr","tools","shinycssloaders","stringr")
+
+installed_packages <- packages %in% rownames(installed.packages())
+if (any(installed_packages == FALSE)) {
+  install.packages(packages[!installed_packages])
+}
+invisible(lapply(packages, library, character.only = TRUE))
+#bioconductor packages
+bioCpacks <- c("clusterProfiler","GSVA","limma","enrichplot","recount","recount3","ComplexHeatmap")
+installed_packages_BIOC <- bioCpacks %in% rownames(installed.packages())
+if (any(installed_packages_BIOC == FALSE)) {
+  BiocManager::install(bioCpacks[!installed_packages_BIOC], ask = F)
+}
+invisible(lapply(bioCpacks, library, character.only = TRUE))
+
+
 ## Gene Set data ---------------------------------------------------------------
 
 loadRData <- function(fileName){
@@ -1362,6 +1380,17 @@ server <- function(input, output, session) {
       
       # Data Input Tab ---------------------------------------------------------
       
+      observe({
+        if (isTruthy(Subsetting_Feature_react())) {
+          SubCol_reactVal(Subsetting_Feature_react())
+        }
+      })
+      observe({
+        if (isTruthy(Feature_Selected_react())) {
+          metacol_reactVal(Feature_Selected_react())
+        }
+      })
+      
       output$rendExprFileInput <- renderUI({
         refresh <- input$UseExpData
         fluidRow(
@@ -1510,84 +1539,100 @@ server <- function(input, output, session) {
         
         if (isTruthy(ExpressionMatrix_file_react()) & isTruthy(MetaData_file_react()) && !isTruthy(gse_id_react()) && !isTruthy(recount_id_react())) {
           # Expression file
-          if (file.exists(ExpressionMatrix_file_react())) {
-            if (tools::file_ext(ExpressionMatrix_file_react()) %in% c("txt","tsv","zip","gz","TXT","TSV","ZIP","GZ")) {
-              expr <- as.data.frame(read_delim(ExpressionMatrix_file_react(), delim = '\t', col_names = T))
-            } else if (tools::file_ext(ExpressionMatrix_file_react()) %in% c("csv","CSV")) {
-              expr <- as.data.frame(read_delim(ExpressionMatrix_file_react(), delim = ',', col_names = T))
-            } else if (tools::file_ext(ExpressionMatrix_file_react()) %in% c("RData","rdata")) {
-              expr <- loadRData(ExpressionMatrix_file_react())
-            } else if (tools::file_ext(ExpressionMatrix_file_react()) %in% c("rds","RDS")) {
-              expr <- readRDS(ExpressionMatrix_file_react())
+          withProgress(message = "Processing", value = 0, {
+            incProgress(0.5, detail = "Loading Expression Data")
+            if (file.exists(ExpressionMatrix_file_react())) {
+              if (tools::file_ext(ExpressionMatrix_file_react()) %in% c("txt","tsv","zip","gz","TXT","TSV","ZIP","GZ")) {
+                expr <- as.data.frame(read_delim(ExpressionMatrix_file_react(), delim = '\t', col_names = T))
+              } else if (tools::file_ext(ExpressionMatrix_file_react()) %in% c("csv","CSV")) {
+                expr <- as.data.frame(read_delim(ExpressionMatrix_file_react(), delim = ',', col_names = T))
+              } else if (tools::file_ext(ExpressionMatrix_file_react()) %in% c("RData","rdata")) {
+                expr <- loadRData(ExpressionMatrix_file_react())
+              } else if (tools::file_ext(ExpressionMatrix_file_react()) %in% c("rds","RDS")) {
+                expr <- readRDS(ExpressionMatrix_file_react())
+              }
+            } else {
+              if (tools::file_ext(ExpressionMatrix_file_react()) %in% c("txt","tsv","TXT","TSV")) {
+                expr <- as.data.frame(read_delim(url(ExpressionMatrix_file_react()), delim = '\t', col_names = T))
+              } else if (tools::file_ext(ExpressionMatrix_file_react()) %in% c("zip","gz","ZIP","GZ")) {
+                expr <- as.data.frame(read_delim(getZip(ExpressionMatrix_file_react()), delim = '\t', col_names = T))
+              } else if (tools::file_ext(ExpressionMatrix_file_react()) %in% c("csv","CSV")) {
+                expr <- as.data.frame(read_delim(url(ExpressionMatrix_file_react()), delim = ',', col_names = T))
+              } else if (tools::file_ext(ExpressionMatrix_file_react()) %in% c("RData","rdata")) {
+                expr <- loadRData(url(ExpressionMatrix_file_react()))
+              } else if (tools::file_ext(ExpressionMatrix_file_react()) %in% c("rds","RDS")) {
+                expr <- readRDS(url(ExpressionMatrix_file_react()))
+              }
             }
-          } else {
-            if (tools::file_ext(ExpressionMatrix_file_react()) %in% c("txt","tsv","TXT","TSV")) {
-              expr <- as.data.frame(read_delim(url(ExpressionMatrix_file_react()), delim = '\t', col_names = T))
-            } else if (tools::file_ext(ExpressionMatrix_file_react()) %in% c("zip","gz","ZIP","GZ")) {
-              expr <- as.data.frame(read_delim(getZip(ExpressionMatrix_file_react()), delim = '\t', col_names = T))
-            } else if (tools::file_ext(ExpressionMatrix_file_react()) %in% c("csv","CSV")) {
-              expr <- as.data.frame(read_delim(url(ExpressionMatrix_file_react()), delim = ',', col_names = T))
-            } else if (tools::file_ext(ExpressionMatrix_file_react()) %in% c("RData","rdata")) {
-              expr <- loadRData(url(ExpressionMatrix_file_react()))
-            } else if (tools::file_ext(ExpressionMatrix_file_react()) %in% c("rds","RDS")) {
-              expr <- readRDS(url(ExpressionMatrix_file_react()))
+            incProgress(0.5, detail = "Complete!")
+          })
+          withProgress(message = "Processing", value = 0, {
+            incProgress(0.5, detail = "Loading Meta Data")
+            if (file.exists(MetaData_file_react())) {
+              if (tools::file_ext(MetaData_file_react()) %in% c("txt","tsv","zip","gz","TXT","TSV","ZIP","GZ")) {
+                meta <- as.data.frame(read_delim(MetaData_file_react(), delim = '\t', col_names = T))
+              } else if (tools::file_ext(MetaData_file_react()) %in% c("csv","CSV")) {
+                meta <- as.data.frame(read_delim(MetaData_file_react(), delim = ',', col_names = T))
+              } else if (tools::file_ext(MetaData_file_react()) %in% c("RData","rdata")) {
+                meta <- loadRData(MetaData_file_react())
+              } else if (tools::file_ext(MetaData_file_react()) %in% c("rds","RDS")) {
+                meta <- readRDS(MetaData_file_react())
+              }
+            } else {
+              if (tools::file_ext(MetaData_file_react()) %in% c("txt","tsv","TXT","TSV")) {
+                meta <- as.data.frame(read_delim(url(MetaData_file_react()), delim = '\t', col_names = T))
+              } else if (tools::file_ext(MetaData_file_react()) %in% c("zip","gz","ZIP","GZ")) {
+                meta <- as.data.frame(read_delim(getZip(MetaData_file_react()), delim = '\t', col_names = T))
+              } else if (tools::file_ext(MetaData_file_react()) %in% c("csv","CSV")) {
+                meta <- as.data.frame(read_delim(url(MetaData_file_react()), delim = ',', col_names = T))
+              } else if (tools::file_ext(MetaData_file_react()) %in% c("RData","rdata")) {
+                meta <- loadRData(url(MetaData_file_react()))
+              } else if (tools::file_ext(MetaData_file_react()) %in% c("rds","RDS")) {
+                meta <- readRDS(url(MetaData_file_react()))
+              }
             }
-          }
-          if (file.exists(MetaData_file_react())) {
-            if (tools::file_ext(MetaData_file_react()) %in% c("txt","tsv","zip","gz","TXT","TSV","ZIP","GZ")) {
-              meta <- as.data.frame(read_delim(MetaData_file_react(), delim = '\t', col_names = T))
-            } else if (tools::file_ext(MetaData_file_react()) %in% c("csv","CSV")) {
-              meta <- as.data.frame(read_delim(MetaData_file_react(), delim = ',', col_names = T))
-            } else if (tools::file_ext(MetaData_file_react()) %in% c("RData","rdata")) {
-              meta <- loadRData(MetaData_file_react())
-            } else if (tools::file_ext(MetaData_file_react()) %in% c("rds","RDS")) {
-              meta <- readRDS(MetaData_file_react())
-            }
-          } else {
-            if (tools::file_ext(MetaData_file_react()) %in% c("txt","tsv","TXT","TSV")) {
-              meta <- as.data.frame(read_delim(url(MetaData_file_react()), delim = '\t', col_names = T))
-            } else if (tools::file_ext(MetaData_file_react()) %in% c("zip","gz","ZIP","GZ")) {
-              meta <- as.data.frame(read_delim(getZip(MetaData_file_react()), delim = '\t', col_names = T))
-            } else if (tools::file_ext(MetaData_file_react()) %in% c("csv","CSV")) {
-              meta <- as.data.frame(read_delim(url(MetaData_file_react()), delim = ',', col_names = T))
-            } else if (tools::file_ext(MetaData_file_react()) %in% c("RData","rdata")) {
-              meta <- loadRData(url(MetaData_file_react()))
-            } else if (tools::file_ext(MetaData_file_react()) %in% c("rds","RDS")) {
-              meta <- readRDS(url(MetaData_file_react()))
-            }
-          }
+            incProgress(0.5, detail = "Complete!")
+          })
           user_upload(list(expr = expr,
                            meta = meta))
         } else if (isTruthy(ExpressionMatrix_file_react()) & isTruthy(MetaData_file_react()) & isTruthy(gse_id_react())) {
-          gse_id = as.character(gse_id_react())
-          gset <- getGEO(gse_id, GSEMatrix = TRUE, getGPL = TRUE)
-          gse <- getGEO(gse_id, GSEMatrix = FALSE, getGPL = TRUE)
-          user_upload(list(gset = gset,
-                           gse = gse))
+          withProgress(message = "Processing", value = 0, {
+            incProgress(0.5, detail = "Loading GSE Data")
+            gse_id = as.character(gse_id_react())
+            gset <- getGEO(gse_id, GSEMatrix = TRUE, getGPL = TRUE)
+            gse <- getGEO(gse_id, GSEMatrix = FALSE, getGPL = TRUE)
+            user_upload(list(gset = gset,
+                             gse = gse))
+            incProgress(0.5, detail = "Complete!")
+          })
         } else if (isTruthy(ExpressionMatrix_file_react()) & isTruthy(MetaData_file_react()) & isTruthy(recount_id_react())) {
-          recount3_Projects <- available_projects()
-          recount3_proj(recount3_Projects)
-          RecountID <- recount_id_react()
-          if (RecountID %in% recount3_Projects$project) {
-            Proj_home <- recount3_Projects[which(recount3_Projects$project == RecountID),"project_home"]
-            Proj_org <- recount3_Projects[which(recount3_Projects$project == RecountID),"organism"]
-            Proj_source <- toupper(recount3_Projects[which(recount3_Projects$project == RecountID),"file_source"])
-            File_prefix <- paste0(Proj_source,"_",RecountID)
-            recount_rse <- recount3::create_rse_manual(
-              project = RecountID,
-              project_home = Proj_home,
-              organism = Proj_org,
-              annotation = "gencode_v26",
-              type = "gene",
-              verbose = TRUE
-            )
-            if (Proj_org == "mouse") {
-              MM_react(TRUE)
-            } else {
-              MM_react(FALSE)
+          withProgress(message = "Processing", value = 0, {
+            incProgress(0.5, detail = "Loading Recount Data")
+            recount3_Projects <- available_projects()
+            recount3_proj(recount3_Projects)
+            RecountID <- recount_id_react()
+            if (RecountID %in% recount3_Projects$project) {
+              Proj_home <- recount3_Projects[which(recount3_Projects$project == RecountID),"project_home"]
+              Proj_org <- recount3_Projects[which(recount3_Projects$project == RecountID),"organism"]
+              Proj_source <- toupper(recount3_Projects[which(recount3_Projects$project == RecountID),"file_source"])
+              File_prefix <- paste0(Proj_source,"_",RecountID)
+              recount_rse <- recount3::create_rse_manual(
+                project = RecountID,
+                project_home = Proj_home,
+                organism = Proj_org,
+                annotation = "gencode_v26",
+                type = "gene",
+                verbose = TRUE
+              )
+              if (Proj_org == "mouse") {
+                MM_react(TRUE)
+              } else {
+                MM_react(FALSE)
+              }
+              user_upload(recount_rse)
             }
-            user_upload(recount_rse)
-          }
+            incProgress(0.5, detail = "Complete!")
+          })
         }
       })
       
@@ -1598,450 +1643,233 @@ server <- function(input, output, session) {
       })
       
       observe({
-        if (isTruthy(ExpressionMatrix_file_react()) & isTruthy(MetaData_file_react()) && !isTruthy(gse_id_react()) && !isTruthy(recount_id_react())) {
-          req(user_upload())
-          expr <- user_upload()$expr
-          meta <- user_upload()$meta
-          colnames(expr)[1] <- "Gene"
-          expr[sapply(expr, is.infinite)] <- NA
-          # Remove Expression with NA
-          expr <- expr %>%
-            drop_na()
-          # Check that expression data is numeric
-          isChar <- unname(which(sapply(expr, function(x) is.character(x))))
-          isChar <-  isChar[-1]
-          if (length(isChar) > 0) {
-            expr[isChar] <- sapply(expr[isChar],as.numeric)
-          }
-          # Remove Duplicate genes
-          expr_dup <- expr[which(expr[,1] %in% expr[,1][duplicated(expr[,1])]),]
-          expr_nondup <- expr[which(!expr[,1] %in% expr[,1][duplicated(expr[,1])]),]
-          if (nrow(expr_dup) > 0) {
-            expr_dup <- expr_dup %>%
-              group_by(Gene) %>%
-              summarise_all(max)
-          }
-          expr <- rbind(expr_dup,expr_nondup)
-          expr <- as.data.frame(expr)
-          # Make rownames <- genenames
-          row.names(expr) <- expr[,1]
-          expr <- expr[,-1]
-          if ("Perform Normalization" %in% input$RawCountQuantNorm) {
-            if (isTruthy(input$RawCountNorm)) {
-              if (input$RawCountNorm %in% c("TMM","upperquartile")) {
-                mat <- as.matrix(expr)
-                mat_dgeList <- DGEList(counts = as.matrix(mat))
-                mat_dgeList_Norm <- edgeR::calcNormFactors(mat_dgeList, method = input$RawCountNorm)
-                expr <- edgeR::cpm(mat_dgeList_Norm)
-              }  else if (input$RawCountNorm == "none") {
-                expr <- expr
-              }
-            }
-          }
-          if ("Quantile Normalization" %in% input$RawCountQuantNorm) {
-            expr <- preprocessCore::normalize.quantiles(as.matrix(expr), keep.names = T)
-          }
-          if (input$FilterCheck & isTruthy(input$FilterNum) & isTruthy(input$FilterProp)) {
-            FilterProp <- input$FilterProp/100
-            expr_pass <- apply(expr,1,function(x) ExprFilter2(x, input$FilterNum, FilterProp))
-            expr <- expr[which(expr_pass == TRUE),]
-          }
-          expr = expr[order(row.names(expr)), ]
-          print(head(expr,c(5,5)))
-          # Harmonize special characters in sample names
-          colnames(expr) <- gsub("[[:punct:]]", "_", colnames(expr))
-          print(head(expr,c(5,5)))
-          
-          #gene list file from expression data
-          Gene <- rownames(expr)
-          geneList <- as.data.frame(Gene)
-          geneList_raw(geneList);
-          Gene_raw(Gene)
-          
-          meta[,1] <- gsub("[_.-]", "_", meta[,1])
-          colnames(meta)[1] <- "SampleName"
-          
-          #for heatmap sample selection
-          sampsames <- intersect(colnames(expr),meta[,1])
-          
-          #ensure expression samples and meta are exact
-          expr <- expr[,sampsames]
-          print(head(expr,c(5,5)))
-          meta <- meta[which(meta[,1] %in% sampsames),]
-          expr_input(expr)
-          meta_input(meta)
-          
-          if (isTruthy(MM_react())) {
-            if (as.logical(MM_react())) {
-              CTKgenes <- CTKgenes_mm
-            } else {
-              CTKgenes <- CTKgenes_hs
-            }
-          } else {
-            CTKgenes <- CTKgenes_hs
-          }
-          
-          CTKgenes <- CTKgenes[which(CTKgenes %in% Gene)]
-          updateSelectizeInput(session = session, inputId = "heatmapGeneSelec",
-                               choices = Gene,selected = CTKgenes, server = T)
-          updateSelectizeInput(session = session, inputId = "userheatsamp2",
-                               choices = sampsames,selected = sampsames, server = T)
-          updateSelectizeInput(session = session, inputId = "avgheatmapGeneSelec",
-                               choices = Gene,selected = CTKgenes, server = T)
-          updateSelectizeInput(session = session, inputId = "scatterG1",
-                               choices = Gene,selected = Gene[1], server = T)
-          updateSelectizeInput(session = session, inputId = "scatterG2",
-                               choices = Gene,selected = Gene[2], server = T)
-          updateSelectizeInput(session = session, inputId = "userGeneSelec",
-                               choices = sort(as.vector(geneList[,1])),selected = NULL, server = T)
-          updateSelectizeInput(session = session, inputId = "scatterGeneSelec",
-                               choices = rownames(expr),selected = NULL, server = T)
-          updateSelectizeInput(session = session, inputId = "userheatsampSS",
-                               choices = sampsames,selected = sampsames, server = T)
-          
-        } 
-        if (isTruthy(ExpressionMatrix_file_react()) & isTruthy(MetaData_file_react()) & isTruthy(gse_id_react())) {
-          req(user_upload())
-          gset <- user_upload()$gset
-          gse <- user_upload()$gse
-          
-          gse_id = as.character(gse_id_react())
-          platform <- names(GPLList(gse))
-          
-          if (length(gset) > 1) idx <- grep(platform, attr(gset, "names")) else idx <- 1
-          gset <- gset[[idx]]
-          expr <- exprs(gset)
-          df <- as.data.frame(expr)
-          df <- arrange(df)
-          df$ID <- rownames(df)
-          df <- df %>% relocate(ID)
-          df$ID <- trimws(df$ID)
-          df$ID <- as.character(df$ID)
-          
-          full_table <- read_delim(paste("https://raw.githubusercontent.com/shawlab-moffitt/GEO_DataDownload_Example/main/GPL_Files/", platform, ".txt", sep=""), delim = '\t', col_names = T)
-          #rownames(full_table) <- full_table[,1]
-          full_table[1] <- NULL
-          
-          head(full_table)
-          #full_table <- idmap(platform)
-          # full_table <- idmap(platform, type = 'pipe')
-          colnames(full_table)[1] = "ID"
-          colnames(full_table)[2] = "Symbol"
-          print(head(full_table))
-          full_table <- arrange(full_table)
-          full_table = data.frame(full_table)
-          full_table$ID <- as.character(full_table$ID)
-          head(full_table)
-          # convert id to symbol for expr matrix
-          converted_expr_matrix <- inner_join(df, full_table, by = "ID")
-          converted_expr_matrix <- relocate(converted_expr_matrix, "Symbol", .before = 1)
-          print(head(converted_expr_matrix,c(5,5)))
-          converted_expr_matrix$ID <- NULL
-          converted_expr_matrix <- converted_expr_matrix[complete.cases(converted_expr_matrix$Symbol), ]
-          converted_expr_matrix$Symbol <- trimws(converted_expr_matrix$Symbol)
-          colnames(converted_expr_matrix)[1] <- "Gene"
-          
-          # Remove Expression with NA
-          converted_expr_matrix <- converted_expr_matrix %>%
-            drop_na()
-          
-          # Check that expression data is numeric
-          isChar <- unname(which(sapply(converted_expr_matrix, function(x) is.character(x))))
-          isChar <-  isChar[-1]
-          if (length(isChar) > 0) {
-            converted_expr_matrix[isChar] <- sapply(converted_expr_matrix[isChar],as.numeric)
-          }
-          
-          expr <- as.data.frame(converted_expr_matrix)
-
-          colnames(expr)[1] <- "Gene"
-          expr[sapply(expr, is.infinite)] <- NA
-          # Remove Expression with NA
-          expr <- expr %>%
-            drop_na()
-          # Check that expression data is numeric
-          isChar <- unname(which(sapply(expr, function(x) is.character(x))))
-          isChar <-  isChar[-1]
-          if (length(isChar) > 0) {
-            expr[isChar] <- sapply(expr[isChar],as.numeric)
-          }
-          # Remove Duplicate genes
-          expr_dup <- expr[which(expr[,1] %in% expr[,1][duplicated(expr[,1])]),]
-          expr_nondup <- expr[which(!expr[,1] %in% expr[,1][duplicated(expr[,1])]),]
-          if (nrow(expr_dup) > 0) {
-            expr_dup <- expr_dup %>%
-              group_by(Gene) %>%
-              summarise_all(max)
-          }
-          expr <- rbind(expr_dup,expr_nondup)
-          expr <- as.data.frame(expr)
-          # Make rownames <- genenames
-          row.names(expr) <- expr[,1]
-          expr <- expr[,-1]
-          if ("Perform Normalization" %in% input$RawCountQuantNorm) {
-            if (isTruthy(input$RawCountNorm)) {
-              if (input$RawCountNorm %in% c("TMM","upperquartile")) {
-                mat <- as.matrix(expr)
-                mat_dgeList <- DGEList(counts = as.matrix(mat))
-                mat_dgeList_Norm <- edgeR::calcNormFactors(mat_dgeList, method = input$RawCountNorm)
-                expr <- edgeR::cpm(mat_dgeList_Norm)
-              }  else if (input$RawCountNorm == "none") {
-                expr <- expr
-              }
-            }
-          }
-          if ("Quantile Normalization" %in% input$RawCountQuantNorm) {
-            expr <- preprocessCore::normalize.quantiles(as.matrix(expr), keep.names = T)
-          }
-          if (input$FilterCheck & isTruthy(input$FilterNum) & isTruthy(input$FilterProp)) {
-            FilterProp <- input$FilterProp/100
-            expr_pass <- apply(expr,1,function(x) ExprFilter2(x, input$FilterNum, FilterProp))
-            expr <- expr[which(expr_pass == TRUE),]
-          }
-          expr = expr[order(row.names(expr)), ]
-          # Harmonize special characters in sample names
-          colnames(expr) <- gsub("[[:punct:]]", "_", colnames(expr))
-          
-          #gene list file from expression data
-          Gene <- rownames(expr)
-          geneList <- as.data.frame(Gene)
-          geneList_raw(geneList);
-          Gene_raw(Gene)
-          
-          meta <- pData(gset)
-          org <- meta[1,"organism_ch1"]
-          meta <- relocate(meta, geo_accession, .before = title)
-          # cleaning the meta data
-          # Select columns that start with "characteristic"
-          char_cols <- grep("^characteristic", colnames(meta), value = TRUE)
-          extr_meta <- meta[, c("geo_accession", char_cols)]
-          
-          original_df <- extr_meta
-          
-          # Initialize an empty data frame to store results
-          new_df <- data.frame(sample = character(0), title = character(0), value = character(0), stringsAsFactors = FALSE)
-          
-          # Iterate through rows and columns to extract values and create new rows
-          for (i in seq_along(original_df$geo_accession)) {
-            row_values <- as.character(original_df[i, -1])  # Convert to character
-            row_values <- row_values[which(!row_values == "")]
+        req(user_upload())
+        withProgress(message = "Processing", value = 0, {
+          incProgress(0.5, detail = "Formatting Input Data")
+          if (isTruthy(ExpressionMatrix_file_react()) & isTruthy(MetaData_file_react()) && !isTruthy(gse_id_react()) && !isTruthy(recount_id_react())) {
+            req(user_upload())
+            expr <- user_upload()$expr
+            meta <- user_upload()$meta
             
-            for (j in seq_along(row_values)) {
-              split_value <- trimws(strsplit(row_values[j], ":")[[1]])
-              title <- split_value[1]
-              value <- paste(split_value[-1], collapse = ":")
+          }
+          if (isTruthy(ExpressionMatrix_file_react()) & isTruthy(MetaData_file_react()) & isTruthy(gse_id_react())) {
+            req(user_upload())
+            gset <- user_upload()$gset
+            gse <- user_upload()$gse
+            
+            gse_id = as.character(gse_id_react())
+            platform <- names(GPLList(gse))
+            
+            if (length(gset) > 1) idx <- grep(platform, attr(gset, "names")) else idx <- 1
+            gset <- gset[[idx]]
+            expr <- exprs(gset)
+            df <- as.data.frame(expr)
+            df <- arrange(df)
+            df$ID <- rownames(df)
+            df <- df %>% relocate(ID)
+            df$ID <- trimws(df$ID)
+            df$ID <- as.character(df$ID)
+            full_table <- read_delim(paste("https://raw.githubusercontent.com/shawlab-moffitt/GEO_DataDownload_Example/main/GPL_Files/", platform, ".txt", sep=""), delim = '\t', col_names = T)
+            full_table[1] <- NULL
+            colnames(full_table)[1] = "ID"
+            colnames(full_table)[2] = "Symbol"
+            full_table <- arrange(full_table)
+            full_table = data.frame(full_table)
+            full_table$ID <- as.character(full_table$ID)
+            # convert id to symbol for expr matrix
+            expr <- inner_join(df, full_table, by = "ID")
+            expr <- relocate(expr, "Symbol", .before = 1)
+            expr$ID <- NULL
+            expr <- expr[complete.cases(expr$Symbol), ]
+            expr$Symbol <- trimws(expr$Symbol)
+            
+            meta <- pData(gset)
+            org <- meta[1,"organism_ch1"]
+            meta <- relocate(meta, geo_accession, .before = title)
+            # cleaning the meta data
+            # Select columns that start with "characteristic"
+            char_cols <- grep("^characteristic", colnames(meta), value = TRUE)
+            extr_meta <- meta[, c("geo_accession", char_cols)]
+            
+            original_df <- extr_meta
+            
+            # Initialize an empty data frame to store results
+            new_df <- data.frame(sample = character(0), title = character(0), value = character(0), stringsAsFactors = FALSE)
+            
+            # Iterate through rows and columns to extract values and create new rows
+            for (i in seq_along(original_df$geo_accession)) {
+              row_values <- as.character(original_df[i, -1])  # Convert to character
+              row_values <- row_values[which(!row_values == "")]
               
-              new_row <- data.frame(geo_accession = original_df$geo_accession[i], title = title, value = value, stringsAsFactors = FALSE)
-              new_df <- rbind(new_df, new_row)
+              for (j in seq_along(row_values)) {
+                split_value <- trimws(strsplit(row_values[j], ":")[[1]])
+                title <- split_value[1]
+                value <- paste(split_value[-1], collapse = ":")
+                
+                new_row <- data.frame(geo_accession = original_df$geo_accession[i], title = title, value = value, stringsAsFactors = FALSE)
+                new_df <- rbind(new_df, new_row)
+              }
             }
-          }
-          
-          final_extr_meta <- tidyr::pivot_wider(new_df, names_from = title, values_from = value)
-          print(head(final_extr_meta, c(5,5)))
-          final_extr_meta <- as.data.frame(final_extr_meta)
-          meta_merged <- dplyr::full_join(final_extr_meta, meta[,which(!colnames(meta) %in% char_cols)], by = "geo_accession")
-          print(head(meta_merged,c(5,5)))
-          meta <- meta_merged
-          
-          meta[,1] <- gsub("[_.-]", "_", meta[,1])
-          print(head(meta))
-          colnames(meta)[1] <- "SampleName"
-          
-          #for heatmap sample selection
-          sampsames <- intersect(colnames(expr),meta[,1])
-          
-          #ensure expression samples and meta are exact
-          expr <- expr[,sampsames]
-          meta <- meta[which(meta[,1] %in% sampsames),]
-          expr_input(expr)
-          meta_input(meta)
-          
-          if (tolower(org) == "mus musculus") {
-            MM_react(TRUE)
-          } else (
-            MM_react(FALSE)
-          )
-          if (isTruthy(MM_react())) {
-            if (as.logical(MM_react())) {
-              CTKgenes <- CTKgenes_mm
-            } else {
-              CTKgenes <- CTKgenes_hs
-            }
-          } else {
-            CTKgenes <- CTKgenes_hs
-          }
-          
-          CTKgenes <- CTKgenes[which(CTKgenes %in% Gene)]
-          updateSelectizeInput(session = session, inputId = "heatmapGeneSelec",
-                               choices = Gene,selected = CTKgenes, server = T)
-          updateSelectizeInput(session = session, inputId = "userheatsamp2",
-                               choices = sampsames,selected = sampsames, server = T)
-          updateSelectizeInput(session = session, inputId = "avgheatmapGeneSelec",
-                               choices = Gene,selected = CTKgenes, server = T)
-          updateSelectizeInput(session = session, inputId = "scatterG1",
-                               choices = Gene,selected = Gene[1], server = T)
-          updateSelectizeInput(session = session, inputId = "scatterG2",
-                               choices = Gene,selected = Gene[2], server = T)
-          updateSelectizeInput(session = session, inputId = "userGeneSelec",
-                               choices = sort(as.vector(geneList[,1])),selected = NULL, server = T)
-          updateSelectizeInput(session = session, inputId = "scatterGeneSelec",
-                               choices = rownames(expr),selected = NULL, server = T)
-          updateSelectizeInput(session = session, inputId = "userheatsampSS",
-                               choices = sampsames,selected = sampsames, server = T)
-        }
-        
-        if (isTruthy(ExpressionMatrix_file_react()) & isTruthy(MetaData_file_react()) & isTruthy(recount_id_react())) {
-          req(user_upload())
-          
-          RecountID <- recount_id_react()
-          if (RecountID %in% recount3_proj()$project) {
-            Proj_home <- recount3_proj()[which(recount3_proj()$project == RecountID),"project_home"]
-            Proj_org <- recount3_proj()[which(recount3_proj()$project == RecountID),"organism"]
-            Proj_source <- toupper(recount3_proj()[which(recount3_proj()$project == RecountID),"file_source"])
-            File_prefix <- paste0(Proj_source,"_",RecountID)
             
-            recount_rse <- user_upload()
-            expr <- assay(recount_rse)
-            if ("Perform Normalization" %in% input$RawCountQuantNorm) {
-              if (isTruthy(input$RawCountNorm)) {
-                if (input$RawCountNorm %in% c("TPM","RPKM")) {
-                  if (input$RawCountNorm == "TPM") {
-                    recount_rse <- user_upload()
-                    assays(recount_rse)$counts <- transform_counts(recount_rse)
-                    expr <- as.data.frame(recount::getTPM(recount_rse))
-                  } else if (input$RawCountNorm == "RPKM") {
-                    recount_rse <- user_upload()
-                    assays(recount_rse)$counts <- transform_counts(recount_rse)
-                    expr <- as.data.frame(recount::getRPKM(recount_rse))
-                  }  else if (input$RawCountNorm == "none") {
-                    recount_rse <- user_upload()
-                    expr <- assay(recount_rse)
+            final_extr_meta <- tidyr::pivot_wider(new_df, names_from = title, values_from = value)
+            final_extr_meta <- as.data.frame(final_extr_meta)
+            meta_merged <- dplyr::full_join(final_extr_meta, meta[,which(!colnames(meta) %in% char_cols)], by = "geo_accession")
+            meta <- meta_merged
+            if (tolower(org) == "mus musculus") {
+              MM_react(TRUE)
+            } else (
+              MM_react(FALSE)
+            )
+          }
+          if (isTruthy(ExpressionMatrix_file_react()) & isTruthy(MetaData_file_react()) & isTruthy(recount_id_react())) {
+            req(user_upload())
+            RecountID <- recount_id_react()
+            if (RecountID %in% recount3_proj()$project) {
+              Proj_home <- recount3_proj()[which(recount3_proj()$project == RecountID),"project_home"]
+              Proj_org <- recount3_proj()[which(recount3_proj()$project == RecountID),"organism"]
+              Proj_source <- toupper(recount3_proj()[which(recount3_proj()$project == RecountID),"file_source"])
+              File_prefix <- paste0(Proj_source,"_",RecountID)
+              
+              recount_rse <- user_upload()
+              expr <- assay(recount_rse)
+              if ("Perform Normalization" %in% input$RawCountQuantNorm) {
+                if (isTruthy(input$RawCountNorm)) {
+                  if (input$RawCountNorm %in% c("TPM","RPKM")) {
+                    if (input$RawCountNorm == "TPM") {
+                      recount_rse <- user_upload()
+                      assays(recount_rse)$counts <- transform_counts(recount_rse)
+                      expr <- as.data.frame(recount::getTPM(recount_rse))
+                    } else if (input$RawCountNorm == "RPKM") {
+                      recount_rse <- user_upload()
+                      assays(recount_rse)$counts <- transform_counts(recount_rse)
+                      expr <- as.data.frame(recount::getRPKM(recount_rse))
+                    }  else if (input$RawCountNorm == "none") {
+                      recount_rse <- user_upload()
+                      expr <- assay(recount_rse)
+                    }
                   }
                 }
               }
-            }
-            expr_col <- colnames(expr)
-            
-            if ("Perform Normalization" %in% input$RawCountQuantNorm) {
-              if (isTruthy(input$RawCountNorm)) {
-                if (input$RawCountNorm %in% c("TMM","upperquartile")) {
-                  recount_rse <- user_upload()
-                  expr <- assay(recount_rse)
-                  mat <- as.matrix(expr)
-                  mat_dgeList <- DGEList(counts = as.matrix(mat))
-                  mat_dgeList_Norm <- edgeR::calcNormFactors(mat_dgeList, method = input$RawCountNorm)
-                  expr <- edgeR::cpm(mat_dgeList_Norm)
-                }  else if (input$RawCountNorm == "none") {
-                  recount_rse <- user_upload()
-                  expr <- assays(recount_rse)
-                }
-              }
-            }
-            if ("Quantile Normalization" %in% input$RawCountQuantNorm) {
-              expr <- preprocessCore::normalize.quantiles(as.matrix(expr), keep.names = T)
-            }
-            if (input$FilterCheck & isTruthy(input$FilterNum) & isTruthy(input$FilterProp)) {
-              FilterProp <- input$FilterProp/100
-              expr_pass <- apply(expr,1,function(x) ExprFilter2(x, input$FilterNum, FilterProp))
-              expr <- expr[which(expr_pass == TRUE),]
-            }
-            
-            expr_anno <- as.data.frame(recount_rse@rowRanges@elementMetadata@listData)
-            expr <- merge(expr_anno[,c(5,7)],expr,by.x = "gene_id", by.y = 0,all.y = T)
-            expr <- expr[,-1]
-            
-            colnames(expr)[1] <- "Gene"
-            expr[sapply(expr, is.infinite)] <- NA
-            # Remove Expression with NA
-            expr <- expr %>%
-              drop_na()
-            # Check that expression data is numeric
-            isChar <- unname(which(sapply(expr, function(x) is.character(x))))
-            isChar <-  isChar[-1]
-            if (length(isChar) > 0) {
-              expr[isChar] <- sapply(expr[isChar],as.numeric)
-            }
-            # Remove Duplicate genes
-            expr_dup <- expr[which(expr[,1] %in% expr[,1][duplicated(expr[,1])]),]
-            expr_nondup <- expr[which(!expr[,1] %in% expr[,1][duplicated(expr[,1])]),]
-            if (nrow(expr_dup) > 0) {
-              expr_dup <- expr_dup %>%
-                group_by(Gene) %>%
-                summarise_all(max)
-            }
-            expr <- rbind(expr_dup,expr_nondup)
-            expr <- as.data.frame(expr)
-            # Make rownames <- genenames
-            row.names(expr) <- expr[,1]
-            expr <- expr[,-1]
-            expr = expr[order(row.names(expr)), ]
-            # Harmonize special characters in sample names
-            colnames(expr) <- gsub("[[:punct:]]", "_", colnames(expr))
-            
-            
-            
-            meta <- as.data.frame(t(do.call(rbind,recount_rse@colData@listData)))
-            
-            if (Proj_source == "TCGA") {
-              meta$external_id <- gsub("[[:punct:]]", "_", meta$external_id)
-              meta$tcga.tcga_barcode <- gsub("[[:punct:]]", "_", meta$tcga.tcga_barcode)
-              names(expr)[match(meta[,"external_id"], names(expr))] = meta[,"tcga.tcga_barcode"]
-              meta <- meta %>% relocate(tcga.tcga_barcode)
-            } else {
-              meta <- meta %>% relocate("external_id")
-            }
-            #gene list file from expression data
-            Gene <- rownames(expr)
-            geneList <- as.data.frame(Gene)
-            geneList_raw(geneList);
-            Gene_raw(Gene)
-            
-            meta[,1] <- gsub("[_.-]", "_", meta[,1])
-            colnames(meta)[1] <- "SampleName"
-            
-            #for heatmap sample selection
-            sampsames <- intersect(colnames(expr),meta[,1])
-            
-            #ensure expression samples and meta are exact
-            expr <- expr[,sampsames]
-            meta <- meta[which(meta[,1] %in% sampsames),]
-            expr_input(expr)
-            meta_input(meta)
-            
-            if (isTruthy(MM_react())) {
-              if (as.logical(MM_react())) {
-                CTKgenes <- CTKgenes_mm
+              
+              expr_anno <- as.data.frame(recount_rse@rowRanges@elementMetadata@listData)
+              expr <- merge(expr_anno[,c(5,7)],expr,by.x = "gene_id", by.y = 0,all.y = T)
+              expr <- expr[,-1]
+              
+              
+              meta <- as.data.frame(t(do.call(rbind,recount_rse@colData@listData)))
+              
+              if (Proj_source == "TCGA") {
+                names(expr)[-1][match(meta[,"external_id"], names(expr)[-1])] = meta[,"tcga.tcga_barcode"]
+                meta <- meta %>% relocate(tcga.tcga_barcode)
               } else {
-                CTKgenes <- CTKgenes_hs
+                meta <- meta %>% relocate("external_id")
               }
+            }
+          }
+          
+          
+          expr_col <- colnames(expr)
+          if ("Perform Normalization" %in% input$RawCountQuantNorm) {
+            if (isTruthy(input$RawCountNorm)) {
+              if (input$RawCountNorm %in% c("TMM","upperquartile")) {
+                mat <- as.matrix(expr)
+                mat_dgeList <- DGEList(counts = as.matrix(mat))
+                mat_dgeList_Norm <- edgeR::calcNormFactors(mat_dgeList, method = input$RawCountNorm)
+                expr <- edgeR::cpm(mat_dgeList_Norm)
+              }  else if (input$RawCountNorm == "none") {
+                recount_rse <- user_upload()
+                expr <- assays(recount_rse)
+              }
+            }
+          }
+          if ("Quantile Normalization" %in% input$RawCountQuantNorm) {
+            expr <- preprocessCore::normalize.quantiles(as.matrix(expr), keep.names = T)
+          }
+          if (input$FilterCheck & isTruthy(input$FilterNum) & isTruthy(input$FilterProp)) {
+            FilterProp <- input$FilterProp/100
+            expr_pass <- apply(expr,1,function(x) ExprFilter2(x, input$FilterNum, FilterProp))
+            expr <- expr[which(expr_pass == TRUE),]
+          }
+          
+          
+          colnames(expr)[1] <- "Gene"
+          expr[sapply(expr, is.infinite)] <- NA
+          # Remove Expression with NA
+          expr <- expr %>%
+            drop_na()
+          # Check that expression data is numeric
+          isChar <- unname(which(sapply(expr, function(x) is.character(x))))
+          isChar <-  isChar[-1]
+          if (length(isChar) > 0) {
+            expr[isChar] <- sapply(expr[isChar],as.numeric)
+          }
+          # Remove Duplicate genes
+          expr_dup <- expr[which(expr[,1] %in% expr[,1][duplicated(expr[,1])]),]
+          expr_nondup <- expr[which(!expr[,1] %in% expr[,1][duplicated(expr[,1])]),]
+          if (nrow(expr_dup) > 0) {
+            expr_dup <- expr_dup %>%
+              group_by(Gene) %>%
+              summarise_all(max)
+          }
+          expr <- rbind(expr_dup,expr_nondup)
+          expr <- as.data.frame(expr)
+          # Make rownames <- genenames
+          row.names(expr) <- expr[,1]
+          expr <- expr[,-1]
+          expr = expr[order(row.names(expr)), ]
+          # Harmonize special characters in sample names
+          #colnames(expr) <- gsub("[[:punct:]]", "_", colnames(expr))
+          
+          
+          
+          #gene list file from expression data
+          Gene <- rownames(expr)
+          geneList <- as.data.frame(Gene)
+          geneList_raw(geneList);
+          Gene_raw(Gene)
+          
+          #meta[,1] <- gsub("[_.-]", "_", meta[,1])
+          colnames(meta)[1] <- "SampleName"
+          
+          #for heatmap sample selection
+          sampsames <- intersect(colnames(expr),meta[,1])
+          
+          #ensure expression samples and meta are exact
+          expr <- expr[,sampsames]
+          meta <- meta[which(meta[,1] %in% sampsames),]
+          expr_input(expr)
+          meta_input(meta)
+          if (isTruthy(MM_react())) {
+            if (as.logical(MM_react())) {
+              CTKgenes <- CTKgenes_mm
+              updateRadioButtons(session,"HumanOrMouse",selected = "Mouse")
             } else {
               CTKgenes <- CTKgenes_hs
             }
-            
-            CTKgenes <- CTKgenes[which(CTKgenes %in% Gene)]
-            updateSelectizeInput(session = session, inputId = "heatmapGeneSelec",
-                                 choices = Gene,selected = CTKgenes, server = T)
-            updateSelectizeInput(session = session, inputId = "userheatsamp2",
-                                 choices = sampsames,selected = sampsames, server = T)
-            updateSelectizeInput(session = session, inputId = "avgheatmapGeneSelec",
-                                 choices = Gene,selected = CTKgenes, server = T)
-            updateSelectizeInput(session = session, inputId = "scatterG1",
-                                 choices = Gene,selected = Gene[1], server = T)
-            updateSelectizeInput(session = session, inputId = "scatterG2",
-                                 choices = Gene,selected = Gene[2], server = T)
-            updateSelectizeInput(session = session, inputId = "userGeneSelec",
-                                 choices = sort(as.vector(geneList[,1])),selected = NULL, server = T)
-            updateSelectizeInput(session = session, inputId = "scatterGeneSelec",
-                                 choices = rownames(expr),selected = NULL, server = T)
-            updateSelectizeInput(session = session, inputId = "userheatsampSS",
-                                 choices = sampsames,selected = sampsames, server = T)
-            
+          } else {
+            CTKgenes <- CTKgenes_hs
           }
-            
-            
           
-        }
-
+          CTKgenes <- CTKgenes[which(CTKgenes %in% Gene)]
+          updateSelectizeInput(session = session, inputId = "heatmapGeneSelec",
+                               choices = Gene,selected = CTKgenes, server = T)
+          updateSelectizeInput(session = session, inputId = "userheatsamp2",
+                               choices = sampsames,selected = sampsames, server = T)
+          updateSelectizeInput(session = session, inputId = "avgheatmapGeneSelec",
+                               choices = Gene,selected = CTKgenes, server = T)
+          updateSelectizeInput(session = session, inputId = "scatterG1",
+                               choices = Gene,selected = Gene[1], server = T)
+          updateSelectizeInput(session = session, inputId = "scatterG2",
+                               choices = Gene,selected = Gene[2], server = T)
+          updateSelectizeInput(session = session, inputId = "userGeneSelec",
+                               choices = sort(as.vector(geneList[,1])),selected = NULL, server = T)
+          updateSelectizeInput(session = session, inputId = "scatterGeneSelec",
+                               choices = rownames(expr),selected = NULL, server = T)
+          updateSelectizeInput(session = session, inputId = "userheatsampSS",
+                               choices = sampsames,selected = sampsames, server = T)
+          
+          incProgress(0.5, detail = "Complete!")
+        })
       })
       
       observeEvent(input$SplitColumn, {
@@ -2243,7 +2071,7 @@ server <- function(input, output, session) {
       ## Data Exploration ----------------------------------------------------------
       output$rendSubsetCol <- renderUI({
 
-        meta <- meta_react()
+        meta <- meta_input()
         if (ncol(meta) > 2) {
           CharCols <- c("Select All Samples",suppressWarnings(column_type_check(meta,"character"))[-1])
           selectInput("SubsetCol","Subset Samples By:",
@@ -2263,10 +2091,11 @@ server <- function(input, output, session) {
       output$rendSubsetCrit <- renderUI({
 
         req(input$SubsetCol)
-        meta <- meta_react()
+        meta <- meta_input()
         if (input$SubsetCol != "Select All Samples") {
           SubCrit <- unique(meta[,SubCol_reactVal()])
-          selectInput("SubsetCrit","Sample Criteria:",choices = SubCrit, selected = SubCrit_reactVal())
+          #selectInput("SubsetCrit","Sample Criteria:",choices = SubCrit, selected = SubCrit_reactVal())
+          selectInput("SubsetCrit","Sample Criteria:",choices = SubCrit)
         }
 
       })
@@ -2418,7 +2247,7 @@ server <- function(input, output, session) {
 
         req(input$DEGSubsetCol)
         if (input$DEGSubsetCol != "Select All Samples") {
-          meta <- meta_react()
+          meta <- meta_input()
           SubCrit <- unique(meta[,input$DEGSubsetCol])
           selectInput("DEGSubsetCrit","Sample Criteria:",choices = SubCrit, selected = SubCrit_reactVal())
         }
@@ -2489,7 +2318,7 @@ server <- function(input, output, session) {
 
         req(input$GSEASubsetCol)
         if (input$GSEASubsetCol != "Select All Samples") {
-          meta <- meta_react()
+          meta <- meta_input()
           SubCrit <- unique(meta[,input$GSEASubsetCol])
           selectInput("GSEASubsetCrit","Sample Criteria:",choices = SubCrit, selected = SubCrit_reactVal())
         }
@@ -2618,19 +2447,24 @@ server <- function(input, output, session) {
         meta <- meta_react()
         expr <- expr_input()
         expr2 <- expr[,meta[,1]]
-        A <- as.matrix(expr2)
-        A_raw(A)
         expr2
 
       })
-      expr_mat_react <- reactive({
-
-        meta <- meta_react()
-        A <- A_raw()
-        A2 <- A[,meta[,1]]
-        A2
-
+      observe({
+        req(expr_react())
+        expr <- expr_react()
+        A <- as.matrix(expr)
+        A_raw(A)
       })
+      
+      #expr_mat_react <- reactive({
+#
+      #  meta <- meta_react()
+      #  A <- A_raw()
+      #  A2 <- A[,meta[,1]]
+      #  A2
+#
+      #})
 
       #observe({
       #  Gene <- Gene_raw()
@@ -3308,7 +3142,7 @@ server <- function(input, output, session) {
         if (input$GenerateEST == TRUE) {
           meta <- meta_react()
           metacol <- metacol_reactVal()
-          A <- expr_mat_react()
+          A <- A_raw()
           #if (ncol(meta) > 2) {
           #  metacol <- input$GSEAmetaCol
           #}
@@ -3376,7 +3210,7 @@ server <- function(input, output, session) {
 
       #reactive for ssGSEA function
       ssGSEAfunc <- reactive({
-        A <- expr_mat_react()
+        A <- A_raw()
         if (input$tables == 1) {
           GS <- gs()[(msigdb.gsea2()[input$msigdbTable_rows_selected,3])]
         }
@@ -3417,7 +3251,7 @@ server <- function(input, output, session) {
       datasetInput <- reactive({
         meta <- meta_react()
         metacol <- metacol_reactVal()
-        A <- expr_mat_react()
+        A <- A_raw()
         #if (ncol(meta) > 2) {
         #  req(input$GSEAmetaCol)
         #  metacol <- input$GSEAmetaCol
@@ -3533,26 +3367,31 @@ server <- function(input, output, session) {
         req(input$DEGcolHeat)
         req(input$comparisonA2_h)
         req(input$comparisonB2_h)
-        # UI Inputs
-        A_choice <- input$comparisonA2_h            #Comparison group A
-        B_choice <- input$comparisonB2_h            #Comparison group B
-
-        meta <- meta_react()
-        #metacol <- metacol_reactVal()
-        metacol <- input$DEGcolHeat
-        expr <- expr_react()
-        A <- meta[which(meta[,metacol] == A_choice),1]
-        B <- meta[which(meta[,metacol] == B_choice),1]
-        mat <- expr[,c(A,B)]
-        mat <- log2(mat + 1.0)
-        groupAOther <- factor(c(rep("A", length(A)), rep("B", length(B))))
-        designA <- model.matrix(~0 + groupAOther)
-        fit <- lmFit(mat, design = designA)
-        contrast.matrix <- makeContrasts(groupAOtherA - groupAOtherB, levels = designA)
-        fit2 <- contrasts.fit(fit, contrast.matrix)
-        fit2 <- eBayes(fit2)
-        options(digits = 4)
-        top1 <- topTable(fit2, coef = 1, n = 300000, sort = "p", p.value = 1.0, adjust.method = "BH")
+        withProgress(message = "Processing", value = 0, {
+          incProgress(0.5, detail = "Calculating Differential Expression")
+          # UI Inputs
+          A_choice <- input$comparisonA2_h            #Comparison group A
+          B_choice <- input$comparisonB2_h            #Comparison group B
+          
+          meta <- meta_react()
+          #metacol <- metacol_reactVal()
+          metacol <- input$DEGcolHeat
+          expr <- expr_react()
+          A <- meta[which(meta[,metacol] == A_choice),1]
+          B <- meta[which(meta[,metacol] == B_choice),1]
+          mat <- expr[,c(A,B)]
+          mat <- log2(mat + 1.0)
+          groupAOther <- factor(c(rep("A", length(A)), rep("B", length(B))))
+          designA <- model.matrix(~0 + groupAOther)
+          fit <- lmFit(mat, design = designA)
+          contrast.matrix <- makeContrasts(groupAOtherA - groupAOtherB, levels = designA)
+          fit2 <- contrasts.fit(fit, contrast.matrix)
+          fit2 <- eBayes(fit2)
+          options(digits = 4)
+          top1 <- topTable(fit2, coef = 1, n = 300000, sort = "p", p.value = 1.0, adjust.method = "BH")
+          incProgress(0.5, detail = "Complete!")
+        })
+        
         top1
 
       })
@@ -3602,46 +3441,53 @@ server <- function(input, output, session) {
       MVG_heat_data <- reactive({
 
         req(expr_react())
-        top_probes <- input$NumFeatures
-        clust_method <- input$ClusteringMethod
-        var_type <- input$VarianceMeasure
-        expr <- expr_react()
-        exp <- expr
-        mad <- NULL
-        var <- NULL
-        cv <- NULL
-        if (var_type == "MAD"){
-          mad <- apply(log2(exp + 1), 1, mad)
-          mad <- sort(mad, decreasing = T)
-          mad <- head(mad, n = (top_probes +1))
-          out <- cbind(names(mad), mad[names(mad)], exp[names(mad),])
-          colnames(out) <- c("Gene", "MAD", colnames(exp))
-          dataset <- exp[names(mad),]
-        }
-        else if (var_type == "VAR"){
-          var <- apply(log2(exp + 1), 1, var)
-          var <- sort(var, decreasing = T)
-          var <- head(var, n = (top_probes +1))
-          out <- cbind(names(var), var[names(var)], exp[names(var),])
-          colnames(out) <- c("Gene", "VAR", colnames(exp))
-          dataset <- exp[names(var),]
-        }
-        else if (var_type == "CV"){
-          cv <- apply(log2(exp + 1), 1, cv)
-          cv <- sort(cv, decreasing = T)
-          cv <- head(cv, n = (top_probes +1))
-          out <- cbind(names(cv), cv[names(cv)], exp[names(cv),])
-          colnames(out) <- c("Gene", "CV", colnames(exp))
-          dataset <- exp[names(cv),]
-        }
-        dataset <- log2(dataset + 1)
-        zdataset <- apply(dataset, 1, scale)
-        zdataset <- apply(zdataset, 1, rev)
-        colnames(zdataset) <- names(dataset)
-        dataset <- as.matrix(zdataset)
-        dataset[is.na(dataset)] <- 0
-        dataset = dataset[apply(dataset, 1, function(x) !all(x==0)),]
+        withProgress(message = "Processing", value = 0, {
+          incProgress(0.25, detail = "Calculating Variance")
+          top_probes <- input$NumFeatures
+          clust_method <- input$ClusteringMethod
+          var_type <- input$VarianceMeasure
+          expr <- expr_react()
+          exp <- expr
+          mad <- NULL
+          var <- NULL
+          cv <- NULL
+          if (var_type == "MAD"){
+            mad <- apply(log2(exp + 1), 1, mad)
+            mad <- sort(mad, decreasing = T)
+            mad <- head(mad, n = (top_probes +1))
+            out <- cbind(names(mad), mad[names(mad)], exp[names(mad),])
+            colnames(out) <- c("Gene", "MAD", colnames(exp))
+            dataset <- exp[names(mad),]
+          }
+          else if (var_type == "VAR"){
+            var <- apply(log2(exp + 1), 1, var)
+            var <- sort(var, decreasing = T)
+            var <- head(var, n = (top_probes +1))
+            out <- cbind(names(var), var[names(var)], exp[names(var),])
+            colnames(out) <- c("Gene", "VAR", colnames(exp))
+            dataset <- exp[names(var),]
+          }
+          else if (var_type == "CV"){
+            cv <- apply(log2(exp + 1), 1, cv)
+            cv <- sort(cv, decreasing = T)
+            cv <- head(cv, n = (top_probes +1))
+            out <- cbind(names(cv), cv[names(cv)], exp[names(cv),])
+            colnames(out) <- c("Gene", "CV", colnames(exp))
+            dataset <- exp[names(cv),]
+          }
+          incProgress(0.25, detail = "Calculating Z-Score")
+          dataset <- log2(dataset + 1)
+          zdataset <- apply(dataset, 1, scale)
+          zdataset <- apply(zdataset, 1, rev)
+          colnames(zdataset) <- names(dataset)
+          dataset <- as.matrix(zdataset)
+          dataset[is.na(dataset)] <- 0
+          dataset = dataset[apply(dataset, 1, function(x) !all(x==0)),]
+          incProgress(0.5, detail = "Complete!")
+        })
+        
         dataset
+        
 
       })
 
@@ -3649,32 +3495,29 @@ server <- function(input, output, session) {
       MVGheatmap_react <- reactive ({
 
         req(input$ClusteringMethod)
-        #if (!is.null(input$GroupColMulti)) {
-        #top_probes <- input$NumFeatures
-        row_names_choice <- input$ShowRowNames1
-        col_names_choice <- input$ShowColNames1
-        row_font <- input$heatmapFont2.r
-        col_font <- input$heatmapFont2.c
-        clust_method <- input$ClusteringMethod
-        #color_choice <- input$ColorPalette1
-        #var_type <- input$VarianceMeasure
-        clust_cols_opt <- input$clustcolsMVG
-        clust_rows_opt <- input$clustrowsMVG
-        #meta <- meta_react()
-        #metacol <- metacol_reactVal()
-        #metacol <- metacol_react()
-        #expr <- expr_react()
-        colAnno <- heat_colAnn()
-        dataset <- MVG_heat_data()
-        p <- suppressMessages(ComplexHeatmap::Heatmap(dataset,
-                                                      top_annotation = colAnno,
-                                                      clustering_method_rows = clust_method,
-                                                      show_row_names = row_names_choice, show_column_names = col_names_choice,
-                                                      cluster_rows = clust_rows_opt, cluster_columns = clust_cols_opt,
-                                                      row_names_gp = gpar(fontsize = row_font), column_names_gp = gpar(fontsize = col_font),
-                                                      heatmap_legend_param = list(title = "Expression"),
-                                                      border = F))
+        withProgress(message = "Processing", value = 0, {
+          incProgress(0.5, detail = "Generating Heatmap")
+          row_names_choice <- input$ShowRowNames1
+          col_names_choice <- input$ShowColNames1
+          row_font <- input$heatmapFont2.r
+          col_font <- input$heatmapFont2.c
+          clust_method <- input$ClusteringMethod
+          clust_cols_opt <- input$clustcolsMVG
+          clust_rows_opt <- input$clustrowsMVG
+          colAnno <- heat_colAnn()
+          dataset <- MVG_heat_data()
+          p <- suppressMessages(ComplexHeatmap::Heatmap(dataset,
+                                                        top_annotation = colAnno,
+                                                        clustering_method_rows = clust_method,
+                                                        show_row_names = row_names_choice, show_column_names = col_names_choice,
+                                                        cluster_rows = clust_rows_opt, cluster_columns = clust_cols_opt,
+                                                        row_names_gp = gpar(fontsize = row_font), column_names_gp = gpar(fontsize = col_font),
+                                                        heatmap_legend_param = list(title = "Expression"),
+                                                        border = F))
+          incProgress(0.5, detail = "Complete!")
+        })
         draw(p, padding = unit(c(50, 50, 2, 2), "mm")) # unit(c(bottom,left,right,top))
+        
 
       })
 
@@ -3716,37 +3559,38 @@ server <- function(input, output, session) {
       })
 
       Custom_heat_data <- reactive({
-        #req(expr_react())
-        #req(meta_react())
         genelist.uih <- unlist(strsplit(input$userheatgenes, " "))
-        #if (isTruthy(input$heatmapGeneSelec) || isTruthy(input$userheatgenes)) {
         if (length(input$heatmapGeneSelec) >= 2 | length(genelist.uih) > 1) {
-          #metacol <- metacol_reactVal()
-          expr <- expr_react()
-          meta <- meta_react()
-          genelist.uih <- NULL
-          genelist.ush <- NULL
-          genelist.uih2 <- NULL
-          genelist.ush <- input$heatmapGeneSelec
-          genelist.uih <- unlist(strsplit(input$userheatgenes, " "))
-          #genelist.uih2 <- unlist(strsplit(input$userheatgenes, "\t"))
-          heatgenes <- c(genelist.ush,genelist.uih,genelist.uih2)
-          heatgenes <- heatgenes[!is.na(heatgenes)]
-          heatgenes <- heatgenes[!is.null(heatgenes)]
-          usersamps <- input$userheatsamp2
-          exp <- expr[heatgenes,usersamps]
-          meta <- meta[which(meta[,1] %in% usersamps),]
-
-          dataset <- exp
-          dataset <- log2(dataset + 1)
-          zdataset <- apply(dataset, 1, scale)
-          zdataset <- apply(zdataset, 1, rev)
-          colnames(zdataset) <- names(dataset)
-          dataset <- as.matrix(zdataset)
-          dataset[is.na(dataset)] <- 0
-          dataset = dataset[apply(dataset, 1, function(x) !all(x==0)),]
-          dataset <- dataset[match(heatgenes, rownames(dataset)),]
-          dataset <- dataset[complete.cases(dataset),]
+          withProgress(message = "Processing", value = 0, {
+            incProgress(0.25, detail = "Customizing")
+            expr <- expr_react()
+            meta <- meta_react()
+            genelist.uih <- NULL
+            genelist.ush <- NULL
+            genelist.uih2 <- NULL
+            genelist.ush <- input$heatmapGeneSelec
+            genelist.uih <- unlist(strsplit(input$userheatgenes, " "))
+            #genelist.uih2 <- unlist(strsplit(input$userheatgenes, "\t"))
+            heatgenes <- c(genelist.ush,genelist.uih,genelist.uih2)
+            heatgenes <- heatgenes[!is.na(heatgenes)]
+            heatgenes <- heatgenes[!is.null(heatgenes)]
+            usersamps <- input$userheatsamp2
+            exp <- expr[heatgenes,usersamps]
+            meta <- meta[which(meta[,1] %in% usersamps),]
+            incProgress(0.25, detail = "Calculating Z-Score")
+            dataset <- exp
+            dataset <- log2(dataset + 1)
+            zdataset <- apply(dataset, 1, scale)
+            zdataset <- apply(zdataset, 1, rev)
+            colnames(zdataset) <- names(dataset)
+            dataset <- as.matrix(zdataset)
+            dataset[is.na(dataset)] <- 0
+            dataset = dataset[apply(dataset, 1, function(x) !all(x==0)),]
+            dataset <- dataset[match(heatgenes, rownames(dataset)),]
+            dataset <- dataset[complete.cases(dataset),]
+            incProgress(0.5, detail = "Complete!")
+          })
+          
           dataset
         }
 
@@ -3755,11 +3599,8 @@ server <- function(input, output, session) {
       #Custom heat map reactive
       CustomHeatmap_react <- reactive({
 
-        #genelist.uih <- unlist(strsplit(input$userheatgenes, " "))
-        #if (length(input$heatmapGeneSelec) >= 2 || length(genelist.uih) > 1) {
-          #expr <- expr_react()
-          #meta <- meta_react()
-          #metacol <- metacol_reactVal()
+        withProgress(message = "Processing", value = 0, {
+          incProgress(0.5, detail = "Generating Heatmap")
           row_names_choice <- input$ShowRowNames2
           col_names_choice <- input$ShowColNames2
           clust_cols_opt <- input$ClusColOptCust
@@ -3769,7 +3610,7 @@ server <- function(input, output, session) {
           clust_method <- input$ClusteringMethodCust
           colAnno <- Cutsom_heat_colAnn()
           dataset <- Custom_heat_data()
-
+          
           p <- suppressMessages(ComplexHeatmap::Heatmap(dataset,
                                                         top_annotation = colAnno,
                                                         clustering_method_rows = clust_method,
@@ -3778,76 +3619,76 @@ server <- function(input, output, session) {
                                                         row_names_gp = gpar(fontsize = row_font), column_names_gp = gpar(fontsize = col_font),
                                                         heatmap_legend_param = list(title = "Expression"),
                                                         border = F))
-          draw(p, padding = unit(c(50, 50, 2, 2), "mm")) # unit(c(bottom,left,right,top))
+          incProgress(0.5, detail = "Complete!")
+        })
+        draw(p, padding = unit(c(50, 50, 2, 2), "mm")) # unit(c(bottom,left,right,top))
 
       })
 
       ####----DEG Heatmap----####
 
       DEG_heat_data <- reactive({
-
-
-        # UI Inputs
-        meta <- meta_react()
-        expr <- expr_react()
-        FC_cutoff <- input$fc_cutoff_h              #FC cutoff for top gene selection
-        P_cutoff <- input$p_cutoff_h                #P-value cutoff for top gene selections
-        top_probes <- input$top_x_h                 #Number of top genes to show on heatmap
-        top1 <- topgenereact2()
-        top_above_cutoff <- top1[which(top1$logFC > abs(FC_cutoff) & top1$P.Value < P_cutoff),]
-
-        # Get gene list from Top table
-        genelist <- rownames(top_above_cutoff)[c(1:top_probes)]
-
-        # Heatmap Calculations
-        dataset <- expr[which(rownames(expr) %in% genelist),]
-        if (length(dataset) > 0) {
-          dataset <- log2(dataset + 1)
-          zdataset <- apply(dataset, 1, scale)
-          zdataset <- apply(zdataset, 1, rev)
-          colnames(zdataset) <- names(dataset)
-          dataset <- as.matrix(zdataset)
-          dataset[is.na(dataset)] <- 0
-          dataset = dataset[apply(dataset, 1, function(x) !all(x==0)),]
-        }
-
-
+        withProgress(message = "Processing", value = 0, {
+          incProgress(0.5, detail = "Calculating Z-Score")
+          # UI Inputs
+          meta <- meta_react()
+          expr <- expr_react()
+          FC_cutoff <- input$fc_cutoff_h              #FC cutoff for top gene selection
+          P_cutoff <- input$p_cutoff_h                #P-value cutoff for top gene selections
+          top_probes <- input$top_x_h                 #Number of top genes to show on heatmap
+          top1 <- topgenereact2()
+          top_above_cutoff <- top1[which(top1$logFC > abs(FC_cutoff) & top1$P.Value < P_cutoff),]
+          
+          # Get gene list from Top table
+          genelist <- rownames(top_above_cutoff)[c(1:top_probes)]
+          
+          # Heatmap Calculations
+          dataset <- expr[which(rownames(expr) %in% genelist),]
+          if (length(dataset) > 0) {
+            dataset <- log2(dataset + 1)
+            zdataset <- apply(dataset, 1, scale)
+            zdataset <- apply(zdataset, 1, rev)
+            colnames(zdataset) <- names(dataset)
+            dataset <- as.matrix(zdataset)
+            dataset[is.na(dataset)] <- 0
+            dataset = dataset[apply(dataset, 1, function(x) !all(x==0)),]
+          }
+          incProgress(0.5, detail = "Complete!")
+        })
+        dataset
       })
 
       # DEG heatmap reactive
       DEGHeatmap_react <- reactive({
 
         req(DEG_heat_data)
-        ## UI Inputs
-        #meta <- meta_react()
-        #metacol <- metacol_reactVal()
-        #expr <- expr_react()
-        row_names_choice <- input$ShowRowNames3     #choose to show row names or not
-        col_names_choice <- input$ShowColNames3
-        ##A_choice <- input$comparisonA2_h            #Comparison group A
-        ##B_choice <- input$comparisonB2_h            #Comparison group B
-        #FC_cutoff <- input$fc_cutoff_h              #FC cutoff for top gene selection
-        #P_cutoff <- input$p_cutoff_h                #P-value cutoff for top gene selections
-        #top_probes <- input$top_x_h                 #Number of top genes to show on heatmap
-        clust_method <- input$ClusteringMethod_degh #Cluster method for heatmap
-        col_font <- input$heatmapFont3.c.deg        #Heatmap column font size
-        row_font <- input$heatmapFont3.r.deg        #Heatmap row font size
-        #color_choice <- input$ColorPalette3
-        clust_rows_opt <- input$ClusRowOptDEG
-        clust_cols_opt <- input$ClusColOptDEG
-
-        colAnno <- heat_colAnn()
-        dataset <- DEG_heat_data()
-
-
-        p <- suppressMessages(ComplexHeatmap::Heatmap(dataset,
-                                                      top_annotation = colAnno,
-                                                      clustering_method_rows = clust_method,
-                                                      show_row_names = row_names_choice, show_column_names = col_names_choice,
-                                                      cluster_rows = clust_rows_opt, cluster_columns = clust_cols_opt,
-                                                      row_names_gp = gpar(fontsize = row_font), column_names_gp = gpar(fontsize = col_font),
-                                                      heatmap_legend_param = list(title = "Expression"),
-                                                      border = F))
+        withProgress(message = "Processing", value = 0, {
+          incProgress(0.5, detail = "Generating Heatmap")
+          ## UI Inputs
+          row_names_choice <- input$ShowRowNames3     #choose to show row names or not
+          col_names_choice <- input$ShowColNames3
+          clust_method <- input$ClusteringMethod_degh #Cluster method for heatmap
+          col_font <- input$heatmapFont3.c.deg        #Heatmap column font size
+          row_font <- input$heatmapFont3.r.deg        #Heatmap row font size
+          #color_choice <- input$ColorPalette3
+          clust_rows_opt <- input$ClusRowOptDEG
+          clust_cols_opt <- input$ClusColOptDEG
+          
+          colAnno <- heat_colAnn()
+          dataset <- DEG_heat_data()
+          
+          
+          p <- suppressMessages(ComplexHeatmap::Heatmap(dataset,
+                                                        top_annotation = colAnno,
+                                                        clustering_method_rows = clust_method,
+                                                        show_row_names = row_names_choice, show_column_names = col_names_choice,
+                                                        cluster_rows = clust_rows_opt, cluster_columns = clust_cols_opt,
+                                                        row_names_gp = gpar(fontsize = row_font), column_names_gp = gpar(fontsize = col_font),
+                                                        heatmap_legend_param = list(title = "Expression"),
+                                                        border = F))
+          incProgress(0.5, detail = "Complete!")
+        })
+        
         draw(p, padding = unit(c(50, 50, 2, 2), "mm")) # unit(c(bottom,left,right,top))
 
       })
@@ -3859,50 +3700,46 @@ server <- function(input, output, session) {
       AvgExprHeatmap_react <- reactive({
 
         if (length(input$avgheatmapGeneSelec) >= 2 || length(input$avguserheatgenes) > 1) {
-          meta <- meta_react()
-          metacol <- metacol_reactVal()
-          expr <- expr_react()
-          row_names_choice <- input$ShowRowNames5      #Chose to show row names or not
-          col_names_choice <- input$ShowColNames5
-          clust_row_opt <- input$AvgClusRowOptCust
-          clust_col_opt <- input$AvgClusColOptCust
-          group_choices <- input$SampCondSelectionCust
-          col_font <- input$heatmapFont3.c.deg.avg.cust     #Heatmap column font size
-          row_font <- input$heatmapFont3.r.deg.avg.cust     #Heatmap row font size
-          clust_method <- input$AvgClusteringMethodCust
-          genelist.uih <- NULL
-          genelist.ush <- NULL
-          genelist.uih2 <- NULL
-          genelist.ush <- input$avgheatmapGeneSelec
-          genelist.uih <- unlist(strsplit(input$avguserheatgenes, " "))
-          #genelist.uih2 <- unlist(strsplit(input$userheatgenes, "\t"))
-          heatgenes <- c(genelist.ush,genelist.uih,genelist.uih2)
-          heatgenes <- heatgenes[!is.na(heatgenes)]
-          heatgenes <- heatgenes[!is.null(heatgenes)]
-
-          AvgExprDF <- data.frame(rownames(expr))
-
-          for (i in group_choices) {
-            samples <- meta[which(meta[,metacol] == i),1]
-            if (length(samples) <= 1) {
-              AvgExprDF[,paste("AvgExpr_",i, sep = "")] <- expr[,samples]
+          withProgress(message = "Processing", value = 0, {
+            incProgress(0.25, detail = "Customizing")
+            meta <- meta_react()
+            metacol <- metacol_reactVal()
+            expr <- expr_react()
+            row_names_choice <- input$ShowRowNames5      #Chose to show row names or not
+            col_names_choice <- input$ShowColNames5
+            clust_row_opt <- input$AvgClusRowOptCust
+            clust_col_opt <- input$AvgClusColOptCust
+            group_choices <- input$SampCondSelectionCust
+            col_font <- input$heatmapFont3.c.deg.avg.cust     #Heatmap column font size
+            row_font <- input$heatmapFont3.r.deg.avg.cust     #Heatmap row font size
+            clust_method <- input$AvgClusteringMethodCust
+            genelist.uih <- NULL
+            genelist.ush <- NULL
+            genelist.uih2 <- NULL
+            genelist.ush <- input$avgheatmapGeneSelec
+            genelist.uih <- unlist(strsplit(input$avguserheatgenes, " "))
+            #genelist.uih2 <- unlist(strsplit(input$userheatgenes, "\t"))
+            heatgenes <- c(genelist.ush,genelist.uih,genelist.uih2)
+            heatgenes <- heatgenes[!is.na(heatgenes)]
+            heatgenes <- heatgenes[!is.null(heatgenes)]
+            incProgress(0.25, detail = "Averaging Groups")
+            AvgExprDF <- data.frame(rownames(expr))
+            for (i in group_choices) {
+              samples <- meta[which(meta[,metacol] == i),1]
+              if (length(samples) <= 1) {
+                AvgExprDF[,paste("AvgExpr_",i, sep = "")] <- expr[,samples]
+              }
+              else if (length(samples) > 1) {
+                AvgExprDF[,paste("AvgExpr_",i, sep = "")] <- rowMeans(expr[,samples], na.rm = T)
+              }
             }
-            else if (length(samples) > 1) {
-              AvgExprDF[,paste("AvgExpr_",i, sep = "")] <- rowMeans(expr[,samples], na.rm = T)
-            }
-          }
-
-          rownames(AvgExprDF) <- AvgExprDF[,1]
-          AvgExprDF <- AvgExprDF[,-1]
-
-          getGenes <- intersect(rownames(AvgExprDF),heatgenes)
-          #AvgExprDF <- AvgExprDF[which(rownames(AvgExprDF) %in% heatgenes),]
-          AvgExprDF <- AvgExprDF[getGenes,]
-
-
-          dataset <- AvgExprDF
-
-          #if (length(group_choices) > 0) {
+            rownames(AvgExprDF) <- AvgExprDF[,1]
+            AvgExprDF <- AvgExprDF[,-1]
+            getGenes <- intersect(rownames(AvgExprDF),heatgenes)
+            AvgExprDF <- AvgExprDF[getGenes,]
+            dataset <- AvgExprDF
+            incProgress(0.25, detail = "Calculating Z-Score")
+            #if (length(group_choices) > 0) {
             dataset <- log2(dataset + 1)
             zdataset <- apply(dataset, 1, scale)
             zdataset <- apply(zdataset, 1, rev)
@@ -3966,7 +3803,14 @@ server <- function(input, output, session) {
                                      angle_col = 90,
                                      border_color = NA)
             hm
-          #}
+            #}
+            incProgress(0.25, detail = "Complete!")
+          })
+          
+
+          
+
+          
 
         }
 
@@ -4020,7 +3864,7 @@ server <- function(input, output, session) {
         #col_font <- input$heatmapFont1.c
         meta <- meta_react()
         #metacol <- metacol_reactVal()
-        A <- expr_mat_react()
+        A <- A_raw()
         #if (is.null(input$ClusterMethodSSheat) == TRUE) {
         #  clust_method <- 'complete'
         #}
@@ -4221,7 +4065,7 @@ server <- function(input, output, session) {
 
         meta <- meta_react()
         metacol <- metacol_reactVal()
-        A <- expr_mat_react()
+        A <- A_raw()
         scoreMethod <- input$ssGSEAtypeHeat
 
         if (is.null(input$ssgseaHeatGS) == TRUE) {
@@ -4432,7 +4276,7 @@ server <- function(input, output, session) {
         col_font <- input$heatmapFont1.c
         meta <- meta_react()
         metacol <- metacol_reactVal()
-        A <- expr_mat_react()
+        A <- A_raw()
         #if (ncol(meta) > 2) {
         #  metacol <- input$GSEAmetaCol
         #}
@@ -4733,7 +4577,7 @@ server <- function(input, output, session) {
       output$enrich_sig_table_gen <- DT::renderDataTable({
         meta <- meta_react()
         metacol <- metacol_reactVal()
-        A <- expr_mat_react()
+        A <- A_raw()
         if (input$tables == 3) {
           #if (ncol(meta) > 2) {
           #  req(input$GSEAmetaCol)
@@ -5299,7 +5143,7 @@ server <- function(input, output, session) {
 
         meta <- meta_react()
         metacol <- metacol_reactVal()
-        A <- expr_mat_react()
+        A <- A_raw()
         GS <- GeneSetName_React()
         groupA <- meta[which(meta[,metacol] == input$comparisonA),1]
         groupB <- meta[which(meta[,metacol] == input$comparisonB),1]
@@ -6966,7 +6810,7 @@ server <- function(input, output, session) {
         content = function(file) {
           meta <- meta_react()
           metacol <- metacol_reactVal()
-          A <- expr_mat_react()
+          A <- A_raw()
           if (input$tables == 1) {
             if (length(input$msigdbTable_rows_selected) > 0){
               groupA <- meta[which(meta[,metacol] == input$comparisonA),1]
@@ -7795,7 +7639,7 @@ server <- function(input, output, session) {
         content = function(file) {
           meta <- meta_react()
           metacol <- metacol_reactVal()
-          A <- expr_mat_react()
+          A <- A_raw()
           if (input$tables == 1) {
             if (length(input$msigdbTable_rows_selected) > 0){
               groupA <- meta[which(meta[,metacol] == input$comparisonA),1]
