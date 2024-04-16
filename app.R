@@ -268,6 +268,7 @@ About_tab <- tabPanel("Intro/Methodology",
 
 ## Data Input Tab --------------------------------------------------------------
 DataInput_tab <- tabPanel("Data Input",
+                          ### Sidebar ------------------------------------------
                           fluidPage(
                             sidebarPanel(
                               width = 3,
@@ -276,23 +277,25 @@ DataInput_tab <- tabPanel("Data Input",
                               textInput("UserProjectName","Project Name:", value = "Expression Analysis"),
                               uiOutput("rendExprFileInput"),
                               fluidRow(
-                                column(12, style = 'margin-top:-20px;',
-                                       checkboxGroupInput("RawCountQuantNorm",label = NULL,inline = TRUE,
-                                                              choices = c("Perform Normalization","Quantile Normalization")),
-                                       div(uiOutput("rendRawCountNorm"),style = "margin-top:-10px")
-                                )
+                                column(6, style = 'margin-top:-20px;',
+                                       checkboxGroupInput("RawCountQuantNorm",label = NULL,
+                                                              choices = c("Exponentiate","Perform Normalization","Quantile Normalization","Filter Matrix"))
+                                ),
+                                column(6, style = 'margin-top:-20px;',
+                                       uiOutput("rendRawCountNorm")
+                                       )
                               ),
-                              checkboxInput("FilterCheck","Filter Matrix",value = F),
-                              conditionalPanel("input.FilterCheck == true",
+                              conditionalPanel("input.RawCountQuantNorm.includes('Filter Matrix')",
                                                fluidRow(
-                                                 column(6,
-                                                        numericInput("FilterNum","Filter value:",value = NULL, min = 0)
+                                                 column(6, style = 'margin-bottom:-15px;',
+                                                        numericInput("FilterNum","Filter value:",value = 1, min = 0)
                                                         ),
-                                                 column(6,
-                                                        numericInput("FilterProp","Proportion of samples (%):",value = NULL, max = 100, min = 0)
+                                                 column(6, style = 'margin-bottom:-15px;',
+                                                        numericInput("FilterProp","Proportion of samples (%):",value = 10, max = 100, min = 0)
                                                         )
                                                  )
                                                ),
+                              hr(),
                               uiOutput("rendClinFileInput"),
                               div(uiOutput("rendMetaColOfInterest"), style = "margin-top:-20px"),
                               fluidRow(
@@ -333,18 +336,25 @@ DataInput_tab <- tabPanel("Data Input",
                                          )
                               )
                             ),
+                            ### Main Panel -------------------------------------
                             mainPanel(
+                              verbatimTextOutput("FileCheckAlerts"),
                               fluidRow(
-                                column(2, style = 'margin-top:15px;',
+                                column(2, style = 'margin-top:15px;padding-right:2px',
                                        uiOutput("renddownload_expr")
                                 ),
-                                column(2, style = 'margin-top:15px;',
+                                column(2, style = 'margin-top:15px;padding-left:2px;padding-right:2px',
                                        uiOutput("renddownload_meta")
+                                ),
+                                column(2, style = 'margin-top:15px;padding-left:2px;padding-right:2px',
+                                       uiOutput("renddownload_notes")
                                 )
                               ),
                               uiOutput("rendExprFilePrevHeader"),
+                              uiOutput("rendExprHead"),
                               div(DT::dataTableOutput("ExprFile_Preview"), style = "font-size:10px"),
                               uiOutput("rendClinFilePrevHeader"),
+                              uiOutput("rendClinHead"),
                               div(DT::dataTableOutput("ClinFile_Preview"), style = "font-size:10px")
                             )
                           )
@@ -521,6 +531,7 @@ Data_Exploration_tab <- tabPanel("Data Exploration",
                                                                          uiOutput("rendDEGcolHeat"),
                                                                          uiOutput("rendcomparisonA2_h"),
                                                                          uiOutput("rendcomparisonB2_h"),
+                                                                         selectizeInput("DEGCovarSelectHeat","Select Covariates:", choices = NULL, selected = 1, multiple = T),
                                                                          #selectInput("MetaColDEGHeat","Meta Column:",
                                                                          #            choices = colnames(meta)[2:ncol(meta)]),
                                                                          #selectInput("comparisonA2_h", "Comparison: GroupA",
@@ -851,6 +862,7 @@ DGE_tab <- tabPanel("Differential Expression Analysis",
                                            #uiOutput("rendDEGMetaCol"),
                                            uiOutput("rendcomparisonA2"),
                                            uiOutput("rendcomparisonB2"),
+                                           selectizeInput("DEGCovarSelect","Select Covariates:", choices = NULL, selected = 1, multiple = T),
                                            #selectInput("comparisonA2", "Comparison: GroupA",
                                            #            choices = metagroups, selected = metagroups[1]),
                                            #selectInput("comparisonB2", "Comparison: GroupB",
@@ -974,6 +986,7 @@ DGE_tab <- tabPanel("Differential Expression Analysis",
                                            #uiOutput("rendDEGtableMetaCol"),
                                            uiOutput("rendcomparisonA2.DEG"),
                                            uiOutput("rendcomparisonB2.DEG"),
+                                           selectizeInput("DEGCovarSelectTab","Select Covariates:", choices = NULL, selected = 1, multiple = T),
                                            #selectInput("comparisonA2.DEG", "Comparison: GroupA",
                                            #            choices = metagroups, selected = metagroups[1]),
                                            #selectInput("comparisonB2.DEG", "Comparison: GroupB",
@@ -1184,6 +1197,7 @@ GSEA_tab <- tabPanel("GSEA Analysis",
                          ),
                          ### Main Panel -----------------------------------------
                          mainPanel(
+                           span(textOutput("GroupSelectionError"), style="color:red"),
                            tabsetPanel(
                              id = "datasetthree",
                              #### Enrichment Plot
@@ -1377,6 +1391,7 @@ server <- function(input, output, session) {
       A_raw <- reactiveVal()
       geneList_raw <- reactiveVal()
       Gene_raw <- reactiveVal()
+      FileCheckAlerts_react <- reactiveVal()
       
       # Data Input Tab ---------------------------------------------------------
       
@@ -1411,12 +1426,12 @@ server <- function(input, output, session) {
                           "RPKM" = "RPKM",
                           "TMM" = "TMM",
                           "Upper Quartile" = "upperquartile"),
-                        selected = "TPM", width = "50%")
+                        selected = "TPM")
           } else {
             selectInput("RawCountNorm","Normalize Raw Counts By:",
                         c("No Normalization" = "none",
                           "TMM" = "TMM",
-                          "Upper Quartile" = "upperquartile"), width = "50%")
+                          "Upper Quartile" = "upperquartile"))
           }
           
         }
@@ -1429,9 +1444,17 @@ server <- function(input, output, session) {
         req(ExpressionMatrix_file_react())
         h3("Expression File Preview")
       })
+      output$rendExprHead <- renderUI({
+        req(ExpressionMatrix_file_react())
+        radioButtons("ExprHead",NULL, choices = c("View table head","View entire table"), inline = T)
+      })
       output$rendClinFilePrevHeader <- renderUI({
         req(MetaData_file_react())
         h3("Meta File Preview")
+      })
+      output$rendClinHead <- renderUI({
+        req(MetaData_file_react())
+        radioButtons("ClinHead",NULL, choices = c("View table head","View entire table"), inline = T)
       })
       
       output$rendMetaColOfInterest <- renderUI({
@@ -1522,10 +1545,14 @@ server <- function(input, output, session) {
       
       ### User Upload ----------------------------------------------------------
       observe({
-        if (isTruthy(input$ExprFileInput$datapath) & isTruthy(input$ClinFileInput$datapath) & isTruthy(input$HumanOrMouse)) {
-          ProjectName_react(input$UserProjectName)
+        ProjectName_react(input$UserProjectName)
+        if (isTruthy(input$ExprFileInput$datapath)) {
           ExpressionMatrix_file_react(input$ExprFileInput$datapath)
+        }
+        if (isTruthy(input$ClinFileInput$datapath)) {
           MetaData_file_react(input$ClinFileInput$datapath)
+        }
+        if (isTruthy(input$HumanOrMouse)) {
           if (input$HumanOrMouse == "Mouse") {
             MM_react(TRUE)
           } else {
@@ -1638,11 +1665,13 @@ server <- function(input, output, session) {
       
       observe({
         if (isTruthy(recount_id_react())) {
-          updateCheckboxGroupInput(session,"RawCountQuantNorm",selected = "Perform Normalization")
+          updateCheckboxGroupInput(session,"RawCountQuantNorm",choices = c("Perform Normalization","Quantile Normalization","Filter Matrix"),
+                                   selected = "Perform Normalization")
         }
       })
       
       observe({
+        FileCheckAlerts_list <- c()
         req(user_upload())
         withProgress(message = "Processing", value = 0, {
           incProgress(0.5, detail = "Formatting Input Data")
@@ -1650,7 +1679,6 @@ server <- function(input, output, session) {
             req(user_upload())
             expr <- user_upload()$expr
             meta <- user_upload()$meta
-            
           }
           if (isTruthy(ExpressionMatrix_file_react()) & isTruthy(MetaData_file_react()) & isTruthy(gse_id_react())) {
             req(user_upload())
@@ -1739,10 +1767,14 @@ server <- function(input, output, session) {
                       recount_rse <- user_upload()
                       assays(recount_rse)$counts <- transform_counts(recount_rse)
                       expr <- as.data.frame(recount::getTPM(recount_rse))
+                      message <- paste0("Raw counts normalized by TPM")
+                      FileCheckAlerts_list <- c(FileCheckAlerts_list,message)
                     } else if (input$RawCountNorm == "RPKM") {
                       recount_rse <- user_upload()
                       assays(recount_rse)$counts <- transform_counts(recount_rse)
                       expr <- as.data.frame(recount::getRPKM(recount_rse))
+                      message <- paste0("Raw counts normalized by RPKM")
+                      FileCheckAlerts_list <- c(FileCheckAlerts_list,message)
                     }  else if (input$RawCountNorm == "none") {
                       recount_rse <- user_upload()
                       expr <- assay(recount_rse)
@@ -1768,35 +1800,21 @@ server <- function(input, output, session) {
           }
           
           
-          expr_col <- colnames(expr)
-          if ("Perform Normalization" %in% input$RawCountQuantNorm) {
-            if (isTruthy(input$RawCountNorm)) {
-              if (input$RawCountNorm %in% c("TMM","upperquartile")) {
-                mat <- as.matrix(expr)
-                mat_dgeList <- DGEList(counts = as.matrix(mat))
-                mat_dgeList_Norm <- edgeR::calcNormFactors(mat_dgeList, method = input$RawCountNorm)
-                expr <- edgeR::cpm(mat_dgeList_Norm)
-              }  else if (input$RawCountNorm == "none") {
-                recount_rse <- user_upload()
-                expr <- assays(recount_rse)
-              }
-            }
-          }
-          if ("Quantile Normalization" %in% input$RawCountQuantNorm) {
-            expr <- preprocessCore::normalize.quantiles(as.matrix(expr), keep.names = T)
-          }
-          if (input$FilterCheck & isTruthy(input$FilterNum) & isTruthy(input$FilterProp)) {
-            FilterProp <- input$FilterProp/100
-            expr_pass <- apply(expr,1,function(x) ExprFilter2(x, input$FilterNum, FilterProp))
-            expr <- expr[which(expr_pass == TRUE),]
-          }
-          
-          
           colnames(expr)[1] <- "Gene"
-          expr[sapply(expr, is.infinite)] <- NA
+          if (length(expr[sapply(expr, is.infinite)]) > 0) {
+            message <- paste0(length(expr[sapply(expr, is.infinite)]), " infinite values found. Replaced with NA." )
+            FileCheckAlerts_list <- c(FileCheckAlerts_list,message)
+            expr[sapply(expr, is.infinite)] <- NA
+          }
+          
           # Remove Expression with NA
+          exprRows <- nrow(expr)
           expr <- expr %>%
             drop_na()
+          if (exprRows > nrow(expr)) {
+            message <- paste0(exprRows-nrow(expr), " features with NA values found. Features removed." )
+            FileCheckAlerts_list <- c(FileCheckAlerts_list,message)
+          }
           # Check that expression data is numeric
           isChar <- unname(which(sapply(expr, function(x) is.character(x))))
           isChar <-  isChar[-1]
@@ -1812,15 +1830,49 @@ server <- function(input, output, session) {
               summarise_all(max)
           }
           expr <- rbind(expr_dup,expr_nondup)
+          if (nrow(expr_dup) > 0) {
+            message <- paste0(length(unique(expr_dup[,1])), " duplicate features found. Features reduced to those with maximum value." )
+            FileCheckAlerts_list <- c(FileCheckAlerts_list,message)
+          }
           expr <- as.data.frame(expr)
           # Make rownames <- genenames
           row.names(expr) <- expr[,1]
           expr <- expr[,-1]
           expr = expr[order(row.names(expr)), ]
-          # Harmonize special characters in sample names
-          #colnames(expr) <- gsub("[[:punct:]]", "_", colnames(expr))
+          expr_col <- colnames(expr)
           
-          
+          if ("Exponentiate" %in% input$RawCountQuantNorm) {
+            print(head(expr,c(5,5)))
+            expr <- 2^as.matrix(expr)
+            message <- paste0("Features exponentiated.")
+            FileCheckAlerts_list <- c(FileCheckAlerts_list,message)
+          }
+          if ("Perform Normalization" %in% input$RawCountQuantNorm) {
+            if (isTruthy(input$RawCountNorm)) {
+              if (input$RawCountNorm %in% c("TMM","upperquartile")) {
+                mat <- as.matrix(expr)
+                mat_dgeList <- DGEList(counts = as.matrix(mat))
+                mat_dgeList_Norm <- edgeR::calcNormFactors(mat_dgeList, method = input$RawCountNorm)
+                expr <- edgeR::cpm(mat_dgeList_Norm)
+                message <- paste0(input$RawCountNorm," normalization preformed")
+                FileCheckAlerts_list <- c(FileCheckAlerts_list,message)
+              }
+            }
+          }
+          if ("Quantile Normalization" %in% input$RawCountQuantNorm) {
+            expr <- preprocessCore::normalize.quantiles(as.matrix(expr), keep.names = T)
+            message <- paste0("Quantile Normalization preformed")
+            FileCheckAlerts_list <- c(FileCheckAlerts_list,message)
+          }
+          if ("Filter Matrix" %in% input$RawCountQuantNorm & isTruthy(input$FilterNum) & isTruthy(input$FilterProp)) {
+            FilterProp <- input$FilterProp/100
+            expr_pass <- apply(expr,1,function(x) ExprFilter2(x, input$FilterNum, FilterProp))
+            expr <- expr[which(expr_pass == TRUE),]
+            message <- paste0("Features with an expression less than ",input$FilterNum," in at least ",
+                              input$FilterProp,"% of Samples filtered out. ",
+                              length(which(expr_pass == FALSE))," features removed.")
+            FileCheckAlerts_list <- c(FileCheckAlerts_list,message)
+          }
           
           #gene list file from expression data
           Gene <- rownames(expr)
@@ -1834,11 +1886,19 @@ server <- function(input, output, session) {
           #for heatmap sample selection
           sampsames <- intersect(colnames(expr),meta[,1])
           
+          if (length(sampsames) != ncol(expr) | length(sampsames) != nrow(meta)) {
+            message <- paste0("Mistmatching or missing sample names found between feature matrix and meta data. Reduced to only similar samples (N=",length(sampsames),")")
+            FileCheckAlerts_list <- c(FileCheckAlerts_list,message)
+          }
+          
           #ensure expression samples and meta are exact
           expr <- expr[,sampsames]
           meta <- meta[which(meta[,1] %in% sampsames),]
           expr_input(expr)
           meta_input(meta)
+          
+          
+          
           if (isTruthy(MM_react())) {
             if (as.logical(MM_react())) {
               CTKgenes <- CTKgenes_mm
@@ -1868,6 +1928,7 @@ server <- function(input, output, session) {
           updateSelectizeInput(session = session, inputId = "userheatsampSS",
                                choices = sampsames,selected = sampsames, server = T)
           
+          FileCheckAlerts_react(FileCheckAlerts_list)
           incProgress(0.5, detail = "Complete!")
         })
       })
@@ -1907,10 +1968,21 @@ server <- function(input, output, session) {
         
       
       ## Data Preview ----------------------------------------------------------
+      output$FileCheckAlerts <- renderPrint({
+        
+        req(FileCheckAlerts_react())
+        text <- paste(FileCheckAlerts_react(), collapse = "\n")
+        cat(text)
+        
+      })
+      
       output$ExprFile_Preview <- DT::renderDataTable({
         req(expr_input())
+        req(input$ExprHead)
         expr <- expr_input()
-        expr <- head(expr,c(100,100))
+        if (input$ExprHead == "View table head") {
+          expr <- head(expr,c(100,100))
+        }
         DT::datatable(expr,
                       options = list(lengthMenu = c(5,10, 20, 100, 1000),
                                      pageLength = 10,
@@ -1921,7 +1993,11 @@ server <- function(input, output, session) {
       
       output$ClinFile_Preview <- DT::renderDataTable({
         req(meta_input())
+        req(input$ClinHead)
         clin <- meta_input()
+        if (input$ClinHead == "View table head") {
+          clin <- head(clin,c(100,100))
+        }
         DT::datatable(clin,
                       options = list(lengthMenu = c(5,10, 20, 100, 1000),
                                      pageLength = 10,
@@ -1939,11 +2015,16 @@ server <- function(input, output, session) {
           downloadButton("download_meta","Download Meta")
         }
       })
+      output$renddownload_notes <- renderUI({
+        if (length(FileCheckAlerts_react()) > 0) {
+          downloadButton("download_notes","Download data processing notes")
+        }
+      })
       
       # Download handler for the button
       output$download_expr <- downloadHandler(
         filename = function() {
-          paste("expr_matrix_", ExpressionMatrix_file_react(), "_", Sys.Date(), ".tsv", sep = "")
+          paste(ProjectName_react(),"_expr_matrix_", ExpressionMatrix_file_react(), "_", Sys.Date(), ".txt", sep = "")
         },
         content = function(file) {
           gene_name = rownames(expr_input())
@@ -1953,10 +2034,20 @@ server <- function(input, output, session) {
       
       output$download_meta <- downloadHandler(
         filename = function() {
-          paste("meta_data_", MetaData_file_react(), "_", Sys.Date(), ".tsv", sep = "")
+          paste(ProjectName_react(),"_meta_data_", MetaData_file_react(), "_", Sys.Date(), ".txt", sep = "")
         },
         content = function(file) {
           write_tsv(meta_input(), file, col_names = T)
+        }
+      )
+      
+      output$download_notes <- downloadHandler(
+        filename = function() {
+          paste(ProjectName_react(), "_DataProcessingNotes_", Sys.Date(), ".txt", sep = "")
+        },
+        content = function(file) {
+          df <- data.frame(Notes = FileCheckAlerts_react())
+          write_tsv(df, file, col_names = F)
         }
       )
       
@@ -2292,8 +2383,71 @@ server <- function(input, output, session) {
         updateSelectInput(session, "DEGGroupCol",selected = isolate(input$DEGcolHeat))
       })
       observeEvent(input$DEGGroupCol,{metacol_reactVal(input$DEGGroupCol)})
+      
+      observe({
+        req(input$DEGGroupCol)
+        req(meta_react())
+        meta <- meta_react()
+        FeatureChoices <- suppressWarnings(column_type_check(meta,"character"))[-1]
+        if (input$DEGSubsetCol != "Select All Samples") {
+          FeatureChoices <- FeatureChoices[which(FeatureChoices!=input$DEGSubsetCol)]
+        }
+        FeatureChoices <- FeatureChoices[which(FeatureChoices != input$DEGGroupCol)]
+        updateSelectizeInput(session,"DEGCovarSelect", choices = FeatureChoices, server = T)
+      })
+      
+      observe({
+        req(input$DEGcolHeat)
+        req(meta_react())
+        meta <- meta_react()
+        FeatureChoices <- suppressWarnings(column_type_check(meta,"character"))[-1]
+        if (input$SubsetCol != "Select All Samples") {
+          FeatureChoices <- FeatureChoices[which(FeatureChoices!=input$SubsetCol)]
+        }
+        FeatureChoices <- FeatureChoices[which(FeatureChoices != input$DEGcolHeat)]
+        updateSelectizeInput(session,"DEGCovarSelectHeat", choices = FeatureChoices, server = T)
+      })
+      
+      observe({
+        req(input$DEGGroupCol)
+        req(meta_react())
+        meta <- meta_react()
+        FeatureChoices <- suppressWarnings(column_type_check(meta,"character"))[-1]
+        if (input$DEGGroupCol != "Select All Samples") {
+          FeatureChoices <- FeatureChoices[which(FeatureChoices!=input$DEGGroupCol)]
+        }
+        FeatureChoices <- FeatureChoices[which(FeatureChoices != input$DEGGroupCol)]
+        updateSelectizeInput(session,"DEGCovarSelectTab", choices = FeatureChoices, server = T)
+      })
+      
+      
 
       ## GSEA ----------------------------------------------------------------------
+      
+      output$GroupSelectionError <- renderText({
+        
+        req(input$comparisonA)
+        req(input$comparisonB)
+        if (input$comparisonA == input$comparisonB) {
+          paste("Comparison groups must be unique.")
+        } else {
+          req(meta_react())
+          req(input$GSEAGroupCol)
+          meta <- meta_react()
+          groupCol <- input$GSEAGroupCol
+          if (length(unique(meta[,groupCol])) == length(meta[,groupCol])) {
+            paste("Must select a catagorical comparison group")
+          } else {
+            if (length(which(meta[,groupCol] == input$comparisonA)) <= 1 | length(which(meta[,groupCol] == input$comparisonB)) <= 1) {
+              paste("Must select a comparison group with more than 1 observation")
+            }
+          }
+          
+        }
+        
+        
+      })
+      
       output$rendGSEASubsetCol <- renderUI({
 
         meta <- meta_react()
@@ -3252,105 +3406,114 @@ server <- function(input, output, session) {
         meta <- meta_react()
         metacol <- metacol_reactVal()
         A <- A_raw()
-        #if (ncol(meta) > 2) {
-        #  req(input$GSEAmetaCol)
-        #  metacol <- input$GSEAmetaCol
-        #}
-        #else if (ncol(meta) == 2) {
-        #  metacol <- colnames(meta)[2]
-        #}
-        groupA <- meta[which(meta[,metacol] == input$comparisonA),1]
-        groupB <- meta[which(meta[,metacol] == input$comparisonB),1]
-        ##----Signal-to-Noise Calculation----##
-        A <- A + 0.00000001
-        P = as.matrix(as.numeric(colnames(A) %in% groupA))
-        n1 <- sum(P[,1])
-        M1 <- A %*% P
-        M1 <- M1/n1
-        A2 <- A*A
-        S1 <- A2 %*% P
-        S1 <- S1/n1 - M1*M1 #
-        S1 <- sqrt(abs((n1/(n1-1)) * S1))
-        P = as.matrix(as.numeric(colnames(A) %in% groupB))
-        n2 <- sum(P[,1])
-        M2 <- A %*% P
-        M2 <- M2/n2
-        A2 <- A*A
-        S2 <- A2 %*% P
-        S2 <- S2/n2 - M2*M2
-        S2 <- sqrt(abs((n2/(n2-1)) * S2))
-        rm(A2)
-        # small sigma "fix" as used in GeneCluster
-        S2 <- ifelse(0.2*abs(M2) < S2, S2, 0.2*abs(M2))
-        S2 <- ifelse(S2 == 0, 0.2, S2)
-        S1 <- ifelse(0.2*abs(M1) < S1, S1, 0.2*abs(M1))
-        S1 <- ifelse(S1 == 0, 0.2, S1)
-        M1 <- M1 - M2
-        rm(M2)
-        S1 <- S1 + S2
-        rm(S2)
-        s2n.matrix <- M1/S1
-        ##----Reformatting----##
-        s2n.df <- as.data.frame(s2n.matrix)
-        s2n.df$GeneID <- rownames(s2n.df)
-        rownames(s2n.df) <- NULL
-        data <- dplyr::select(s2n.df, GeneID, V1)
-        data.gsea <- data$V1
-        names(data.gsea) <- as.character(data$GeneID)
-        s2n.matrix.s <- sort(data.gsea, decreasing = T)
-        ##----GSEA----##
-        if (input$tables == 1){
-          GSEA(s2n.matrix.s, TERM2GENE = gmt()[which(gmt()[,1] == as.character(msigdb.gsea2()[input$msigdbTable_rows_selected,3])),],
-               verbose = F, pvalueCutoff = input$userPval)
+        if (input$comparisonA != input$comparisonB) {
+          if (length(which(meta[,metacol] == input$comparisonA)) > 1 | length(which(meta[,metacol] == input$comparisonB)) > 1) {
+            groupA <- meta[which(meta[,metacol] == input$comparisonA),1]
+            groupB <- meta[which(meta[,metacol] == input$comparisonB),1]
+            ##----Signal-to-Noise Calculation----##
+            A <- A + 0.00000001
+            P = as.matrix(as.numeric(colnames(A) %in% groupA))
+            n1 <- sum(P[,1])
+            M1 <- A %*% P
+            M1 <- M1/n1
+            A2 <- A*A
+            S1 <- A2 %*% P
+            S1 <- S1/n1 - M1*M1 #
+            S1 <- sqrt(abs((n1/(n1-1)) * S1))
+            P = as.matrix(as.numeric(colnames(A) %in% groupB))
+            n2 <- sum(P[,1])
+            M2 <- A %*% P
+            M2 <- M2/n2
+            A2 <- A*A
+            S2 <- A2 %*% P
+            S2 <- S2/n2 - M2*M2
+            S2 <- sqrt(abs((n2/(n2-1)) * S2))
+            rm(A2)
+            # small sigma "fix" as used in GeneCluster
+            S2 <- ifelse(0.2*abs(M2) < S2, S2, 0.2*abs(M2))
+            S2 <- ifelse(S2 == 0, 0.2, S2)
+            S1 <- ifelse(0.2*abs(M1) < S1, S1, 0.2*abs(M1))
+            S1 <- ifelse(S1 == 0, 0.2, S1)
+            M1 <- M1 - M2
+            rm(M2)
+            S1 <- S1 + S2
+            rm(S2)
+            s2n.matrix <- M1/S1
+            ##----Reformatting----##
+            s2n.df <- as.data.frame(s2n.matrix)
+            s2n.df$GeneID <- rownames(s2n.df)
+            rownames(s2n.df) <- NULL
+            data <- dplyr::select(s2n.df, GeneID, V1)
+            data.gsea <- data$V1
+            names(data.gsea) <- as.character(data$GeneID)
+            s2n.matrix.s <- sort(data.gsea, decreasing = T)
+            ##----GSEA----##
+            if (input$tables == 1){
+              GSEA(s2n.matrix.s, TERM2GENE = gmt()[which(gmt()[,1] == as.character(msigdb.gsea2()[input$msigdbTable_rows_selected,3])),],
+                   verbose = F, pvalueCutoff = input$userPval)
+            }
+            else if (input$tables == 3){
+              GSEA(s2n.matrix.s, TERM2GENE = tab2()[which(tab2()[,1] == as.character(GeneSet2()[input$tab2table_rows_selected,1])),],
+                   verbose = F, pvalueCutoff = input$userPval)
+            }
+            else if (input$tables == 5){
+              GSEA(s2n.matrix.s, TERM2GENE = GStable.ubg()[which(GStable.ubg()[,1] == as.character(user_gs_mirror()[input$GStable.u_rows_selected,1])),],
+                   verbose = F, pvalueCutoff = input$userPval)
+            }
+          }
+          
         }
-        else if (input$tables == 3){
-          GSEA(s2n.matrix.s, TERM2GENE = tab2()[which(tab2()[,1] == as.character(GeneSet2()[input$tab2table_rows_selected,1])),],
-               verbose = F, pvalueCutoff = input$userPval)
-        }
-        else if (input$tables == 5){
-          GSEA(s2n.matrix.s, TERM2GENE = GStable.ubg()[which(GStable.ubg()[,1] == as.character(user_gs_mirror()[input$GStable.u_rows_selected,1])),],
-               verbose = F, pvalueCutoff = input$userPval)
-        }
+        
       })
 
 
-      #gmt_sub <- GStable.ubg[which(GStable.ubg[,1] == as.character(GeneSet[1,1])),]
 
       #top genes data frame reactive
       topgenereact <- reactive({
         meta <- meta_react()
         metacol <- metacol_reactVal()
         expr <- expr_react()
-        #make group based on user input
-        #if (ncol(meta) > 2) {
-        #  metacol <- input$DEGMetaCol
-        #}
-        #else if (ncol(meta) == 2) {
-        #  metacol <- colnames(meta)[2]
-        #}
-        A <- meta[which(meta[,metacol] == input$comparisonA2),1]
-        B <- meta[which(meta[,metacol] == input$comparisonB2),1]
-        #make top table
-        #samples <- c(A,B)
-        #mat <- expr[,which(colnames(expr) %in% samples)]
-        mat <- expr[,c(A,B)]
+        covars <- input$DEGCovarSelect
+        
+        metaSub <- meta[,c(colnames(meta)[1],metacol,covars)]
+        metaSub <- metaSub[complete.cases(metaSub),]
+        
+        A <- metaSub[which(metaSub[,metacol] == input$comparisonA2),1]
+        B <- metaSub[which(metaSub[,metacol] == input$comparisonB2),1]
+        
+        metaSub <- metaSub[which(metaSub[,1] %in% c(A,B)),]
+
+        mat <- expr[,metaSub[,1]]
         mat <- log2(mat + 1.0)
-        groupAOther <- factor(c(rep("A", length(A)), rep("B", length(B))))
-        designA <- model.matrix(~0 + groupAOther)
+        if (isTruthy(covars)) {
+          metaSub[,-1] <- lapply(metaSub[,-1], factor)
+          form <- as.formula(paste0("~0 +",paste(c(metacol,covars),collapse = "+")))
+        } else {
+          metaSub[,metacol] <- factor(metaSub[,metacol])
+          form <- as.formula(paste0("~0 +",metacol))
+        }
+
+        designA <- eval(substitute(model.matrix(form, data = metaSub)))
+        
         fit <- lmFit(mat, design = designA)
-        contrast.matrix <- makeContrasts(groupAOtherA - groupAOtherB, levels = designA)
+        contrast.matrix <- makeContrasts(contrasts = paste0(colnames(designA)[1],"-",colnames(designA)[2]), levels = designA)
         fit2 <- contrasts.fit(fit, contrast.matrix)
         fit2 <- eBayes(fit2)
         options(digits = 4)
         top1 <- topTable(fit2, coef = 1, n = 300000, sort = "p", p.value = 1.0, adjust.method = "BH")
         top2 <- top1
+        
+        #groupAOther <- factor(c(rep("A", length(A)), rep("B", length(B))))
+        #designA <- model.matrix(~0 + groupAOther)
+        #fit <- lmFit(mat, design = designA)
+        #contrast.matrix <- makeContrasts(groupAOtherA - groupAOtherB, levels = designA)
+        #fit2 <- contrasts.fit(fit, contrast.matrix)
+        #fit2 <- eBayes(fit2)
+        #options(digits = 4)
+        #top1 <- topTable(fit2, coef = 1, n = 300000, sort = "p", p.value = 1.0, adjust.method = "BH")
+        #top2 <- top1
 
-        #top2 = read.delim("DEseq_BCL11BKO_CD8_Peritoneal_Tomas_analysis_20230406_max_v2.txt",
-        #                  sep = '\t', header = T, strip.white = T)
-        #colnames(top2)[7] <- "adj.P.Val"
-        #rownames(top2) = top2$GeneName
         top2["GeneName"] <- rownames(top2)
-        Okabe_Ito <- c("#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7", "#000000")
         top2['group'] <- "NotSignificant"
         p_cut <- input$p_cutoff
         f_cut <- input$fc_cutoff
@@ -3377,18 +3540,35 @@ server <- function(input, output, session) {
           #metacol <- metacol_reactVal()
           metacol <- input$DEGcolHeat
           expr <- expr_react()
-          A <- meta[which(meta[,metacol] == A_choice),1]
-          B <- meta[which(meta[,metacol] == B_choice),1]
-          mat <- expr[,c(A,B)]
+          covars <- input$DEGCovarSelectHeat
+          
+          metaSub <- meta[,c(colnames(meta)[1],metacol,covars)]
+          metaSub <- metaSub[complete.cases(metaSub),]
+          
+          A <- metaSub[which(metaSub[,metacol] == A_choice),1]
+          B <- metaSub[which(metaSub[,metacol] == B_choice),1]
+          
+          metaSub <- metaSub[which(metaSub[,1] %in% c(A,B)),]
+
+          mat <- expr[,metaSub[,1]]
           mat <- log2(mat + 1.0)
-          groupAOther <- factor(c(rep("A", length(A)), rep("B", length(B))))
-          designA <- model.matrix(~0 + groupAOther)
+          if (isTruthy(covars)) {
+            metaSub[,-1] <- lapply(metaSub[,-1], factor)
+            form <- as.formula(paste0("~0 +",paste(c(metacol,covars),collapse = "+")))
+          } else {
+            metaSub[,metacol] <- factor(metaSub[,metacol])
+            form <- as.formula(paste0("~0 +",metacol))
+          }
+          
+          designA <- eval(substitute(model.matrix(form, data = metaSub)))
+          
           fit <- lmFit(mat, design = designA)
-          contrast.matrix <- makeContrasts(groupAOtherA - groupAOtherB, levels = designA)
+          contrast.matrix <- makeContrasts(contrasts = paste0(colnames(designA)[1],"-",colnames(designA)[2]), levels = designA)
           fit2 <- contrasts.fit(fit, contrast.matrix)
           fit2 <- eBayes(fit2)
           options(digits = 4)
           top1 <- topTable(fit2, coef = 1, n = 300000, sort = "p", p.value = 1.0, adjust.method = "BH")
+          top2 <- top1
           incProgress(0.5, detail = "Complete!")
         })
         
@@ -4519,6 +4699,7 @@ server <- function(input, output, session) {
 
       #render leading edge genes list
       output$LeadingEdgeGenes <- DT::renderDataTable({
+        req(datasetInput())
         if (input$tables == 1){
           if (length(input$msigdbTable_rows_selected) > 0){
             res <- datasetInput()
@@ -4713,24 +4894,53 @@ server <- function(input, output, session) {
         meta <- meta_react()
         metacol <- metacol_reactVal()
         expr <- expr_react()
-        #if (ncol(meta) > 2) {
-        #  metacol <- input$DEGtableMetaCol
-        #}
-        #else if (ncol(meta) == 2) {
-        #  metacol <- colnames(meta)[2]
-        #}
-        A <- meta[which(meta[,metacol] == input$comparisonA2.DEG),1]
-        B <- meta[which(meta[,metacol] == input$comparisonB2.DEG),1]
-        mat <- expr[,c(A,B)]
+        covars <- input$DEGCovarSelectTab
+        
+        metaSub <- meta[,c(colnames(meta)[1],metacol,covars)]
+        metaSub <- metaSub[complete.cases(metaSub),]
+        
+        A <- metaSub[which(metaSub[,metacol] == input$comparisonA2.DEG),1]
+        B <- metaSub[which(metaSub[,metacol] == input$comparisonB2.DEG),1]
+        
+        metaSub <- metaSub[which(metaSub[,1] %in% c(A,B)),]
+
+        mat <- expr[,metaSub[,1]]
         mat <- log2(mat + 1.0)
-        groupAOther <- factor(c(rep("A", length(A)), rep("B", length(B))))
-        designA <- model.matrix(~0 + groupAOther)
+        if (isTruthy(covars)) {
+          metaSub[,-1] <- lapply(metaSub[,-1], factor)
+          form <- as.formula(paste0("~0 +",paste(c(metacol,covars),collapse = "+")))
+        } else {
+          metaSub[,metacol] <- factor(metaSub[,metacol])
+          form <- as.formula(paste0("~0 +",metacol))
+        }
+        
+        designA <- eval(substitute(model.matrix(form, data = metaSub)))
+        
         fit <- lmFit(mat, design = designA)
-        contrast.matrix <- makeContrasts(groupAOtherA - groupAOtherB, levels = designA)
+        contrast.matrix <- makeContrasts(contrasts = paste0(colnames(designA)[1],"-",colnames(designA)[2]), levels = designA)
         fit2 <- contrasts.fit(fit, contrast.matrix)
         fit2 <- eBayes(fit2)
         options(digits = 4)
         top1 <- topTable(fit2, coef = 1, n = 300000, sort = "p", p.value = 1.0, adjust.method = "BH")
+        top2 <- top1
+        
+        
+        
+        
+        #A <- meta[which(meta[,metacol] == input$comparisonA2.DEG),1]
+        #B <- meta[which(meta[,metacol] == input$comparisonB2.DEG),1]
+        #mat <- expr[,c(A,B)]
+        #mat <- log2(mat + 1.0)
+        #groupAOther <- factor(c(rep("A", length(A)), rep("B", length(B))))
+        #designA <- model.matrix(~0 + groupAOther)
+        #print(head(designA))
+        #print(dim(designA))
+        #fit <- lmFit(mat, design = designA)
+        #contrast.matrix <- makeContrasts(groupAOtherA - groupAOtherB, levels = designA)
+        #fit2 <- contrasts.fit(fit, contrast.matrix)
+        #fit2 <- eBayes(fit2)
+        #options(digits = 4)
+        #top1 <- topTable(fit2, coef = 1, n = 300000, sort = "p", p.value = 1.0, adjust.method = "BH")
         DT::datatable(top1, options = list(lengthMenu = c(50,100,1000, 5000, 10000), pageLength = 100, scrollX = TRUE),
                       selection=list(mode = "multiple"))
       })
@@ -5045,6 +5255,7 @@ server <- function(input, output, session) {
 
       #render GSEA plot
       output$enrichplot0 <- renderPlot({
+        req(datasetInput())
         if (input$tables == 1){
           if (length(input$msigdbTable_rows_selected) > 0){
             res <- datasetInput()
@@ -8668,6 +8879,7 @@ server <- function(input, output, session) {
 
       #NES and Pval output
       output$NESandPval <- renderText({
+        req(datasetInput())
         if (input$tables == 1){
           if (length(input$msigdbTable_rows_selected) > 0){
             res <- datasetInput()
@@ -8736,33 +8948,10 @@ server <- function(input, output, session) {
       output$GenesAboveCutoff1 <- renderText({
 
         req(input$DEGcolHeat)
-        req(input$comparisonA2_h)
-        req(input$comparisonB2_h)
-        # UI Inputs
-        meta <- meta_react()
-        #metacol <- metacol_reactVal()
-        metacol <- input$DEGcolHeat
-        expr <- expr_react()
-        A_choice <- input$comparisonA2_h            #Comparison group A
-        B_choice <- input$comparisonB2_h            #Comparison group B
         FC_cutoff <- input$fc_cutoff_h              #FC cutoff for top gene selection
         P_cutoff <- input$p_cutoff_h                #P-value cutoff for top gene selections
 
-        # Make Top table - Compares only 2 groups
-        #make group based on user input
-        A <- meta[which(meta[,metacol] == A_choice),1]
-        B <- meta[which(meta[,metacol] == B_choice),1]
-        mat <- expr[,c(A,B)]
-        mat <- log2(mat + 1.0)
-        groupAOther <- factor(c(rep("A", length(A)), rep("B", length(B))))
-        designA <- model.matrix(~0 + groupAOther)
-        fit <- lmFit(mat, design = designA)
-        contrast.matrix <- makeContrasts(groupAOtherA - groupAOtherB, levels = designA)
-        fit2 <- contrasts.fit(fit, contrast.matrix)
-        fit2 <- eBayes(fit2)
-        options(digits = 4)
-        top1 <- topTable(fit2, coef = 1, n = 300000, sort = "p", p.value = 1.0, adjust.method = "BH")
-
+        top1 <- topgenereact2()
         top_above_cutoff <- top1[which(abs(top1$logFC) >= abs(FC_cutoff) & top1$P.Value <= P_cutoff),]
 
         Num_Genes_Above_Cutoff1 <- length(rownames(top_above_cutoff))
@@ -8771,48 +8960,56 @@ server <- function(input, output, session) {
 
       })
 
-      #output$GenesAboveCutoff2 <- renderText({
-#
-      #  # UI Inputs
-      #  A_choice <- input$comparisonA2_ha            #Comparison group A
-      #  B_choice <- input$comparisonB2_ha            #Comparison group B
-      #  FC_cutoff <- input$fc_cutoff_ha              #FC cutoff for top gene selection
-      #  P_cutoff <- input$p_cutoff_ha                #P-value cutoff for top gene selections
-      #  meta <- meta_react()
-      #  metacol <- metacol_reactVal()
-      #  expr <- expr_react()
-#
-      #  # Make Top table - Compares only 2 groups
-      #  #make group based on user input
-      #  A <- meta[which(meta[,metacol] == A_choice),1]
-      #  B <- meta[which(meta[,metacol] == B_choice),1]
-      #  mat <- expr[,c(A,B)]
-      #  mat <- log2(mat + 1.0)
-      #  groupAOther <- factor(c(rep("A", length(A)), rep("B", length(B))))
-      #  designA <- model.matrix(~0 + groupAOther)
-      #  fit <- lmFit(mat, design = designA)
-      #  contrast.matrix <- makeContrasts(groupAOtherA - groupAOtherB, levels = designA)
-      #  fit2 <- contrasts.fit(fit, contrast.matrix)
-      #  fit2 <- eBayes(fit2)
-      #  options(digits = 4)
-      #  top1 <- topTable(fit2, coef = 1, n = 300000, sort = "p", p.value = 1.0, adjust.method = "BH")
-#
-      #  top_above_cutoff <- top1[which(abs(top1$logFC) >= abs(FC_cutoff) & top1$P.Value <= P_cutoff),]
-#
-      #  Num_Genes_Above_Cutoff2 <- length(rownames(top_above_cutoff))
-#
-      #  paste("Number of Genes Above FC and P.Value Cutoffs: ",Num_Genes_Above_Cutoff2,sep = "")
-#
-      #})
-
       output$VolGroupsText <- renderText({
-        paste("This volcano plot is comparing group A: ",input$comparisonA2, " and group B: ",input$comparisonB2, ".\nGenes with a positive log fold change are upregulated in the ",
-              input$comparisonA2, " group.\nGenes with a negative log fold change are upregulated in the ",input$comparisonB2, " group.", sep = "")
+        meta <- meta_react()
+        metacol <- metacol_reactVal()
+        covars <- input$DEGCovarSelect
+        metaSub <- meta[which(meta[,metacol] %in% c(input$comparisonA2,input$comparisonB2)),c(colnames(meta)[1],metacol,covars)]
+        metaSub_noNA <- metaSub[complete.cases(metaSub),]
+        A <- metaSub_noNA[which(metaSub_noNA[,metacol] == input$comparisonA2),1]
+        B <- metaSub_noNA[which(metaSub_noNA[,metacol] == input$comparisonB2),1]
+        
+        form <- paste0("~0 + ",paste(c(metacol,covars),collapse = " + "))
+
+        if (nrow(metaSub_noNA) < nrow(metaSub)) {
+          RowsTaken <- nrow(metaSub)-nrow(metaSub_noNA)
+          paste(RowsTaken," samples removed due to NA values in covariates.",
+                "\nThis volcano plot is comparing group A: ",input$comparisonA2," (N=",length(A),")", " and group B: ",input$comparisonB2," (N=",length(B),")",
+                ".\nGenes with a positive log fold change are upregulated in the ",input$comparisonA2, 
+                " group.\nGenes with a negative log fold change are upregulated in the ",input$comparisonB2, " group.",
+                "\nFormula: ",form, sep = "")
+        } else {
+          paste("This volcano plot is comparing group A: ",input$comparisonA2," (N=",length(A),")", " and group B: ",input$comparisonB2," (N=",length(B),")",
+                ".\nGenes with a positive log fold change are upregulated in the ",input$comparisonA2, 
+                " group.\nGenes with a negative log fold change are upregulated in the ",input$comparisonB2, " group.",
+                "\nFormula: ",form, sep = "")
+        }
       })
 
       output$MAGroupsText <- renderText({
-        paste("This MA plot is comparing group A: ",input$comparisonA2, " and group B: ",input$comparisonB2, ".\nGenes with a positive log fold change are upregulated in the ",
-              input$comparisonA2, " group.\nGenes with a negative log fold change are upregulated in the ",input$comparisonB2, " group.", sep = "")
+        meta <- meta_react()
+        metacol <- metacol_reactVal()
+        covars <- input$DEGCovarSelect
+        metaSub <- meta[which(meta[,metacol] %in% c(input$comparisonA2,input$comparisonB2)),c(colnames(meta)[1],metacol,covars)]
+        metaSub_noNA <- metaSub[complete.cases(metaSub),]
+        A <- metaSub_noNA[which(metaSub_noNA[,metacol] == input$comparisonA2),1]
+        B <- metaSub_noNA[which(metaSub_noNA[,metacol] == input$comparisonB2),1]
+        form <- paste0("~0 + ",paste(c(metacol,covars),collapse = " + "))
+        
+        if (nrow(metaSub_noNA) < nrow(metaSub)) {
+          RowsTaken <- nrow(metaSub)-nrow(metaSub_noNA)
+          paste(RowsTaken," samples removed due to NA values in covariates.",
+                "\nThis MA plot is comparing group A: ",input$comparisonA2," (N=",length(A),")", " and group B: ",input$comparisonB2," (N=",length(B),")",
+                ".\nGenes with a positive log fold change are upregulated in the ",input$comparisonA2, 
+                " group.\nGenes with a negative log fold change are upregulated in the ",input$comparisonB2, " group.",
+                "\nFormula: ",form, sep = "")
+        } else {
+          paste("This MA plot is comparing group A: ",input$comparisonA2," (N=",length(A),")", " and group B: ",input$comparisonB2," (N=",length(B),")",
+                ".\nGenes with a positive log fold change are upregulated in the ",input$comparisonA2, 
+                " group.\nGenes with a negative log fold change are upregulated in the ",input$comparisonB2, " group.",
+                "\nFormula: ",form, sep = "")
+        }
+                
       })
 
       output$upregpath_text <- renderText({
@@ -8824,10 +9021,31 @@ server <- function(input, output, session) {
       })
 
       output$degtext <- renderText({
-        paste("This table represents differentially expressed genes when comparing group A: ",input$comparisonA2.DEG," and group B: ",input$comparisonB2.DEG,
-              ".\nGenes with a positive logFC, indicate an upregulation in group A: ", input$comparisonA2.DEG,
-              ".\nGenes with a negative logFC, indicate an upregulation in group B: ", input$comparisonB2.DEG,
-              ".\nThe 'AveExpr' column represents the log transformed average expression between group A: ",input$comparisonA2.DEG," and group B: ",input$comparisonB2.DEG,".", sep = "")
+        
+        meta <- meta_react()
+        metacol <- metacol_reactVal()
+        covars <- input$DEGCovarSelectTab
+        metaSub <- meta[which(meta[,metacol] %in% c(input$comparisonA2,input$comparisonB2)),c(colnames(meta)[1],metacol,covars)]
+        metaSub_noNA <- metaSub[complete.cases(metaSub),]
+        A <- metaSub_noNA[which(metaSub_noNA[,metacol] == input$comparisonA2),1]
+        B <- metaSub_noNA[which(metaSub_noNA[,metacol] == input$comparisonB2),1]
+        form <- paste0("~0 + ",paste(c(metacol,covars),collapse = " + "))
+        
+        if (nrow(metaSub_noNA) < nrow(metaSub)) {
+          RowsTaken <- nrow(metaSub)-nrow(metaSub_noNA)
+          paste(RowsTaken," samples removed due to NA values in covariates.",
+                "This table represents differentially expressed genes when comparing group A: ",input$comparisonA2.DEG," (N=",length(A),")"," and group B: ",input$comparisonB2.DEG," (N=",length(B),")",
+                ".\nGenes with a positive logFC, indicate an upregulation in group A: ", input$comparisonA2.DEG,
+                ".\nGenes with a negative logFC, indicate an upregulation in group B: ", input$comparisonB2.DEG,
+                ".\nThe 'AveExpr' column represents the log transformed average expression between group A: ",input$comparisonA2.DEG," and group B: ",input$comparisonB2.DEG,".",
+                "\nFormula: ",form, sep = "")
+        } else {
+          paste("This table represents differentially expressed genes when comparing group A: ",input$comparisonA2.DEG," (N=",length(A),")"," and group B: ",input$comparisonB2.DEG," (N=",length(B),")",
+                ".\nGenes with a positive logFC, indicate an upregulation in group A: ", input$comparisonA2.DEG,
+                ".\nGenes with a negative logFC, indicate an upregulation in group B: ", input$comparisonB2.DEG,
+                ".\nThe 'AveExpr' column represents the log transformed average expression between group A: ",input$comparisonA2.DEG," and group B: ",input$comparisonB2.DEG,".",
+                "\nFormula: ",form, sep = "")
+        }
       })
 
       output$UpRegPathLabel <- renderUI({
