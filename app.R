@@ -93,15 +93,8 @@ if (!isTruthy(Subsetting_Feature)) {
 if (!isTruthy(Feature_Selected)) {
   Feature_Selected <- 1
 }
-if (!isTruthy(human)) {
-  mouse <- FALSE
-} else {
-  if (!as.logical(human)) {
-    mouse <- TRUE
-  } else {
-    mouse <- FALSE
-  }
-}
+
+mouse <- ifelse(!as.logical(human),TRUE,FALSE)
 
 
 # Functions --------------------------------------------------------------------
@@ -1373,14 +1366,19 @@ server <- function(input, output, session) {
       
       output$rendExprFileInput <- renderUI({
         refresh <- input$UseExpData
+        if (MM_react()) {
+          HM_select <- "Mouse"
+        } else {
+          HM_select <- "Human"
+        }
         fluidRow(
           column(9,
                  fileInput("ExprFileInput","Expression Matrix")
-                 ),
+          ),
           column(3, style = "margin-top:15px",
-                 shiny::radioButtons("HumanOrMouse",NULL,c("Human","Mouse"))
-                 )
+                 shiny::radioButtons("HumanOrMouse",NULL,c("Human","Mouse"), selected = HM_select)
           )
+        )
       })
       output$rendRawCountNorm <- renderUI({
         if ("Perform Normalization" %in% input$RawCountQuantNorm) {
