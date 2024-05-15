@@ -16,7 +16,7 @@ set.seed(10242022)
 # Subsetting Feature
 Subsetting_Feature <- ''
 # Starting Feature
-Feature_Selected <- 'FinalCellType'
+Feature_Selected <- ''
 # Does user want password Protection?
 Password_Protected <- FALSE
 PasswordSet <- ''
@@ -30,25 +30,66 @@ ExampleClin_File <- "Example_Data/TCGA_CHOL_Clinical_PatientID.txt"
 
 #increase file upload size
 options(shiny.maxRequestSize=5000*1024^2)
-options("recount3_organism_human_project_homes_URL_http://duffel.rail.bio/recount3" = c("data_sources/sra", "data_sources/gtex", "data_sources/tcga"))
+#options("recount3_organism_human_project_homes_URL_http://duffel.rail.bio/recount3" = c("data_sources/sra", "data_sources/gtex", "data_sources/tcga"))
 
 # Load Libraries ---------------------------------------------------------------
-packages <- c("shiny","shinythemes","shinyjqui","pheatmap","BiocManager","RColorBrewer","data.table",
-              "dplyr","DT","ggplot2","ggpubr","reshape2","tibble","viridis","scales","edgeR",
-              "plotly","readr","enrichR","ggrepel","tidyr","tools","shinycssloaders","stringr")
+library("shiny")
+library("shinythemes")
+library("shinyjqui")
+library("pheatmap")
+library("BiocManager")
+library("RColorBrewer")
+library("dplyr")
+library("DT")
+library("ggplot2")
+library("ggpubr")
+library("reshape2")
+library("tibble")
+library("viridis")
+library("scales")
+library("plotly")
+library("readr")
+library("enrichR")
+library("ggrepel")
+library("tidyr")
+library("tools")
+library("shinycssloaders")
+library("Hmisc")
+library("clusterProfiler")
+library("GSVA")
+library("limma")
+library("enrichplot")
+library("ComplexHeatmap")
+library("data.table")
+library("GEOquery")
+library("edgeR")
+library("stringr")
 
-installed_packages <- packages %in% rownames(installed.packages())
-if (any(installed_packages == FALSE)) {
-  install.packages(packages[!installed_packages])
+if ("recount" %in% rownames(installed.packages()) && "recount3" %in% rownames(installed.packages())) {
+  library("recount")
+  library("recount3")
+  options("recount3_organism_human_project_homes_URL_http://duffel.rail.bio/recount3" = c("data_sources/sra", "data_sources/gtex", "data_sources/tcga"))
+  RecountAvail <- TRUE
 }
-invisible(lapply(packages, library, character.only = TRUE))
-#bioconductor packages
-bioCpacks <- c("clusterProfiler","GSVA","limma","enrichplot","recount","recount3","ComplexHeatmap")
-installed_packages_BIOC <- bioCpacks %in% rownames(installed.packages())
-if (any(installed_packages_BIOC == FALSE)) {
-  BiocManager::install(bioCpacks[!installed_packages_BIOC], ask = F)
-}
-invisible(lapply(bioCpacks, library, character.only = TRUE))
+
+
+
+#packages <- c("shiny","shinythemes","shinyjqui","pheatmap","BiocManager","RColorBrewer","data.table",
+#              "dplyr","DT","ggplot2","ggpubr","reshape2","tibble","viridis","scales","edgeR",
+#              "plotly","readr","enrichR","ggrepel","tidyr","tools","shinycssloaders","stringr")
+#
+#installed_packages <- packages %in% rownames(installed.packages())
+#if (any(installed_packages == FALSE)) {
+#  install.packages(packages[!installed_packages])
+#}
+#invisible(lapply(packages, library, character.only = TRUE))
+##bioconductor packages
+#bioCpacks <- c("clusterProfiler","GSVA","limma","enrichplot","recount","recount3","ComplexHeatmap")
+#installed_packages_BIOC <- bioCpacks %in% rownames(installed.packages())
+#if (any(installed_packages_BIOC == FALSE)) {
+#  BiocManager::install(bioCpacks[!installed_packages_BIOC], ask = F)
+#}
+#invisible(lapply(bioCpacks, library, character.only = TRUE))
 
 
 ## Gene Set data ---------------------------------------------------------------
@@ -1162,14 +1203,29 @@ GSEA_tab <- tabPanel("GSEA Analysis",
                              tabPanel("Enrichment Plot",
                                       h3("GSEA Enrichment Plot"),
                                       verbatimTextOutput("NESandPval"),
-                                      withSpinner(plotOutput("enrichplot0", width = "500px", height = "450px"), type = 6),
                                       fluidRow(
-                                        downloadButton("dnldPlotSVG_gsea","Download as SVG"),
-                                        downloadButton("dnldPlotPDF_gsea","Download as PDF")
+                                        column(6,
+                                               h3(""),
+                                               withSpinner(plotOutput("enrichplot0", width = "500px", height = "450px"), type = 6),
+                                               fluidRow(
+                                                 downloadButton("dnldPlotSVG_gsea","Download as SVG"),
+                                                 downloadButton("dnldPlotPDF_gsea","Download as PDF")
+                                               )
+                                               ),
+                                        column(6,
+                                               h3("Leading Edge Genes (~Signal2Noise Ranking)"),
+                                               div(DT::dataTableOutput("LeadingEdgeGenes"), style = "font-size:12px; height:400px; overflow-y: scroll"),
+                                               p(),
+                                               downloadButton("LEGdownload", "Download .tsv")
+                                               )
                                       ),
-                                      h3("Leading Edge Genes (~Signal2Noise Ranking)"),
-                                      downloadButton("LEGdownload", "Download .tsv"),
-                                      div(DT::dataTableOutput("LeadingEdgeGenes"), style = "font-size:12px; height:500px; overflow-y: scroll"),
+                                      #fluidRow(
+                                      #  downloadButton("dnldPlotSVG_gsea","Download as SVG"),
+                                      #  downloadButton("dnldPlotPDF_gsea","Download as PDF")
+                                      #),
+                                      #h3("Leading Edge Genes (~Signal2Noise Ranking)"),
+                                      #downloadButton("LEGdownload", "Download .tsv"),
+                                      #div(DT::dataTableOutput("LeadingEdgeGenes"), style = "font-size:12px; height:500px; overflow-y: scroll"),
                                       value = 1),
                              #### GSEA Heatmap
                              tabPanel("GSEA Heatmap",
@@ -1338,7 +1394,7 @@ server <- function(input, output, session) {
       SubCol_reactVal <- reactiveVal(Subsetting_Feature_react())
       SubCrit_reactVal <- reactiveVal(SubCrit_reactVal())
       metacol_reactVal <- reactiveVal(Feature_Selected_react())
-      
+
       gse_id_react <- reactiveVal()
       recount_id_react <- reactiveVal()
       recount_obj <- reactiveVal()
@@ -1350,9 +1406,9 @@ server <- function(input, output, session) {
       geneList_raw <- reactiveVal()
       Gene_raw <- reactiveVal()
       FileCheckAlerts_react <- reactiveVal()
-      
+
       # Data Input Tab ---------------------------------------------------------
-      
+
       observe({
         if (isTruthy(Subsetting_Feature_react())) {
           SubCol_reactVal(Subsetting_Feature_react())
@@ -1363,7 +1419,7 @@ server <- function(input, output, session) {
           metacol_reactVal(Feature_Selected_react())
         }
       })
-      
+
       output$rendExprFileInput <- renderUI({
         refresh <- input$UseExpData
         if (MM_react()) {
@@ -1396,7 +1452,7 @@ server <- function(input, output, session) {
                           "TMM" = "TMM",
                           "Upper Quartile" = "upperquartile"))
           }
-          
+
         }
       })
       output$rendClinFileInput <- renderUI({
@@ -1419,12 +1475,12 @@ server <- function(input, output, session) {
         req(MetaData_file_react())
         radioButtons("ClinHead",NULL, choices = c("View table head","View entire table"), inline = T)
       })
-      
+
       output$rendMetaColOfInterest <- renderUI({
         req(meta_input())
         selectizeInput("MetaColOfInterest","Meta column of interest:",choices = NULL, selected = "")
       })
-      
+
       metaCol_ofInt_Selected <- reactive(input$MetaColOfInterest)
       observeEvent(meta_input(),{
         if (isTruthy(metaCol_ofInt_Selected())) {
@@ -1442,7 +1498,7 @@ server <- function(input, output, session) {
           metacol_reactVal(input$MetaColOfInterest)
         }
       })
-      
+
       observe({
         req(meta_input())
         updateSelectizeInput(session,"ColToSplit",choices = colnames(meta_input()), server = T, selected = "")
@@ -1477,7 +1533,7 @@ server <- function(input, output, session) {
           }
           Subsetting_Feature_react(query[['subset']])
           Feature_Selected_react(query[['feature']])
-        } 
+        }
         if (!is.null(query[['gseid']]) && is.null(query[['expr']]) && is.null(query[['meta']]) && is.null(query[['recount']])) {
           gse_id_react(query[['gseid']])
           print(gse_id_react)
@@ -1495,7 +1551,7 @@ server <- function(input, output, session) {
           Feature_Selected_react(query[['feature']])
         }
       })
-      
+
       ### Example Data ---------------------------------------------------------
       observeEvent(input$UseExpData, {
         ProjectName_react("TCGA_CHOL")
@@ -1505,7 +1561,7 @@ server <- function(input, output, session) {
         MM_react(FALSE)
         updateTextInput(session,"UserProjectName",value = "TCGA_CHOL")
       })
-      
+
       ### User Upload ----------------------------------------------------------
       observe({
         ProjectName_react(input$UserProjectName)
@@ -1526,7 +1582,7 @@ server <- function(input, output, session) {
 
       # Load in URL or given file
       observe({
-        
+
         if (isTruthy(ExpressionMatrix_file_react()) & isTruthy(MetaData_file_react()) && !isTruthy(gse_id_react()) && !isTruthy(recount_id_react())) {
           # Expression file
           withProgress(message = "Processing", value = 0, {
@@ -1596,43 +1652,45 @@ server <- function(input, output, session) {
             incProgress(0.5, detail = "Complete!")
           })
         } else if (isTruthy(ExpressionMatrix_file_react()) & isTruthy(MetaData_file_react()) & isTruthy(recount_id_react())) {
-          withProgress(message = "Processing", value = 0, {
-            incProgress(0.5, detail = "Loading Recount Data")
-            recount3_Projects <- available_projects()
-            recount3_proj(recount3_Projects)
-            RecountID <- recount_id_react()
-            if (RecountID %in% recount3_Projects$project) {
-              Proj_home <- recount3_Projects[which(recount3_Projects$project == RecountID),"project_home"]
-              Proj_org <- recount3_Projects[which(recount3_Projects$project == RecountID),"organism"]
-              Proj_source <- toupper(recount3_Projects[which(recount3_Projects$project == RecountID),"file_source"])
-              File_prefix <- paste0(Proj_source,"_",RecountID)
-              recount_rse <- recount3::create_rse_manual(
-                project = RecountID,
-                project_home = Proj_home,
-                organism = Proj_org,
-                annotation = "gencode_v26",
-                type = "gene",
-                verbose = TRUE
-              )
-              if (Proj_org == "mouse") {
-                MM_react(TRUE)
-              } else {
-                MM_react(FALSE)
+          if (RecountAvail) {
+            withProgress(message = "Processing", value = 0, {
+              incProgress(0.5, detail = "Loading Recount Data")
+              recount3_Projects <- available_projects()
+              recount3_proj(recount3_Projects)
+              RecountID <- recount_id_react()
+              if (RecountID %in% recount3_Projects$project) {
+                Proj_home <- recount3_Projects[which(recount3_Projects$project == RecountID),"project_home"]
+                Proj_org <- recount3_Projects[which(recount3_Projects$project == RecountID),"organism"]
+                Proj_source <- toupper(recount3_Projects[which(recount3_Projects$project == RecountID),"file_source"])
+                File_prefix <- paste0(Proj_source,"_",RecountID)
+                recount_rse <- recount3::create_rse_manual(
+                  project = RecountID,
+                  project_home = Proj_home,
+                  organism = Proj_org,
+                  annotation = "gencode_v26",
+                  type = "gene",
+                  verbose = TRUE
+                )
+                if (Proj_org == "mouse") {
+                  MM_react(TRUE)
+                } else {
+                  MM_react(FALSE)
+                }
+                user_upload(recount_rse)
               }
-              user_upload(recount_rse)
-            }
-            incProgress(0.5, detail = "Complete!")
-          })
+              incProgress(0.5, detail = "Complete!")
+            })
+          }
         }
       })
-      
+
       observe({
         if (isTruthy(recount_id_react())) {
           updateCheckboxGroupInput(session,"RawCountQuantNorm",choices = c("Perform Normalization","Quantile Normalization","Filter Matrix"),
                                    selected = "Perform Normalization")
         }
       })
-      
+
       observe({
         FileCheckAlerts_list <- c()
         req(user_upload())
@@ -1647,10 +1705,10 @@ server <- function(input, output, session) {
             req(user_upload())
             gset <- user_upload()$gset
             gse <- user_upload()$gse
-            
+
             gse_id = as.character(gse_id_react())
             platform <- names(GPLList(gse))
-            
+
             if (length(gset) > 1) idx <- grep(platform, attr(gset, "names")) else idx <- 1
             gset <- gset[[idx]]
             expr <- exprs(gset)
@@ -1673,7 +1731,7 @@ server <- function(input, output, session) {
             expr$ID <- NULL
             expr <- expr[complete.cases(expr$Symbol), ]
             expr$Symbol <- trimws(expr$Symbol)
-            
+
             meta <- pData(gset)
             org <- meta[1,"organism_ch1"]
             meta <- relocate(meta, geo_accession, .before = title)
@@ -1681,27 +1739,27 @@ server <- function(input, output, session) {
             # Select columns that start with "characteristic"
             char_cols <- grep("^characteristic", colnames(meta), value = TRUE)
             extr_meta <- meta[, c("geo_accession", char_cols)]
-            
+
             original_df <- extr_meta
-            
+
             # Initialize an empty data frame to store results
             new_df <- data.frame(sample = character(0), title = character(0), value = character(0), stringsAsFactors = FALSE)
-            
+
             # Iterate through rows and columns to extract values and create new rows
             for (i in seq_along(original_df$geo_accession)) {
               row_values <- as.character(original_df[i, -1])  # Convert to character
               row_values <- row_values[which(!row_values == "")]
-              
+
               for (j in seq_along(row_values)) {
                 split_value <- trimws(strsplit(row_values[j], ":")[[1]])
                 title <- split_value[1]
                 value <- paste(split_value[-1], collapse = ":")
-                
+
                 new_row <- data.frame(geo_accession = original_df$geo_accession[i], title = title, value = value, stringsAsFactors = FALSE)
                 new_df <- rbind(new_df, new_row)
               }
             }
-            
+
             final_extr_meta <- tidyr::pivot_wider(new_df, names_from = title, values_from = value)
             final_extr_meta <- as.data.frame(final_extr_meta)
             meta_merged <- dplyr::full_join(final_extr_meta, meta[,which(!colnames(meta) %in% char_cols)], by = "geo_accession")
@@ -1713,63 +1771,65 @@ server <- function(input, output, session) {
             )
           }
           if (isTruthy(ExpressionMatrix_file_react()) & isTruthy(MetaData_file_react()) & isTruthy(recount_id_react())) {
-            req(user_upload())
-            RecountID <- recount_id_react()
-            if (RecountID %in% recount3_proj()$project) {
-              Proj_home <- recount3_proj()[which(recount3_proj()$project == RecountID),"project_home"]
-              Proj_org <- recount3_proj()[which(recount3_proj()$project == RecountID),"organism"]
-              Proj_source <- toupper(recount3_proj()[which(recount3_proj()$project == RecountID),"file_source"])
-              File_prefix <- paste0(Proj_source,"_",RecountID)
-              
-              recount_rse <- user_upload()
-              expr <- assay(recount_rse)
-              if ("Perform Normalization" %in% input$RawCountQuantNorm) {
-                if (isTruthy(input$RawCountNorm)) {
-                  if (input$RawCountNorm %in% c("TPM","RPKM")) {
-                    if (input$RawCountNorm == "TPM") {
-                      recount_rse <- user_upload()
-                      assays(recount_rse)$counts <- transform_counts(recount_rse)
-                      expr <- as.data.frame(recount::getTPM(recount_rse))
-                      message <- paste0("Raw counts normalized by TPM")
-                      FileCheckAlerts_list <- c(FileCheckAlerts_list,message)
-                    } else if (input$RawCountNorm == "RPKM") {
-                      recount_rse <- user_upload()
-                      assays(recount_rse)$counts <- transform_counts(recount_rse)
-                      expr <- as.data.frame(recount::getRPKM(recount_rse))
-                      message <- paste0("Raw counts normalized by RPKM")
-                      FileCheckAlerts_list <- c(FileCheckAlerts_list,message)
-                    }  else if (input$RawCountNorm == "none") {
-                      recount_rse <- user_upload()
-                      expr <- assay(recount_rse)
+            if (RecountAvail) {
+              req(user_upload())
+              RecountID <- recount_id_react()
+              if (RecountID %in% recount3_proj()$project) {
+                Proj_home <- recount3_proj()[which(recount3_proj()$project == RecountID),"project_home"]
+                Proj_org <- recount3_proj()[which(recount3_proj()$project == RecountID),"organism"]
+                Proj_source <- toupper(recount3_proj()[which(recount3_proj()$project == RecountID),"file_source"])
+                File_prefix <- paste0(Proj_source,"_",RecountID)
+
+                recount_rse <- user_upload()
+                expr <- assay(recount_rse)
+                if ("Perform Normalization" %in% input$RawCountQuantNorm) {
+                  if (isTruthy(input$RawCountNorm)) {
+                    if (input$RawCountNorm %in% c("TPM","RPKM")) {
+                      if (input$RawCountNorm == "TPM") {
+                        recount_rse <- user_upload()
+                        assays(recount_rse)$counts <- transform_counts(recount_rse)
+                        expr <- as.data.frame(recount::getTPM(recount_rse))
+                        message <- paste0("Raw counts normalized by TPM")
+                        FileCheckAlerts_list <- c(FileCheckAlerts_list,message)
+                      } else if (input$RawCountNorm == "RPKM") {
+                        recount_rse <- user_upload()
+                        assays(recount_rse)$counts <- transform_counts(recount_rse)
+                        expr <- as.data.frame(recount::getRPKM(recount_rse))
+                        message <- paste0("Raw counts normalized by RPKM")
+                        FileCheckAlerts_list <- c(FileCheckAlerts_list,message)
+                      }  else if (input$RawCountNorm == "none") {
+                        recount_rse <- user_upload()
+                        expr <- assay(recount_rse)
+                      }
                     }
                   }
                 }
-              }
-              
-              expr_anno <- as.data.frame(recount_rse@rowRanges@elementMetadata@listData)
-              expr <- merge(expr_anno[,c(5,7)],expr,by.x = "gene_id", by.y = 0,all.y = T)
-              expr <- expr[,-1]
-              
-              
-              meta <- as.data.frame(t(do.call(rbind,recount_rse@colData@listData)))
-              
-              if (Proj_source == "TCGA") {
-                names(expr)[-1][match(meta[,"external_id"], names(expr)[-1])] = meta[,"tcga.tcga_barcode"]
-                meta <- meta %>% relocate(tcga.tcga_barcode)
-              } else {
-                meta <- meta %>% relocate("external_id")
+
+                expr_anno <- as.data.frame(recount_rse@rowRanges@elementMetadata@listData)
+                expr <- merge(expr_anno[,c(5,7)],expr,by.x = "gene_id", by.y = 0,all.y = T)
+                expr <- expr[,-1]
+
+
+                meta <- as.data.frame(t(do.call(rbind,recount_rse@colData@listData)))
+
+                if (Proj_source == "TCGA") {
+                  names(expr)[-1][match(meta[,"external_id"], names(expr)[-1])] = meta[,"tcga.tcga_barcode"]
+                  meta <- meta %>% relocate(tcga.tcga_barcode)
+                } else {
+                  meta <- meta %>% relocate("external_id")
+                }
               }
             }
           }
-          
-          
+
+
           colnames(expr)[1] <- "Gene"
           if (length(expr[sapply(expr, is.infinite)]) > 0) {
             message <- paste0(length(expr[sapply(expr, is.infinite)]), " infinite values found. Replaced with NA." )
             FileCheckAlerts_list <- c(FileCheckAlerts_list,message)
             expr[sapply(expr, is.infinite)] <- NA
           }
-          
+
           # Remove Expression with NA
           exprRows <- nrow(expr)
           expr <- expr %>%
@@ -1803,7 +1863,7 @@ server <- function(input, output, session) {
           expr <- expr[,-1]
           expr = expr[order(row.names(expr)), ]
           expr_col <- colnames(expr)
-          
+
           if ("Exponentiate" %in% input$RawCountQuantNorm) {
             print(head(expr,c(5,5)))
             expr <- 2^as.matrix(expr)
@@ -1836,32 +1896,32 @@ server <- function(input, output, session) {
                               length(which(expr_pass == FALSE))," features removed.")
             FileCheckAlerts_list <- c(FileCheckAlerts_list,message)
           }
-          
+
           #gene list file from expression data
           Gene <- rownames(expr)
           geneList <- as.data.frame(Gene)
           geneList_raw(geneList);
           Gene_raw(Gene)
-          
+
           #meta[,1] <- gsub("[_.-]", "_", meta[,1])
           colnames(meta)[1] <- "SampleName"
-          
+
           #for heatmap sample selection
           sampsames <- intersect(colnames(expr),meta[,1])
-          
+
           if (length(sampsames) != ncol(expr) | length(sampsames) != nrow(meta)) {
             message <- paste0("Mistmatching or missing sample names found between feature matrix and meta data. Reduced to only similar samples (N=",length(sampsames),")")
             FileCheckAlerts_list <- c(FileCheckAlerts_list,message)
           }
-          
+
           #ensure expression samples and meta are exact
           expr <- expr[,sampsames]
           meta <- meta[which(meta[,1] %in% sampsames),]
           expr_input(expr)
           meta_input(meta)
-          
-          
-          
+
+
+
           if (isTruthy(MM_react())) {
             if (as.logical(MM_react())) {
               CTKgenes <- CTKgenes_mm
@@ -1872,7 +1932,7 @@ server <- function(input, output, session) {
           } else {
             CTKgenes <- CTKgenes_hs
           }
-          
+
           CTKgenes <- CTKgenes[which(CTKgenes %in% Gene)]
           updateSelectizeInput(session = session, inputId = "heatmapGeneSelec",
                                choices = Gene,selected = CTKgenes, server = T)
@@ -1890,12 +1950,12 @@ server <- function(input, output, session) {
                                choices = rownames(expr),selected = NULL, server = T)
           updateSelectizeInput(session = session, inputId = "userheatsampSS",
                                choices = sampsames,selected = sampsames, server = T)
-          
+
           FileCheckAlerts_react(FileCheckAlerts_list)
           incProgress(0.5, detail = "Complete!")
         })
       })
-      
+
       observeEvent(input$SplitColumn, {
         req(meta_input())
         meta <- meta_input()
@@ -1928,17 +1988,17 @@ server <- function(input, output, session) {
           meta_input(meta)
         }
       })
-        
-      
+
+
       ## Data Preview ----------------------------------------------------------
       output$FileCheckAlerts <- renderPrint({
-        
+
         req(FileCheckAlerts_react())
         text <- paste(FileCheckAlerts_react(), collapse = "\n")
         cat(text)
-        
+
       })
-      
+
       output$ExprFile_Preview <- DT::renderDataTable({
         req(expr_input())
         req(input$ExprHead)
@@ -1953,7 +2013,7 @@ server <- function(input, output, session) {
                       rownames = T) %>%
           formatRound(columns = colnames(expr), digits = 4)
       })
-      
+
       output$ClinFile_Preview <- DT::renderDataTable({
         req(meta_input())
         req(input$ClinHead)
@@ -1967,7 +2027,7 @@ server <- function(input, output, session) {
                                      scrollX = T),
                       rownames = F)
       })
-      
+
       output$renddownload_expr <- renderUI({
         if (isTruthy(expr_input()) | isTruthy(meta_input())) {
           downloadButton("download_expr","Download Expression")
@@ -1983,7 +2043,7 @@ server <- function(input, output, session) {
           downloadButton("download_notes","Download data processing notes")
         }
       })
-      
+
       # Download handler for the button
       output$download_expr <- downloadHandler(
         filename = function() {
@@ -1994,7 +2054,7 @@ server <- function(input, output, session) {
           write_tsv(cbind(gene_name, expr_input()), file, col_names = T)
         }
       )
-      
+
       output$download_meta <- downloadHandler(
         filename = function() {
           paste(ProjectName_react(),"_meta_data_", MetaData_file_react(), "_", Sys.Date(), ".txt", sep = "")
@@ -2003,7 +2063,7 @@ server <- function(input, output, session) {
           write_tsv(meta_input(), file, col_names = T)
         }
       )
-      
+
       output$download_notes <- downloadHandler(
         filename = function() {
           paste(ProjectName_react(), "_DataProcessingNotes_", Sys.Date(), ".txt", sep = "")
@@ -2013,7 +2073,7 @@ server <- function(input, output, session) {
           write_tsv(df, file, col_names = F)
         }
       )
-      
+
 
       # Gene Set Data -------------------------------------------------------------
       gmt <- reactiveVal()
@@ -2116,8 +2176,8 @@ server <- function(input, output, session) {
         gs2(gs2)
 
       })
-      
-      
+
+
 
 
       # Render UI ------------------------------------------------------------------
@@ -2346,7 +2406,7 @@ server <- function(input, output, session) {
         updateSelectInput(session, "DEGGroupCol",selected = isolate(input$DEGcolHeat))
       })
       observeEvent(input$DEGGroupCol,{metacol_reactVal(input$DEGGroupCol)})
-      
+
       observe({
         req(input$DEGGroupCol)
         req(meta_react())
@@ -2358,7 +2418,7 @@ server <- function(input, output, session) {
         FeatureChoices <- FeatureChoices[which(FeatureChoices != input$DEGGroupCol)]
         updateSelectizeInput(session,"DEGCovarSelect", choices = FeatureChoices, server = T)
       })
-      
+
       observe({
         req(input$DEGcolHeat)
         req(meta_react())
@@ -2370,7 +2430,7 @@ server <- function(input, output, session) {
         FeatureChoices <- FeatureChoices[which(FeatureChoices != input$DEGcolHeat)]
         updateSelectizeInput(session,"DEGCovarSelectHeat", choices = FeatureChoices, server = T)
       })
-      
+
       observe({
         req(input$DEGGroupCol)
         req(meta_react())
@@ -2382,13 +2442,13 @@ server <- function(input, output, session) {
         FeatureChoices <- FeatureChoices[which(FeatureChoices != input$DEGGroupCol)]
         updateSelectizeInput(session,"DEGCovarSelectTab", choices = FeatureChoices, server = T)
       })
-      
-      
+
+
 
       ## GSEA ----------------------------------------------------------------------
-      
+
       output$GroupSelectionError <- renderText({
-        
+
         req(input$comparisonA)
         req(input$comparisonB)
         if (input$comparisonA == input$comparisonB) {
@@ -2405,12 +2465,12 @@ server <- function(input, output, session) {
               paste("Must select a comparison group with more than 1 observation")
             }
           }
-          
+
         }
-        
-        
+
+
       })
-      
+
       output$rendGSEASubsetCol <- renderUI({
 
         meta <- meta_react()
@@ -2539,9 +2599,9 @@ server <- function(input, output, session) {
                     multiple = T)
 
       })
-      
+
       meta_react <- reactive({
-        
+
         req(meta_input())
         meta <- meta_input()
         if (ncol(meta) > 2) {
@@ -2555,7 +2615,7 @@ server <- function(input, output, session) {
           meta2 <- meta
         }
         meta2
-        
+
       })
 
 
@@ -2573,7 +2633,7 @@ server <- function(input, output, session) {
         A <- as.matrix(expr)
         A_raw(A)
       })
-      
+
       #expr_mat_react <- reactive({
 #
       #  meta <- meta_react()
@@ -3424,26 +3484,29 @@ server <- function(input, output, session) {
                    verbose = F, pvalueCutoff = input$userPval)
             }
           }
-          
+
         }
-        
+
       })
 
 
 
       #top genes data frame reactive
       topgenereact <- reactive({
+        req(meta_react())
+        req(metacol_reactVal())
+        req(expr_react())
         meta <- meta_react()
         metacol <- metacol_reactVal()
         expr <- expr_react()
         covars <- input$DEGCovarSelect
-        
+
         metaSub <- meta[,c(colnames(meta)[1],metacol,covars)]
         metaSub <- metaSub[complete.cases(metaSub),]
-        
+
         A <- metaSub[which(metaSub[,metacol] == input$comparisonA2),1]
         B <- metaSub[which(metaSub[,metacol] == input$comparisonB2),1]
-        
+
         metaSub <- metaSub[which(metaSub[,1] %in% c(A,B)),]
 
         mat <- expr[,metaSub[,1]]
@@ -3457,15 +3520,17 @@ server <- function(input, output, session) {
         }
 
         designA <- eval(substitute(model.matrix(form, data = metaSub)))
-        
+
         fit <- lmFit(mat, design = designA)
+        colnames(designA) <- gsub(" ","_",colnames(designA))
+        colnames(designA) <- gsub("[[:punct:]]","_",colnames(designA))
         contrast.matrix <- makeContrasts(contrasts = paste0(colnames(designA)[1],"-",colnames(designA)[2]), levels = designA)
         fit2 <- contrasts.fit(fit, contrast.matrix)
         fit2 <- eBayes(fit2)
         options(digits = 4)
         top1 <- topTable(fit2, coef = 1, n = 300000, sort = "p", p.value = 1.0, adjust.method = "BH")
         top2 <- top1
-        
+
         #groupAOther <- factor(c(rep("A", length(A)), rep("B", length(B))))
         #designA <- model.matrix(~0 + groupAOther)
         #fit <- lmFit(mat, design = designA)
@@ -3498,19 +3563,19 @@ server <- function(input, output, session) {
           # UI Inputs
           A_choice <- input$comparisonA2_h            #Comparison group A
           B_choice <- input$comparisonB2_h            #Comparison group B
-          
+
           meta <- meta_react()
           #metacol <- metacol_reactVal()
           metacol <- input$DEGcolHeat
           expr <- expr_react()
           covars <- input$DEGCovarSelectHeat
-          
+
           metaSub <- meta[,c(colnames(meta)[1],metacol,covars)]
           metaSub <- metaSub[complete.cases(metaSub),]
-          
+
           A <- metaSub[which(metaSub[,metacol] == A_choice),1]
           B <- metaSub[which(metaSub[,metacol] == B_choice),1]
-          
+
           metaSub <- metaSub[which(metaSub[,1] %in% c(A,B)),]
 
           mat <- expr[,metaSub[,1]]
@@ -3522,10 +3587,12 @@ server <- function(input, output, session) {
             metaSub[,metacol] <- factor(metaSub[,metacol])
             form <- as.formula(paste0("~0 +",metacol))
           }
-          
+
           designA <- eval(substitute(model.matrix(form, data = metaSub)))
-          
+
           fit <- lmFit(mat, design = designA)
+          colnames(designA) <- gsub(" ","_",colnames(designA))
+          colnames(designA) <- gsub("[[:punct:]]","_",colnames(designA))
           contrast.matrix <- makeContrasts(contrasts = paste0(colnames(designA)[1],"-",colnames(designA)[2]), levels = designA)
           fit2 <- contrasts.fit(fit, contrast.matrix)
           fit2 <- eBayes(fit2)
@@ -3534,7 +3601,7 @@ server <- function(input, output, session) {
           top2 <- top1
           incProgress(0.5, detail = "Complete!")
         })
-        
+
         top1
 
       })
@@ -3628,9 +3695,9 @@ server <- function(input, output, session) {
           dataset = dataset[apply(dataset, 1, function(x) !all(x==0)),]
           incProgress(0.5, detail = "Complete!")
         })
-        
+
         dataset
-        
+
 
       })
 
@@ -3660,7 +3727,7 @@ server <- function(input, output, session) {
           incProgress(0.5, detail = "Complete!")
         })
         draw(p, padding = unit(c(50, 50, 2, 2), "mm")) # unit(c(bottom,left,right,top))
-        
+
 
       })
 
@@ -3733,7 +3800,7 @@ server <- function(input, output, session) {
             dataset <- dataset[complete.cases(dataset),]
             incProgress(0.5, detail = "Complete!")
           })
-          
+
           dataset
         }
 
@@ -3753,7 +3820,7 @@ server <- function(input, output, session) {
           clust_method <- input$ClusteringMethodCust
           colAnno <- Cutsom_heat_colAnn()
           dataset <- Custom_heat_data()
-          
+
           p <- suppressMessages(ComplexHeatmap::Heatmap(dataset,
                                                         top_annotation = colAnno,
                                                         clustering_method_rows = clust_method,
@@ -3781,10 +3848,10 @@ server <- function(input, output, session) {
           top_probes <- input$top_x_h                 #Number of top genes to show on heatmap
           top1 <- topgenereact2()
           top_above_cutoff <- top1[which(top1$logFC > abs(FC_cutoff) & top1$P.Value < P_cutoff),]
-          
+
           # Get gene list from Top table
           genelist <- rownames(top_above_cutoff)[c(1:top_probes)]
-          
+
           # Heatmap Calculations
           dataset <- expr[which(rownames(expr) %in% genelist),]
           if (length(dataset) > 0) {
@@ -3816,11 +3883,11 @@ server <- function(input, output, session) {
           #color_choice <- input$ColorPalette3
           clust_rows_opt <- input$ClusRowOptDEG
           clust_cols_opt <- input$ClusColOptDEG
-          
+
           colAnno <- heat_colAnn()
           dataset <- DEG_heat_data()
-          
-          
+
+
           p <- suppressMessages(ComplexHeatmap::Heatmap(dataset,
                                                         top_annotation = colAnno,
                                                         clustering_method_rows = clust_method,
@@ -3831,7 +3898,7 @@ server <- function(input, output, session) {
                                                         border = F))
           incProgress(0.5, detail = "Complete!")
         })
-        
+
         draw(p, padding = unit(c(50, 50, 2, 2), "mm")) # unit(c(bottom,left,right,top))
 
       })
@@ -3949,11 +4016,11 @@ server <- function(input, output, session) {
             #}
             incProgress(0.25, detail = "Complete!")
           })
-          
 
-          
 
-          
+
+
+
 
         }
 
@@ -4670,10 +4737,9 @@ server <- function(input, output, session) {
             GS <- as.character(msigdb.gsea2()[input$msigdbTable_rows_selected,3])
             ## Subset core enriched genes
             genes1 <- as.matrix(gsea.df[which(gsea.df$Description==GS),"core_enrichment"])
-            genes2 <- strsplit(genes1,"/")
+            genes2 <- sort(strsplit(genes1,"/")[[1]])
             GeneSymbol <- as.data.frame(genes2, col.names = "GeneSymbol")
-            GeneSymbol$Rank <- rownames(GeneSymbol)
-            GeneSymbol <- GeneSymbol[,c("Rank","GeneSymbol")]
+            colnames(GeneSymbol)[1] <- "Gene Symbol"
             DT::datatable(GeneSymbol, options = list(paging = F), rownames = F)
           }
         }
@@ -4684,10 +4750,9 @@ server <- function(input, output, session) {
             GS <- as.character(GeneSet2()[input$tab2table_rows_selected,1])
             ## Subset core enriched genes
             genes1 <- as.matrix(gsea.df[which(gsea.df$Description==GS),"core_enrichment"])
-            genes2 <- strsplit(genes1,"/")
+            genes2 <- sort(strsplit(genes1,"/")[[1]])
             GeneSymbol <- as.data.frame(genes2, col.names = "GeneSymbol")
-            GeneSymbol$Rank <- rownames(GeneSymbol)
-            GeneSymbol <- GeneSymbol[,c("Rank","GeneSymbol")]
+            colnames(GeneSymbol)[1] <- "Gene Symbol"
             DT::datatable(GeneSymbol, options = list(paging = F), rownames = F)
           }
         }
@@ -4698,10 +4763,9 @@ server <- function(input, output, session) {
             GS <- as.character(user_gs_mirror()[input$GStable.u_rows_selected,1])
             ## Subset core enriched genes
             genes1 <- as.matrix(gsea.df[which(gsea.df$Description==GS),"core_enrichment"])
-            genes2 <- strsplit(genes1,"/")
+            genes2 <- sort(strsplit(genes1,"/")[[1]])
             GeneSymbol <- as.data.frame(genes2, col.names = "GeneSymbol")
-            GeneSymbol$Rank <- rownames(GeneSymbol)
-            GeneSymbol <- GeneSymbol[,c("Rank","GeneSymbol")]
+            colnames(GeneSymbol)[1] <- "Gene Symbol"
             DT::datatable(GeneSymbol, options = list(paging = F), rownames = F)
           }
         }
@@ -4858,13 +4922,13 @@ server <- function(input, output, session) {
         metacol <- metacol_reactVal()
         expr <- expr_react()
         covars <- input$DEGCovarSelectTab
-        
+
         metaSub <- meta[,c(colnames(meta)[1],metacol,covars)]
         metaSub <- metaSub[complete.cases(metaSub),]
-        
+
         A <- metaSub[which(metaSub[,metacol] == input$comparisonA2.DEG),1]
         B <- metaSub[which(metaSub[,metacol] == input$comparisonB2.DEG),1]
-        
+
         metaSub <- metaSub[which(metaSub[,1] %in% c(A,B)),]
 
         mat <- expr[,metaSub[,1]]
@@ -4876,20 +4940,22 @@ server <- function(input, output, session) {
           metaSub[,metacol] <- factor(metaSub[,metacol])
           form <- as.formula(paste0("~0 +",metacol))
         }
-        
+
         designA <- eval(substitute(model.matrix(form, data = metaSub)))
-        
+
         fit <- lmFit(mat, design = designA)
+        colnames(designA) <- gsub(" ","_",colnames(designA))
+        colnames(designA) <- gsub("[[:punct:]]","_",colnames(designA))
         contrast.matrix <- makeContrasts(contrasts = paste0(colnames(designA)[1],"-",colnames(designA)[2]), levels = designA)
         fit2 <- contrasts.fit(fit, contrast.matrix)
         fit2 <- eBayes(fit2)
         options(digits = 4)
         top1 <- topTable(fit2, coef = 1, n = 300000, sort = "p", p.value = 1.0, adjust.method = "BH")
         top2 <- top1
-        
-        
-        
-        
+
+
+
+
         #A <- meta[which(meta[,metacol] == input$comparisonA2.DEG),1]
         #B <- meta[which(meta[,metacol] == input$comparisonB2.DEG),1]
         #mat <- expr[,c(A,B)]
@@ -8651,29 +8717,43 @@ server <- function(input, output, session) {
           paste(GS,"_leading_edge_genes", ".tsv", sep = "")
         },
         content = function(file){
+          req(datasetInput())
           if (input$tables == 1){
             if (length(input$msigdbTable_rows_selected) > 0){
+              res <- datasetInput()
+              gsea.df <- as.data.frame(res@result)
               GS <- as.character(msigdb.gsea2()[input$msigdbTable_rows_selected,3])
+              ## Subset core enriched genes
+              genes1 <- as.matrix(gsea.df[which(gsea.df$Description==GS),"core_enrichment"])
+              genes2 <- sort(strsplit(genes1,"/")[[1]])
+              GeneSymbol <- as.data.frame(genes2, col.names = "GeneSymbol")
+              colnames(GeneSymbol)[1] <- "Gene Symbol"
             }
           }
           else if (input$tables == 3){
             if (length(input$tab2table_rows_selected) > 0){
+              res <- datasetInput()
+              gsea.df <- as.data.frame(res@result)
               GS <- as.character(GeneSet2()[input$tab2table_rows_selected,1])
+              ## Subset core enriched genes
+              genes1 <- as.matrix(gsea.df[which(gsea.df$Description==GS),"core_enrichment"])
+              genes2 <- sort(strsplit(genes1,"/")[[1]])
+              GeneSymbol <- as.data.frame(genes2, col.names = "GeneSymbol")
+              colnames(GeneSymbol)[1] <- "Gene Symbol"
             }
           }
           else if (input$tables == 5){
             if (length(input$GStable.u_rows_selected) > 0){
+              res <- datasetInput()
+              gsea.df <- as.data.frame(res@result)
               GS <- as.character(user_gs_mirror()[input$GStable.u_rows_selected,1])
+              ## Subset core enriched genes
+              genes1 <- as.matrix(gsea.df[which(gsea.df$Description==GS),"core_enrichment"])
+              genes2 <- sort(strsplit(genes1,"/")[[1]])
+              GeneSymbol <- as.data.frame(genes2, col.names = "GeneSymbol")
+              colnames(GeneSymbol)[1] <- "Gene Symbol"
             }
           }
-          res <- datasetInput()
-          gsea.df <- as.data.frame(res@result)
-          ## Subset core enriched genes
-          genes1 <- as.matrix(gsea.df[which(gsea.df$Description==GS),"core_enrichment"])
-          genes2 <- strsplit(genes1,"/")
-          GeneSymbol <- as.data.frame(genes2, col.names = "GeneSymbol")
-          GeneSymbol$Rank <- rownames(GeneSymbol)
-          GeneSymbol <- GeneSymbol[,c("Rank","GeneSymbol")]
           write_delim(GeneSymbol, file, delim = '\t')
         })
 
@@ -8931,19 +9011,19 @@ server <- function(input, output, session) {
         metaSub_noNA <- metaSub[complete.cases(metaSub),]
         A <- metaSub_noNA[which(metaSub_noNA[,metacol] == input$comparisonA2),1]
         B <- metaSub_noNA[which(metaSub_noNA[,metacol] == input$comparisonB2),1]
-        
+
         form <- paste0("~0 + ",paste(c(metacol,covars),collapse = " + "))
 
         if (nrow(metaSub_noNA) < nrow(metaSub)) {
           RowsTaken <- nrow(metaSub)-nrow(metaSub_noNA)
           paste(RowsTaken," samples removed due to NA values in covariates.",
                 "\nThis volcano plot is comparing group A: ",input$comparisonA2," (N=",length(A),")", " and group B: ",input$comparisonB2," (N=",length(B),")",
-                ".\nGenes with a positive log fold change are upregulated in the ",input$comparisonA2, 
+                ".\nGenes with a positive log fold change are upregulated in the ",input$comparisonA2,
                 " group.\nGenes with a negative log fold change are upregulated in the ",input$comparisonB2, " group.",
                 "\nFormula: ",form, sep = "")
         } else {
           paste("This volcano plot is comparing group A: ",input$comparisonA2," (N=",length(A),")", " and group B: ",input$comparisonB2," (N=",length(B),")",
-                ".\nGenes with a positive log fold change are upregulated in the ",input$comparisonA2, 
+                ".\nGenes with a positive log fold change are upregulated in the ",input$comparisonA2,
                 " group.\nGenes with a negative log fold change are upregulated in the ",input$comparisonB2, " group.",
                 "\nFormula: ",form, sep = "")
         }
@@ -8958,21 +9038,21 @@ server <- function(input, output, session) {
         A <- metaSub_noNA[which(metaSub_noNA[,metacol] == input$comparisonA2),1]
         B <- metaSub_noNA[which(metaSub_noNA[,metacol] == input$comparisonB2),1]
         form <- paste0("~0 + ",paste(c(metacol,covars),collapse = " + "))
-        
+
         if (nrow(metaSub_noNA) < nrow(metaSub)) {
           RowsTaken <- nrow(metaSub)-nrow(metaSub_noNA)
           paste(RowsTaken," samples removed due to NA values in covariates.",
                 "\nThis MA plot is comparing group A: ",input$comparisonA2," (N=",length(A),")", " and group B: ",input$comparisonB2," (N=",length(B),")",
-                ".\nGenes with a positive log fold change are upregulated in the ",input$comparisonA2, 
+                ".\nGenes with a positive log fold change are upregulated in the ",input$comparisonA2,
                 " group.\nGenes with a negative log fold change are upregulated in the ",input$comparisonB2, " group.",
                 "\nFormula: ",form, sep = "")
         } else {
           paste("This MA plot is comparing group A: ",input$comparisonA2," (N=",length(A),")", " and group B: ",input$comparisonB2," (N=",length(B),")",
-                ".\nGenes with a positive log fold change are upregulated in the ",input$comparisonA2, 
+                ".\nGenes with a positive log fold change are upregulated in the ",input$comparisonA2,
                 " group.\nGenes with a negative log fold change are upregulated in the ",input$comparisonB2, " group.",
                 "\nFormula: ",form, sep = "")
         }
-                
+
       })
 
       output$upregpath_text <- renderText({
@@ -8984,7 +9064,7 @@ server <- function(input, output, session) {
       })
 
       output$degtext <- renderText({
-        
+
         meta <- meta_react()
         metacol <- metacol_reactVal()
         covars <- input$DEGCovarSelectTab
@@ -8993,7 +9073,7 @@ server <- function(input, output, session) {
         A <- metaSub_noNA[which(metaSub_noNA[,metacol] == input$comparisonA2),1]
         B <- metaSub_noNA[which(metaSub_noNA[,metacol] == input$comparisonB2),1]
         form <- paste0("~0 + ",paste(c(metacol,covars),collapse = " + "))
-        
+
         if (nrow(metaSub_noNA) < nrow(metaSub)) {
           RowsTaken <- nrow(metaSub)-nrow(metaSub_noNA)
           paste(RowsTaken," samples removed due to NA values in covariates.",
