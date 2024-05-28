@@ -2701,7 +2701,16 @@ server <- function(input, output, session) {
           gs_names <- names(gs2())
         }
         if (input$tables == 5) {
-          gs_names <- names(RDataListGen())
+          gmt <- GStable.ubg()
+          colnames(gmt) <- c("term","gene")
+          #gs_name <- user_gs_mirror()[input$GStable.u_rows_selected,1]
+          #gmt_sub <- gmt[which(gmt$term == gs_name),]
+          GS <- list()
+          for (i in unique(gmt[,1])){
+            GS[[i]] <- gmt[gmt[,1] == i,]$gene
+          }
+          #GS <- RDataListGen()[geneset_names]()[(user_gs_mirror()[input$GStable.u_rows_selected,1])]
+          gs_names <- names(GS)
         }
         # take NA out if number of gs is less than 50
         gs_selected <- gs_names[1:3]
@@ -3183,10 +3192,10 @@ server <- function(input, output, session) {
       })
 
       #render action button to create RData list for ssGSEA boxplots
-      output$user.RDataButton <- renderUI({
-        req(input$user.gmt.file)
-        actionButton("user.RData.Gen", "Generate RData list for ssGSEA Boxplot and Heatmap")
-      })
+      #output$user.RDataButton <- renderUI({
+      #  req(input$user.gmt.file)
+      #  actionButton("user.RData.Gen", "Generate RData list for ssGSEA Boxplot and Heatmap")
+      #})
 
       #render UI for hover text in volcano plot
       output$hover_info <- renderUI({
@@ -3309,7 +3318,16 @@ server <- function(input, output, session) {
           gs_names_start <- names(gs2())[1:3]
         }
         else if (input$tables == 5) {
-          gs_names_start <- names(RDataListGen())[1:3]
+          gmt <- GStable.ubg()
+          colnames(gmt) <- c("term","gene")
+          #gs_name <- user_gs_mirror()[input$GStable.u_rows_selected,1]
+          #gmt_sub <- gmt[which(gmt$term == gs_name),]
+          GS <- list()
+          for (i in unique(gmt[,1])){
+            GS[[i]] <- gmt[gmt[,1] == i,]$gene
+          }
+          #GS <- RDataListGen()[geneset_names]()[(user_gs_mirror()[input$GStable.u_rows_selected,1])]
+          gs_names_start <- names(GS)[1:3]
         }
         gs_names_start
 
@@ -3375,19 +3393,20 @@ server <- function(input, output, session) {
       })
 
       #reactive to generate RData list
-      RDataListGen <- eventReactive(input$user.RData.Gen, {
-        gmt <- GStable.ubg()
-        colnames(gmt) <- c("term","gene")
-        RData.u <- list()
-        for (i in unique(gmt[,1])){
-          RData.u[[i]] <- gmt[gmt[,1] == i,]$gene
-        }
-        RData.u
-      })
+      #RDataListGen <- eventReactive(input$user.RData.Gen, {
+      #  gmt <- GStable.ubg()
+      #  colnames(gmt) <- c("term","gene")
+      #  RData.u <- list()
+      #  for (i in unique(gmt[,1])){
+      #    RData.u[[i]] <- gmt[gmt[,1] == i,]$gene
+      #  }
+      #  RData.u
+      #})
 
       #reactive for ssGSEA function
       ssGSEAfunc <- reactive({
         A <- A_raw()
+        scoreMethod <- input$ssGSEAtype
         if (input$tables == 1) {
           GS <- gs()[(msigdb.gsea2()[input$msigdbTable_rows_selected,3])]
         }
@@ -3395,9 +3414,36 @@ server <- function(input, output, session) {
           GS <- gs2()[(GeneSet2()[input$tab2table_rows_selected,1])]
         }
         if (input$tables == 5) {
-          GS <- RDataListGen()[(user_gs_mirror()[input$GStable.u_rows_selected,1])]
+          gmt <- GStable.ubg()
+          colnames(gmt) <- c("term","gene")
+          gs_name <- user_gs_mirror()[input$GStable.u_rows_selected,1]
+          gmt_sub <- gmt[which(gmt$term == gs_name),]
+          GS <- list()
+          for (i in unique(gmt_sub[,1])){
+            GS[[i]] <- gmt_sub[gmt_sub[,1] == i,]$gene
+          }
+          #GS <- RDataListGen()[geneset_names]()[(user_gs_mirror()[input$GStable.u_rows_selected,1])]
         }
-        GSVA::gsva(A, GS, method = input$ssGSEAtype, verbose = F)
+        if (as.numeric(tools::file_path_sans_ext(packageVersion("GSVA"))) >= 1.5) {
+          if (scoreMethod == "ssgsea") {
+            ssGSEA_param <- GSVA::ssgseaParam(A,GS)
+          } else if (scoreMethod == "gsva") {
+            ssGSEA_param <- GSVA::gsvaParam(A,GS)
+          } else if (scoreMethod == "plage") {
+            ssGSEA_param <- GSVA::plageParam(A,GS)
+          } else if (scoreMethod == "zscore") {
+            ssGSEA_param <- GSVA::zscoreParam(A,GS)
+          }
+          ssGSEA <- GSVA::gsva(ssGSEA_param)
+          #ssGSEA <- as.data.frame(t(ssGSEA))
+          #ssGSEA[,SampleNameCol] <- rownames(ssGSEA)
+        } else {
+          ssGSEA <- gsva(A,GS,method = scoreMethod, verbose = FALSE)
+          #ssGSEA <- as.data.frame(t(ssGSEA))
+          #ssGSEA[,SampleNameCol] <- rownames(ssGSEA)
+        }
+        ssGSEA
+        #GSVA::gsva(A, GS, method = input$ssGSEAtype, verbose = F)
       })
 
       #create background GMT from user input gene set table
@@ -3500,22 +3546,31 @@ server <- function(input, output, session) {
         metacol <- metacol_reactVal()
         expr <- expr_react()
         covars <- input$DEGCovarSelect
+        groupA <- input$comparisonA2
+        groupB <- input$comparisonB2
 
         metaSub <- meta[,c(colnames(meta)[1],metacol,covars)]
         metaSub <- metaSub[complete.cases(metaSub),]
 
-        A <- metaSub[which(metaSub[,metacol] == input$comparisonA2),1]
-        B <- metaSub[which(metaSub[,metacol] == input$comparisonB2),1]
+        A <- metaSub[which(metaSub[,metacol] == groupA),1]
+        B <- metaSub[which(metaSub[,metacol] == groupB),1]
 
         metaSub <- metaSub[which(metaSub[,1] %in% c(A,B)),]
+        colnames(metaSub) <- gsub(" ","_",colnames(metaSub))
+        colnames(metaSub) <- gsub("[[:punct:]]","_",colnames(metaSub))
+        metacol <- gsub(" ","_",metacol)
+        metacol <- gsub("[[:punct:]]","_",metacol)
+        covars <- gsub(" ","_",covars)
+        covars <- gsub("[[:punct:]]","_",covars)
+        metaSub[,metacol] <- factor(metaSub[,metacol], levels = c(groupA,groupB))
 
         mat <- expr[,metaSub[,1]]
         mat <- log2(mat + 1.0)
         if (isTruthy(covars)) {
-          metaSub[,-1] <- lapply(metaSub[,-1], factor)
+          metaSub[,covars] <- lapply(metaSub[,covars,drop = F], factor)
           form <- as.formula(paste0("~0 +",paste(c(metacol,covars),collapse = "+")))
         } else {
-          metaSub[,metacol] <- factor(metaSub[,metacol])
+          #metaSub[,metacol] <- factor(metaSub[,metacol])
           form <- as.formula(paste0("~0 +",metacol))
         }
 
@@ -3577,14 +3632,21 @@ server <- function(input, output, session) {
           B <- metaSub[which(metaSub[,metacol] == B_choice),1]
 
           metaSub <- metaSub[which(metaSub[,1] %in% c(A,B)),]
+          colnames(metaSub) <- gsub(" ","_",colnames(metaSub))
+          colnames(metaSub) <- gsub("[[:punct:]]","_",colnames(metaSub))
+          metacol <- gsub(" ","_",metacol)
+          metacol <- gsub("[[:punct:]]","_",metacol)
+          covars <- gsub(" ","_",covars)
+          covars <- gsub("[[:punct:]]","_",covars)
+          metaSub[,metacol] <- factor(metaSub[,metacol], levels = c(groupA,groupB))
 
           mat <- expr[,metaSub[,1]]
           mat <- log2(mat + 1.0)
           if (isTruthy(covars)) {
-            metaSub[,-1] <- lapply(metaSub[,-1], factor)
+            metaSub[,covars] <- lapply(metaSub[,covars,drop = F], factor)
             form <- as.formula(paste0("~0 +",paste(c(metacol,covars),collapse = "+")))
           } else {
-            metaSub[,metacol] <- factor(metaSub[,metacol])
+            #metaSub[,metacol] <- factor(metaSub[,metacol])
             form <- as.formula(paste0("~0 +",metacol))
           }
 
@@ -4105,9 +4167,37 @@ server <- function(input, output, session) {
           GS <- gs2()[geneset_names]
         }
         if (input$tables == 5) {
-          GS <- RDataListGen()[geneset_names]
+          gmt <- GStable.ubg()
+          colnames(gmt) <- c("term","gene")
+          #gs_name <- user_gs_mirror()[input$GStable.u_rows_selected,1]
+          gmt_sub <- gmt[which(gmt$term %in% geneset_names),]
+          GS <- list()
+          for (i in unique(gmt_sub[,1])){
+            GS[[i]] <- gmt_sub[gmt_sub[,1] == i,]$gene
+          }
+          #GS <- RDataListGen()[geneset_names]
         }
-        ssgsea <- gsva(A, GS, method = scoreMethod, verbose = F)
+        
+        if (as.numeric(tools::file_path_sans_ext(packageVersion("GSVA"))) >= 1.5) {
+          if (scoreMethod == "ssgsea") {
+            ssGSEA_param <- GSVA::ssgseaParam(A,GS)
+          } else if (scoreMethod == "gsva") {
+            ssGSEA_param <- GSVA::gsvaParam(A,GS)
+          } else if (scoreMethod == "plage") {
+            ssGSEA_param <- GSVA::plageParam(A,GS)
+          } else if (scoreMethod == "zscore") {
+            ssGSEA_param <- GSVA::zscoreParam(A,GS)
+          }
+          ssgsea <- GSVA::gsva(ssGSEA_param)
+          #ssGSEA <- as.data.frame(t(ssGSEA))
+          #ssGSEA[,SampleNameCol] <- rownames(ssGSEA)
+        } else {
+          ssgsea <- gsva(A,GS,method = scoreMethod, verbose = FALSE)
+          #ssGSEA <- as.data.frame(t(ssGSEA))
+          #ssGSEA[,SampleNameCol] <- rownames(ssGSEA)
+        }
+        
+        #ssgsea <- gsva(A, GS, method = scoreMethod, verbose = F)
         ssgsea2 = t(ssgsea)
         ssgsea3 = apply(ssgsea2, 2, scale);
         ssgsea4 = apply(ssgsea3, 1, rev)
@@ -4296,9 +4386,38 @@ server <- function(input, output, session) {
           GS <- gs2()[geneset_names]
         }
         if (input$tables == 5) {
-          GS <- RDataListGen()[geneset_names]
+          gmt <- GStable.ubg()
+          colnames(gmt) <- c("term","gene")
+          #gs_name <- user_gs_mirror()[input$GStable.u_rows_selected,1]
+          gmt_sub <- gmt[which(gmt$term %in% geneset_names),]
+          GS <- list()
+          for (i in unique(gmt_sub[,1])){
+            GS[[i]] <- gmt_sub[gmt_sub[,1] == i,]$gene
+          }
+          #GS <- RDataListGen()[geneset_names]
         }
-        ssgsea <- gsva(A, GS, method = scoreMethod, verbose = F, ssgsea.norm = F)
+        
+        if (as.numeric(tools::file_path_sans_ext(packageVersion("GSVA"))) >= 1.5) {
+          if (scoreMethod == "ssgsea") {
+            ssGSEA_param <- GSVA::ssgseaParam(A,GS)
+          } else if (scoreMethod == "gsva") {
+            ssGSEA_param <- GSVA::gsvaParam(A,GS)
+          } else if (scoreMethod == "plage") {
+            ssGSEA_param <- GSVA::plageParam(A,GS)
+          } else if (scoreMethod == "zscore") {
+            ssGSEA_param <- GSVA::zscoreParam(A,GS)
+          }
+          ssgsea <- GSVA::gsva(ssGSEA_param)
+          #ssGSEA <- as.data.frame(t(ssGSEA))
+          #ssGSEA[,SampleNameCol] <- rownames(ssGSEA)
+        } else {
+          ssgsea <- gsva(A,GS,method = scoreMethod, verbose = FALSE, ssgsea.norm = F)
+          #ssGSEA <- as.data.frame(t(ssGSEA))
+          #ssGSEA[,SampleNameCol] <- rownames(ssGSEA)
+        }
+        
+        
+        #ssgsea <- gsva(A, GS, method = scoreMethod, verbose = F, ssgsea.norm = F)
 
         SD=apply(ssgsea,1, sd, na.rm = TRUE) #get SD
 
@@ -4523,9 +4642,38 @@ server <- function(input, output, session) {
           GS <- gs2()[geneset_names]
         }
         if (input$tables == 5) {
-          GS <- RDataListGen()[geneset_names]
+          gmt <- GStable.ubg()
+          colnames(gmt) <- c("term","gene")
+          #gs_name <- user_gs_mirror()[input$GStable.u_rows_selected,1]
+          gmt_sub <- gmt[which(gmt$term %in% geneset_names),]
+          GS <- list()
+          for (i in unique(gmt_sub[,1])){
+            GS[[i]] <- gmt_sub[gmt_sub[,1] == i,]$gene
+          }
+          #GS <- RDataListGen()[geneset_names]
         }
-        ssgsea <- gsva(A, GS, method = scoreMethod, verbose = F, ssgsea.norm = F)
+        
+        
+        if (as.numeric(tools::file_path_sans_ext(packageVersion("GSVA"))) >= 1.5) {
+          if (scoreMethod == "ssgsea") {
+            ssGSEA_param <- GSVA::ssgseaParam(A,GS)
+          } else if (scoreMethod == "gsva") {
+            ssGSEA_param <- GSVA::gsvaParam(A,GS)
+          } else if (scoreMethod == "plage") {
+            ssGSEA_param <- GSVA::plageParam(A,GS)
+          } else if (scoreMethod == "zscore") {
+            ssGSEA_param <- GSVA::zscoreParam(A,GS)
+          }
+          ssgsea <- GSVA::gsva(ssGSEA_param)
+          #ssGSEA <- as.data.frame(t(ssGSEA))
+          #ssGSEA[,SampleNameCol] <- rownames(ssGSEA)
+        } else {
+          ssgsea <- gsva(A,GS,method = scoreMethod, verbose = FALSE, ssgsea.norm = F)
+          #ssGSEA <- as.data.frame(t(ssGSEA))
+          #ssGSEA[,SampleNameCol] <- rownames(ssGSEA)
+        }
+        
+        #ssgsea <- gsva(A, GS, method = scoreMethod, verbose = F, ssgsea.norm = F)
 
         SD=apply(ssgsea,1, sd, na.rm = TRUE) #get SD
 
@@ -4930,14 +5078,21 @@ server <- function(input, output, session) {
         B <- metaSub[which(metaSub[,metacol] == input$comparisonB2.DEG),1]
 
         metaSub <- metaSub[which(metaSub[,1] %in% c(A,B)),]
+        colnames(metaSub) <- gsub(" ","_",colnames(metaSub))
+        colnames(metaSub) <- gsub("[[:punct:]]","_",colnames(metaSub))
+        metacol <- gsub(" ","_",metacol)
+        metacol <- gsub("[[:punct:]]","_",metacol)
+        covars <- gsub(" ","_",covars)
+        covars <- gsub("[[:punct:]]","_",covars)
+        metaSub[,metacol] <- factor(metaSub[,metacol], levels = c(groupA,groupB))
 
         mat <- expr[,metaSub[,1]]
         mat <- log2(mat + 1.0)
         if (isTruthy(covars)) {
-          metaSub[,-1] <- lapply(metaSub[,-1], factor)
+          metaSub[,covars] <- lapply(metaSub[,covars,drop = F], factor)
           form <- as.formula(paste0("~0 +",paste(c(metacol,covars),collapse = "+")))
         } else {
-          metaSub[,metacol] <- factor(metaSub[,metacol])
+          #metaSub[,metacol] <- factor(metaSub[,metacol])
           form <- as.formula(paste0("~0 +",metacol))
         }
 
@@ -8393,7 +8548,8 @@ server <- function(input, output, session) {
             paste('ssGSEAscore_',names(gs2()[(GeneSet2()[input$tab2table_rows_selected,1])]),'.tsv',sep = '')
           }
           else if (input$tables == 5) {
-            paste('ssGSEAscore_',names(RDataListGen()[(GStable.ubg()[input$GStable.u_rows_selected,1])]),'.tsv',sep = '')
+            paste('ssGSEAscore_',user_gs_mirror()[input$GStable.u_rows_selected,1],'.tsv',sep = '')
+            #paste('ssGSEAscore_',names(RDataListGen()[(GStable.ubg()[input$GStable.u_rows_selected,1])]),'.tsv',sep = '')
           }
         },
         content = function(file) {
@@ -8406,7 +8562,15 @@ server <- function(input, output, session) {
             GS <- gs2()[(GeneSet2()[input$tab2table_rows_selected,1])]
           }
           else if (input$tables == 5) {
-            GS <- RDataListGen()[(GStable.ubg()[input$GStable.u_rows_selected,1])]
+            gmt <- GStable.ubg()
+            colnames(gmt) <- c("term","gene")
+            gs_name <- user_gs_mirror()[input$GStable.u_rows_selected,1]
+            gmt_sub <- gmt[which(gmt$term == gs_name),]
+            GS <- list()
+            for (i in unique(gmt_sub[,1])){
+              GS[[i]] <- gmt_sub[gmt_sub[,1] == i,]$gene
+            }
+            #GS <- RDataListGen()[geneset_names]()[(user_gs_mirror()[input$GStable.u_rows_selected,1])]
           }
           ssgsea <- ssGSEAfunc()
           ssgsea2 <- as.data.frame(t(ssgsea))
