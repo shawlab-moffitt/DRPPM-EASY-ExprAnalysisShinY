@@ -1,4 +1,4 @@
-type_id <- paste0("v2.1.20240620")
+type_id <- paste0("v2.0.20240621")
 
 # User Data Input --------------------------------------------------------------
 # Project Name
@@ -312,7 +312,7 @@ DataInput_tab <- tabPanel("Data Input",
                               fluidRow(
                                 column(6, style = 'margin-top:-20px;',
                                        checkboxGroupInput("RawCountQuantNorm",label = NULL,
-                                                          choices = c("Exponentiate","Perform Normalization","Quantile Normalization","Filter Matrix"))
+                                                          choices = c("Check if data is logged","Perform Normalization","Quantile Normalization","Filter Matrix"))
                                 ),
                                 column(6, style = 'margin-top:-20px;',
                                        uiOutput("rendRawCountNorm")
@@ -437,6 +437,7 @@ Data_Exploration_tab <- tabPanel("Data Exploration",
                                          )
                                          )
                                        ),
+                                       ### Sidebar --------------------------------------------
                                        
                                        uiOutput("rendSubsetCol"),
                                        uiOutput("rendSubsetCrit"),
@@ -451,7 +452,6 @@ Data_Exploration_tab <- tabPanel("Data Exploration",
                                                                          uiOutput("rendGroupColAvgHeat")
                                                         ),
                                        ),
-                                       ### Sidebar --------------------------------------------
                                        #### Heatmaps
                                        
                                        ##### MVG Heatmap
@@ -573,14 +573,28 @@ Data_Exploration_tab <- tabPanel("Data Exploration",
                                                                            tabPanel("Data Input",
                                                                                     p(),
                                                                                     uiOutput("rendDEGcolHeat"),
-                                                                                    fluidRow(
-                                                                                      column(6,
-                                                                                             uiOutput("rendcomparisonA2_h")
-                                                                                      ),
-                                                                                      column(6,
-                                                                                             uiOutput("rendcomparisonB2_h")
-                                                                                      )
+                                                                                    radioButtons("volcanoCompChoice4","Comparison Method:",
+                                                                                                 choices = c("Two groups","One group against all other"), inline = T),
+                                                                                    conditionalPanel(condition = "input.volcanoCompChoice4 == 'Two groups'",
+                                                                                                     fluidRow(
+                                                                                                       column(6,
+                                                                                                              uiOutput("rendcomparisonA2_h")
+                                                                                                       ),
+                                                                                                       column (6,
+                                                                                                               uiOutput("rendcomparisonB2_h"))
+                                                                                                     )
                                                                                     ),
+                                                                                    conditionalPanel(condition = "input.volcanoCompChoice4 == 'One group against all other'",
+                                                                                                     uiOutput("rendcomparisonA2_h_one")
+                                                                                    ),
+                                                                                    #fluidRow(
+                                                                                    #  column(6,
+                                                                                    #         uiOutput("rendcomparisonA2_h")
+                                                                                    #  ),
+                                                                                    #  column(6,
+                                                                                    #         uiOutput("rendcomparisonB2_h")
+                                                                                    #  )
+                                                                                    #),
                                                                                     selectizeInput("DEGCovarSelectHeat","Select Covariates:", choices = NULL, selected = 1, multiple = T),
                                                                                     fluidRow(
                                                                                       column(6,
@@ -727,27 +741,117 @@ Data_Exploration_tab <- tabPanel("Data Exploration",
                                                         tabsetPanel(
                                                           tabPanel("Data Input",
                                                                    p(),
-                                                                   h4("Gene Selection:"),
-                                                                   div(DT::dataTableOutput("GeneListTable2"), style = "font-size:10px"
-                                                                       )
+                                                                   uiOutput("rendBPgroupCriteria"),
+                                                                   uiOutput("rendBPgroupSelection"),
+                                                                   #selectInput("BPFeatureCategory","Select Feature Type:",
+                                                                               #c("Matrix Features","Meta Features","Immune Deconvolution Features")),
+                                                                   #            c("Matrix Features","Meta Features")),
+                                                                   radioButtons("BPFeatureCategory","Select Feature Type:",
+                                                                                choices = c("Matrix Features","Meta Features"), inline = T),
+                                                                   uiOutput("rendImmuneDeconvMethods"),
+                                                                   fluidRow(
+                                                                     column(9, style = 'padding-right:2px;',
+                                                                            selectizeInput("BPFeatSelection", label = "Select Feature:", choices = NULL,
+                                                                                           multiple = F, selected = 1,width = "100%")
+                                                                     ),
+                                                                     column(3, style = 'padding-left:2px;',
+                                                                            selectInput("BPlogOpt","Log:", choices = c("No Log","Log2","Log2+1","Log10","Log10+1"),
+                                                                                        selected = "Log2+1")
+                                                                     )
                                                                    ),
+                                                                   fluidRow(
+                                                                     column(5, style = 'padding-right:2px;',
+                                                                            selectInput("BPplotstatComp","Stat Test Method:",
+                                                                                        choices = c("none","wilcox.test","t.test","kruskal.test","anova"))
+                                                                     ),
+                                                                     column(4, style = 'padding-left:4px;padding-right:4px;',
+                                                                            checkboxInput("BPplotsampledots","Include Dot Annotation", value = F)
+                                                                     ),
+                                                                     column(3, style = 'padding-left:4px;',
+                                                                            numericInput("BPplotDotSize","Dot Size:", value = 2, step = 0.25)
+                                                                     )
+                                                                   ),
+                                                                   fluidRow(
+                                                                     column(5, style = 'padding-right:2px;',
+                                                                            selectInput("BPplotXaxOrder","X-Axis Group Order",
+                                                                                        choices = c("Ascending","Descending","Not Specificed"))
+                                                                     ),
+                                                                     column(4, style = 'padding-left:4px;padding-right:4px;',
+                                                                            checkboxInput("BPremoveSingles","Remove groups 1 or less samples", value = T)
+                                                                     ),
+                                                                     column(3, style = 'padding-left:4px;',
+                                                                            checkboxInput("BPflipBP","Flip Axis", value = F),
+                                                                            radioButtons("BPorViolin",NULL,choices = c("Box Plot","Violin Plot"), selected = "Box Plot")
+                                                                     )
+                                                                   )
+                                                                   ),
+                                                                   #h4("Gene Selection:"),
+                                                                   #div(DT::dataTableOutput("GeneListTable2"), style = "font-size:10px"
+                                                                  #     )
+                                                                  # ),
                                                           tabPanel("Figure Settings",
                                                                    p(),
                                                                    fluidRow(
-                                                                     column(4,
-                                                                            numericInput("boxplot1TitleSize","Title Font Size:",
-                                                                                         value = 20, step = 1)
+                                                                     column(6,
+                                                                            selectInput("BPTheme","Theme:",
+                                                                                        choices = c("Minimal" = "theme_minimal","Grey" = "theme_grey","BW" = "theme_bw",
+                                                                                                    "Linedraw" = "theme_linedraw","Light" = "theme_light","Dark" = "theme_dark",
+                                                                                                    "Classic" = "theme_classic","Void" = "theme_void","Test" = "theme_test"))
                                                                      ),
+                                                                     column(6,
+                                                                            selectInput("BPxAxisOrient","X-Axis Label Angle",
+                                                                                        choices = c(90,45,0))
+                                                                     )
+                                                                   ),
+                                                                   fluidRow(
+                                                                     column(6,
+                                                                            textInput("BPplotHeight","Plot Height:",value = "500px")
+                                                                     ),
+                                                                     column(6,
+                                                                            textInput("BPplotWidth","Plot Width:",value = "100%")
+                                                                     )
+                                                                   ),
+                                                                   fluidRow(
                                                                      column(4,
-                                                                            numericInput("boxplot1AxisSize","Axis Font Size:",
+                                                                            numericInput("BPplot1XAxisSize","X-Axis Font:",
                                                                                          value = 16, step = 1)
                                                                      ),
                                                                      column(4,
-                                                                            numericInput("boxplotDot2", "Dot Size:",
-                                                                                         min = 0, max = 5,
-                                                                                         value = 0.5, step = .25)
+                                                                            numericInput("BPplot1YAxisSize","Y-Axis Font:",
+                                                                                         value = 16, step = 1)
+                                                                     ),
+                                                                     column(4,
+                                                                            textInput("BPplot1YAxisLim","Y-Axis Limit:",
+                                                                                      placeholder = "min,max")
+                                                                     )
+                                                                   ),
+                                                                   h4("Figure Download Parameters"),
+                                                                   fluidRow(
+                                                                     column(4,
+                                                                            numericInput("BPHeight","Height",value = 8)
+                                                                     ),
+                                                                     column(4,
+                                                                            numericInput("BPWidth","Width",value = 10)
+                                                                     ),
+                                                                     column(4,
+                                                                            selectInput("BPUnits","Units",choices = c("in","cm","mm","px"))
                                                                      )
                                                                    )
+                                                                   #fluidRow(
+                                                                   #  column(4,
+                                                                   #         numericInput("boxplot1TitleSize","Title Font Size:",
+                                                                   #                      value = 20, step = 1)
+                                                                   #  ),
+                                                                   #  column(4,
+                                                                   #         numericInput("boxplot1AxisSize","Axis Font Size:",
+                                                                   #                      value = 16, step = 1)
+                                                                   #  ),
+                                                                   #  column(4,
+                                                                   #         numericInput("boxplotDot2", "Dot Size:",
+                                                                   #                      min = 0, max = 5,
+                                                                   #                      value = 0.5, step = .25)
+                                                                   #  )
+                                                                   #)
                                                         )
                                                         )
                                                         
@@ -873,7 +977,9 @@ Data_Exploration_tab <- tabPanel("Data Exploration",
                                          tabPanel("Box Plot",
                                                   p(),
                                                   #withSpinner(jqui_resizable(plotOutput('boxplot3', width = "100%", height = "600px")), type = 6),
-                                                  jqui_resizable(plotOutput('boxplot3', width = "100%", height = "600px")),
+                                                  #jqui_resizable(plotOutput('boxplot3', width = "100%", height = "600px")),
+                                                  jqui_resizable(plotOutput('uncorrected_Box_plot', width = "100%", height = "600px")),
+                                                  DT::dataTableOutput("DataExplor_Box_plot_df"),
                                                   fluidRow(
                                                     downloadButton("dnldPlotSVG_exprBox","Download as SVG"),
                                                     downloadButton("dnldPlotPDF_exprBox","Download as PDF")
@@ -914,13 +1020,20 @@ DGE_tab <- tabPanel("Differential Expression Analysis",
                                            tabsetPanel(
                                              tabPanel("Data Input",
                                                       h4("Condition Selection:"),
-                                                      fluidRow(
-                                                        column(6,
-                                                               uiOutput("rendcomparisonA2")
-                                                               ),
-                                                        column (6,
-                                                                uiOutput("rendcomparisonB2"))
-                                                      ),
+                                                      radioButtons("volcanoCompChoice","Comparison Method:",
+                                                                   choices = c("Two groups","One group against all other"), inline = T),
+                                                      conditionalPanel(condition = "input.volcanoCompChoice == 'Two groups'",
+                                                                       fluidRow(
+                                                                         column(6,
+                                                                                uiOutput("rendcomparisonA2")
+                                                                         ),
+                                                                         column (6,
+                                                                                 uiOutput("rendcomparisonB2"))
+                                                                       )
+                                                                       ),
+                                                      conditionalPanel(condition = "input.volcanoCompChoice == 'One group against all other'",
+                                                                       uiOutput("rendcomparisonA2_one")
+                                                                       ),
                                                       selectizeInput("DEGCovarSelect","Select Covariates:", choices = NULL, selected = 1, multiple = T),
                                                       h4("Threshold Parameters"),
                                                       fluidRow(
@@ -982,26 +1095,112 @@ DGE_tab <- tabPanel("Differential Expression Analysis",
                                            tabsetPanel(
                                              tabPanel("Data Input",
                                                       p(),
-                                                      h4("Gene Selection:"),
-                                                      div(DT::dataTableOutput("GeneListTable"), style = "font-size:10px")
+                                                      uiOutput("rendBPgroupCriteria2"),
+                                                      uiOutput("rendBPgroupSelection2"),
+                                                      radioButtons("BPFeatureCategory2","Select Feature Type:",
+                                                                   choices = c("Matrix Features","Meta Features"), inline = T),
+                                                      uiOutput("rendImmuneDeconvMethods2"),
+                                                      fluidRow(
+                                                        column(9, style = 'padding-right:2px;',
+                                                               selectizeInput("BPFeatSelection2", label = "Select Feature:", choices = NULL,
+                                                                              multiple = F, selected = 1,width = "100%")
+                                                        ),
+                                                        column(3, style = 'padding-left:2px;',
+                                                               selectInput("BPlogOpt2","Log:", choices = c("No Log","Log2","Log2+1","Log10","Log10+1"),
+                                                                           selected = "Log2+1")
+                                                        )
+                                                      ),
+                                                      fluidRow(
+                                                        column(5, style = 'padding-right:2px;',
+                                                               selectInput("BPplotstatComp2","Stat Test Method:",
+                                                                           choices = c("none","wilcox.test","t.test","kruskal.test","anova"))
+                                                        ),
+                                                        column(4, style = 'padding-left:4px;padding-right:4px;',
+                                                               checkboxInput("BPplotsampledots2","Include Dot Annotation", value = F)
+                                                        ),
+                                                        column(3, style = 'padding-left:4px;',
+                                                               numericInput("BPplotDotSize2","Dot Size:", value = 2, step = 0.25)
+                                                        )
+                                                      ),
+                                                      fluidRow(
+                                                        column(5, style = 'padding-right:2px;',
+                                                               selectInput("BPplotXaxOrder2","X-Axis Group Order",
+                                                                           choices = c("Ascending","Descending","Not Specificed"))
+                                                        ),
+                                                        column(4, style = 'padding-left:4px;padding-right:4px;',
+                                                               checkboxInput("BPremoveSingles2","Remove groups 1 or less samples", value = T)
+                                                        ),
+                                                        column(3, style = 'padding-left:4px;',
+                                                               checkboxInput("BPflipBP2","Flip Axis", value = F),
+                                                               radioButtons("BPorViolin2",NULL,choices = c("Box Plot","Violin Plot"), selected = "Box Plot")
+                                                        )
+                                                      )
+                                                      #h4("Gene Selection:"),
+                                                      #div(DT::dataTableOutput("GeneListTable"), style = "font-size:10px")
                                                       ),
                                              tabPanel("Figure Settings",
                                                       p(),
                                                       fluidRow(
-                                                        column(4,
-                                                               numericInput("boxplot2TitleSize","Title Font Size",
-                                                                            value = 20, step = 1)
+                                                        column(6,
+                                                               selectInput("BPTheme2","Theme:",
+                                                                           choices = c("Minimal" = "theme_minimal","Grey" = "theme_grey","BW" = "theme_bw",
+                                                                                       "Linedraw" = "theme_linedraw","Light" = "theme_light","Dark" = "theme_dark",
+                                                                                       "Classic" = "theme_classic","Void" = "theme_void","Test" = "theme_test"))
                                                         ),
+                                                        column(6,
+                                                               selectInput("BPxAxisOrient2","X-Axis Label Angle",
+                                                                           choices = c(90,45,0))
+                                                        )
+                                                      ),
+                                                      fluidRow(
+                                                        column(6,
+                                                               textInput("BPplotHeight2","Plot Height:",value = "500px")
+                                                        ),
+                                                        column(6,
+                                                               textInput("BPplotWidth2","Plot Width:",value = "100%")
+                                                        )
+                                                      ),
+                                                      fluidRow(
                                                         column(4,
-                                                               numericInput("boxplot2AxisSize","Axis Font Size",
+                                                               numericInput("BPplot1XAxisSize2","X-Axis Font:",
                                                                             value = 16, step = 1)
                                                         ),
                                                         column(4,
-                                                               numericInput("boxplotDot", "Dot Size:",
-                                                                            min = 0, max = 5,
-                                                                            value = 0.5, step = .25)
+                                                               numericInput("BPplot1YAxisSize2","Y-Axis Font:",
+                                                                            value = 16, step = 1)
+                                                        ),
+                                                        column(4,
+                                                               textInput("BPplot1YAxisLim2","Y-Axis Limit:",
+                                                                         placeholder = "min,max")
+                                                        )
+                                                      ),
+                                                      h4("Figure Download Parameters"),
+                                                      fluidRow(
+                                                        column(4,
+                                                               numericInput("BPHeight2","Height",value = 8)
+                                                        ),
+                                                        column(4,
+                                                               numericInput("BPWidth2","Width",value = 10)
+                                                        ),
+                                                        column(4,
+                                                               selectInput("BPUnits2","Units",choices = c("in","cm","mm","px"))
                                                         )
                                                       )
+                                                      #fluidRow(
+                                                      #  column(4,
+                                                      #         numericInput("boxplot2TitleSize","Title Font Size",
+                                                      #                      value = 20, step = 1)
+                                                      #  ),
+                                                      #  column(4,
+                                                      #         numericInput("boxplot2AxisSize","Axis Font Size",
+                                                      #                      value = 16, step = 1)
+                                                      #  ),
+                                                      #  column(4,
+                                                      #         numericInput("boxplotDot", "Dot Size:",
+                                                      #                      min = 0, max = 5,
+                                                      #                      value = 0.5, step = .25)
+                                                      #  )
+                                                      #)
                                                       )
                                            )
                           ),
@@ -1048,14 +1247,28 @@ DGE_tab <- tabPanel("Differential Expression Analysis",
                           
                           conditionalPanel(condition = "input.datasettwo == '6'",
                                            h4("Condition Selection:"),
-                                           fluidRow(
-                                             column(6,
-                                                    uiOutput("rendcomparisonA2.DEG")
-                                                    ),
-                                             column(6,
-                                                    uiOutput("rendcomparisonB2.DEG")
-                                                    )
+                                           radioButtons("volcanoCompChoice2","Comparison Method:",
+                                                        choices = c("Two groups","One group against all other"), inline = T),
+                                           conditionalPanel(condition = "input.volcanoCompChoice2 == 'Two groups'",
+                                                            fluidRow(
+                                                              column(6,
+                                                                     uiOutput("rendcomparisonA2.DEG")
+                                                              ),
+                                                              column (6,
+                                                                      uiOutput("rendcomparisonB2.DEG"))
+                                                            )
                                            ),
+                                           conditionalPanel(condition = "input.volcanoCompChoice2 == 'One group against all other'",
+                                                            uiOutput("rendcomparisonA2.DEG_one")
+                                           ),
+                                           #fluidRow(
+                                           #  column(6,
+                                           #         uiOutput("rendcomparisonA2.DEG")
+                                           #         ),
+                                           #  column(6,
+                                           #         uiOutput("rendcomparisonB2.DEG")
+                                           #         )
+                                           #),
                                            selectizeInput("DEGCovarSelectTab","Select Covariates:", choices = NULL, selected = 1, multiple = T),
                                            h4("Download DEG Table as GMT File"),
                                            textInput("DEGfileName", "File Name for Download:",value = "DEGgeneSet"),
@@ -1107,7 +1320,9 @@ DGE_tab <- tabPanel("Differential Expression Analysis",
                             tabPanel("Box Plots",
                                      p(),
                                      #withSpinner(jqui_resizable(plotOutput('boxplot1', width = "100%", height = "600px")), type = 6),
-                                     jqui_resizable(plotOutput('boxplot1', width = "100%", height = "600px")),
+                                     #jqui_resizable(plotOutput('boxplot1', width = "100%", height = "600px")),
+                                     jqui_resizable(plotOutput('uncorrected_Box_plot2', width = "100%", height = "600px")),
+                                     DT::dataTableOutput("DataExplor_Box_plot_df2"),
                                      fluidRow(
                                        downloadButton("dnldPlotSVG_exprBox2","Download as SVG"),
                                        downloadButton("dnldPlotPDF_exprBox2","Download as PDF")
@@ -1170,14 +1385,28 @@ GSEA_tab <- tabPanel("GSEA Analysis",
                                          tabPanel("Data Input",
                                                   conditionalPanel(condition = "input.datasetthree == '1' | input.datasetthree == '2' | input.datasetthree == '4'",
                                                                    h4("Condition Selection:"),
-                                                                   fluidRow(
-                                                                     column(6,
-                                                                            uiOutput("rendcomparisonA")
-                                                                     ),
-                                                                     column(6,
-                                                                            uiOutput("rendcomparisonB")
-                                                                     )
-                                                                   )
+                                                                   radioButtons("volcanoCompChoice3","Comparison Method:",
+                                                                                choices = c("Two groups","One group against all other"), inline = T),
+                                                                   conditionalPanel(condition = "input.volcanoCompChoice3 == 'Two groups'",
+                                                                                    fluidRow(
+                                                                                      column(6,
+                                                                                             uiOutput("rendcomparisonA")
+                                                                                      ),
+                                                                                      column (6,
+                                                                                              uiOutput("rendcomparisonB"))
+                                                                                    )
+                                                                   ),
+                                                                   conditionalPanel(condition = "input.volcanoCompChoice3 == 'One group against all other'",
+                                                                                    uiOutput("rendcomparisonA_one")
+                                                                   ),
+                                                                   #fluidRow(
+                                                                   #  column(6,
+                                                                   #         uiOutput("rendcomparisonA")
+                                                                   #  ),
+                                                                   #  column(6,
+                                                                   #         uiOutput("rendcomparisonB")
+                                                                   #  )
+                                                                   #)
                                                   ),
                                                   conditionalPanel(condition = "input.datasetthree == '4'",
                                                                    h4("GSEA Threshold Parameter:"),
@@ -1966,7 +2195,7 @@ server <- function(input, output, session) {
           expr = expr[order(row.names(expr)), ]
           expr_col <- colnames(expr)
           
-          if ("Exponentiate" %in% input$RawCountQuantNorm) {
+          if ("Check if data is logged" %in% input$RawCountQuantNorm) {
             expr <- 2^as.matrix(expr)
             message <- paste0("Features exponentiated.")
             FileCheckAlerts_list <- c(FileCheckAlerts_list,message)
@@ -3178,16 +3407,17 @@ server <- function(input, output, session) {
         metagroups <- unique(meta[,metacol])
         selectInput("comparisonA2_h", "Comparison: GroupA",
                     choices = metagroups, selected = metagroups[1])
-        #if (ncol(meta) == 2){
-        #  selectInput("comparisonA2_h", "Comparison: GroupA",
-        #              choices = metagroups, selected = metagroups[1])
-        #}
-        #else if (ncol(meta) > 2){
-        #  metagroups_new <- as.vector(levels(factor(meta[,input$MetaColDEGHeat])))
-        #  selectInput("comparisonA2_h", "Comparison: GroupA",
-        #              choices = metagroups_new, selected = metagroups_new[1])
-        #}
+      })
+      
+      output$rendcomparisonA2_h_one <- renderUI({
         
+        req(input$DEGcolHeat)
+        meta <- meta_react()
+        #metacol <- metacol_reactVal()
+        metacol <- input$DEGcolHeat
+        metagroups <- unique(meta[,metacol])
+        selectInput("comparisonA2_h_one", "Comparison: GroupA",
+                    choices = metagroups, selected = metagroups[1])
       })
       
       #output$rendGSEAmetaCol <- renderUI({
@@ -3210,16 +3440,18 @@ server <- function(input, output, session) {
         metagroups <- unique(meta[,metacol])
         selectInput("comparisonA", "Comparison: GroupA",
                     choices = metagroups, selected = metagroups[1])
-        #if (ncol(meta) == 2){
-        #  selectInput("comparisonA", "Comparison: GroupA",
-        #              choices = metagroups, selected = metagroups[1])
-        #}
-        #else if (ncol(meta) > 2){
-        #  metagroups_new <- as.vector(levels(factor(meta[,input$GSEAmetaCol])))
-        #  selectInput("comparisonA", "Comparison: GroupA",
-        #              choices = metagroups_new, selected = metagroups_new[1])
-        #}
+      })
+      
+      output$rendcomparisonA_one <- renderUI({
         
+        meta <- meta_react()
+        metacol <- metacol_reactVal()
+        if (length(colnames(meta)) == 2) {
+          metacol <- colnames(meta)[2]
+        }
+        metagroups <- unique(meta[,metacol])
+        selectInput("comparisonA_one", "Comparison Group",
+                    choices = metagroups, selected = metagroups[1])
       })
       
       output$rendcomparisonB <- renderUI({
@@ -3285,15 +3517,19 @@ server <- function(input, output, session) {
         metagroups <- unique(meta[,metacol])
         selectInput("comparisonA2", "Comparison: GroupA",
                     choices = metagroups, selected = metagroups[1])
-        #if (ncol(meta) == 2){
-        #  selectInput("comparisonA2", "Comparison: GroupA",
-        #              choices = metagroups, selected = metagroups[1])
-        #}
-        #else if (ncol(meta) > 2){
-        #  metagroups_new <- as.vector(levels(factor(meta[,input$DEGMetaCol])))
-        #  selectInput("comparisonA2", "Comparison: GroupA",
-        #              choices = metagroups_new, selected = metagroups_new[1])
-        #}
+        
+      })
+      
+      output$rendcomparisonA2_one <- renderUI({
+        
+        meta <- meta_react()
+        metacol <- metacol_reactVal()
+        if (length(colnames(meta)) == 2) {
+          metacol <- colnames(meta)[2]
+        }
+        metagroups <- unique(meta[,metacol])
+        selectInput("comparisonA2_one", "Comparison Group",
+                    choices = metagroups, selected = metagroups[1])
         
       })
       
@@ -3439,18 +3675,20 @@ server <- function(input, output, session) {
           metacol <- colnames(meta)[2]
         }
         metagroups <- unique(meta[,metacol])
-        selectInput("comparisonA2.DEG", "Comparison: GroupB",
+        selectInput("comparisonA2.DEG", "Comparison: GroupA",
                     choices = metagroups, selected = metagroups[1])
-        #if (ncol(meta) == 2){
-        #  selectInput("comparisonA2.DEG", "Comparison: GroupA",
-        #              choices = metagroups, selected = metagroups[1])
-        #}
-        #else if (ncol(meta) > 2){
-        #  metagroups_new <- as.vector(levels(factor(meta[,input$DEGtableMetaCol])))
-        #  selectInput("comparisonA2.DEG", "Comparison: GroupA",
-        #              choices = metagroups_new, selected = metagroups_new[1])
-        #}
+      })
+      
+      output$rendcomparisonA2.DEG_one <- renderUI({
         
+        meta <- meta_react()
+        metacol <- metacol_reactVal()
+        if (length(colnames(meta)) == 2) {
+          metacol <- colnames(meta)[2]
+        }
+        metagroups <- unique(meta[,metacol])
+        selectInput("comparisonA2.DEG_one", "Comparison Group",
+                    choices = metagroups, selected = metagroups[1])
       })
       
       output$rendcomparisonB2.DEG <- renderUI({
@@ -3570,6 +3808,7 @@ server <- function(input, output, session) {
       
       #render UI for hover text in volcano plot
       output$hover_info <- renderUI({
+        req(topgenereact())
         top2 <- topgenereact()
         df <- top2 %>%
           select(GeneName,logFC,P.Value,adj.P.Val)
@@ -3590,6 +3829,7 @@ server <- function(input, output, session) {
       
       #render UI for hover text in MA plot
       output$hover_info2 <- renderUI({
+        req(topgenereact())
         top2 <- topgenereact()
         df <- top2 %>%
           select(GeneName,AveExpr,logFC,P.Value,adj.P.Val)
@@ -3656,6 +3896,7 @@ server <- function(input, output, session) {
       
       #render UI for hover text in volcano plot
       output$hover_info3 <- renderUI({
+        req(AvgExprReact())
         
         #top2 <- topgenereact()
         #df2 <- top2 %>%
@@ -3862,67 +4103,84 @@ server <- function(input, output, session) {
         if (length(colnames(meta)) == 2) {
           metacol <- colnames(meta)[2]
         }
+        
+        if (input$volcanoCompChoice3 == "Two groups") {
+          groupA <- input$comparisonA
+          groupB <- input$comparisonB
+        } else if (input$volcanoCompChoice3 == "One group against all other") {
+          groupA <- input$comparisonA_one
+          groupB <- paste0("Not_",groupA)
+          meta[,paste0(metacol,"_Dichot")] <- NA
+          meta[which(meta[,metacol] == groupA),paste0(metacol,"_Dichot")] <- groupA
+          meta[which(meta[,metacol] != groupA),paste0(metacol,"_Dichot")] <- paste0("Not_",groupA)
+          metacol <- paste0(metacol,"_Dichot")
+        }
+        
+        
         A <- A_raw()
         gmt <- gmt_react()
-        if (input$comparisonA != input$comparisonB) {
-          if (length(which(meta[,metacol] == input$comparisonA)) > 1 | length(which(meta[,metacol] == input$comparisonB)) > 1) {
-            groupA <- meta[which(meta[,metacol] == input$comparisonA),1]
-            groupB <- meta[which(meta[,metacol] == input$comparisonB),1]
-            ##----Signal-to-Noise Calculation----##
-            A <- A + 0.00000001
-            P = as.matrix(as.numeric(colnames(A) %in% groupA))
-            n1 <- sum(P[,1])
-            M1 <- A %*% P
-            M1 <- M1/n1
-            A2 <- A*A
-            S1 <- A2 %*% P
-            S1 <- S1/n1 - M1*M1 #
-            S1 <- sqrt(abs((n1/(n1-1)) * S1))
-            P = as.matrix(as.numeric(colnames(A) %in% groupB))
-            n2 <- sum(P[,1])
-            M2 <- A %*% P
-            M2 <- M2/n2
-            A2 <- A*A
-            S2 <- A2 %*% P
-            S2 <- S2/n2 - M2*M2
-            S2 <- sqrt(abs((n2/(n2-1)) * S2))
-            rm(A2)
-            # small sigma "fix" as used in GeneCluster
-            S2 <- ifelse(0.2*abs(M2) < S2, S2, 0.2*abs(M2))
-            S2 <- ifelse(S2 == 0, 0.2, S2)
-            S1 <- ifelse(0.2*abs(M1) < S1, S1, 0.2*abs(M1))
-            S1 <- ifelse(S1 == 0, 0.2, S1)
-            M1 <- M1 - M2
-            rm(M2)
-            S1 <- S1 + S2
-            rm(S2)
-            s2n.matrix <- M1/S1
-            ##----Reformatting----##
-            s2n.df <- as.data.frame(s2n.matrix)
-            s2n.df$GeneID <- rownames(s2n.df)
-            rownames(s2n.df) <- NULL
-            data <- dplyr::select(s2n.df, GeneID, V1)
-            data.gsea <- data$V1
-            names(data.gsea) <- as.character(data$GeneID)
-            s2n.matrix.s <- sort(data.gsea, decreasing = T)
-            ##----GSEA----##
-            GSEA(s2n.matrix.s, TERM2GENE = gmt,
-                 verbose = F, pvalueCutoff = input$userPval)
-            #if (input$tables == 1){
-            #  GSEA(s2n.matrix.s, TERM2GENE = gmt()[which(gmt()[,1] == as.character(msigdb.gsea2()[input$msigdbTable_rows_selected,3])),],
-            #       verbose = F, pvalueCutoff = input$userPval)
-            #}
-            #else if (input$tables == 3){
-            #  GSEA(s2n.matrix.s, TERM2GENE = tab2()[which(tab2()[,1] == as.character(GeneSet2()[input$tab2table_rows_selected,1])),],
-            #       verbose = F, pvalueCutoff = input$userPval)
-            #}
-            #else if (input$tables == 5){
-            #  GSEA(s2n.matrix.s, TERM2GENE = GStable.ubg()[which(GStable.ubg()[,1] == as.character(user_gs_mirror()[input$GStable.u_rows_selected,1])),],
-            #       verbose = F, pvalueCutoff = input$userPval)
-            #}
+        if (isTruthy(groupA) & isTruthy(groupB)) {
+          if (groupA != groupB) {
+            if (length(which(meta[,metacol] == groupA)) > 1 | length(which(meta[,metacol] == groupB)) > 1) {
+              groupA <- meta[which(meta[,metacol] == groupA),1]
+              groupB <- meta[which(meta[,metacol] == groupB),1]
+              ##----Signal-to-Noise Calculation----##
+              A <- A + 0.00000001
+              P = as.matrix(as.numeric(colnames(A) %in% groupA))
+              n1 <- sum(P[,1])
+              M1 <- A %*% P
+              M1 <- M1/n1
+              A2 <- A*A
+              S1 <- A2 %*% P
+              S1 <- S1/n1 - M1*M1 #
+              S1 <- sqrt(abs((n1/(n1-1)) * S1))
+              P = as.matrix(as.numeric(colnames(A) %in% groupB))
+              n2 <- sum(P[,1])
+              M2 <- A %*% P
+              M2 <- M2/n2
+              A2 <- A*A
+              S2 <- A2 %*% P
+              S2 <- S2/n2 - M2*M2
+              S2 <- sqrt(abs((n2/(n2-1)) * S2))
+              rm(A2)
+              # small sigma "fix" as used in GeneCluster
+              S2 <- ifelse(0.2*abs(M2) < S2, S2, 0.2*abs(M2))
+              S2 <- ifelse(S2 == 0, 0.2, S2)
+              S1 <- ifelse(0.2*abs(M1) < S1, S1, 0.2*abs(M1))
+              S1 <- ifelse(S1 == 0, 0.2, S1)
+              M1 <- M1 - M2
+              rm(M2)
+              S1 <- S1 + S2
+              rm(S2)
+              s2n.matrix <- M1/S1
+              ##----Reformatting----##
+              s2n.df <- as.data.frame(s2n.matrix)
+              s2n.df$GeneID <- rownames(s2n.df)
+              rownames(s2n.df) <- NULL
+              data <- dplyr::select(s2n.df, GeneID, V1)
+              data.gsea <- data$V1
+              names(data.gsea) <- as.character(data$GeneID)
+              s2n.matrix.s <- sort(data.gsea, decreasing = T)
+              ##----GSEA----##
+              GSEA(s2n.matrix.s, TERM2GENE = gmt,
+                   verbose = F, pvalueCutoff = input$userPval)
+              #if (input$tables == 1){
+              #  GSEA(s2n.matrix.s, TERM2GENE = gmt()[which(gmt()[,1] == as.character(msigdb.gsea2()[input$msigdbTable_rows_selected,3])),],
+              #       verbose = F, pvalueCutoff = input$userPval)
+              #}
+              #else if (input$tables == 3){
+              #  GSEA(s2n.matrix.s, TERM2GENE = tab2()[which(tab2()[,1] == as.character(GeneSet2()[input$tab2table_rows_selected,1])),],
+              #       verbose = F, pvalueCutoff = input$userPval)
+              #}
+              #else if (input$tables == 5){
+              #  GSEA(s2n.matrix.s, TERM2GENE = GStable.ubg()[which(GStable.ubg()[,1] == as.character(user_gs_mirror()[input$GStable.u_rows_selected,1])),],
+              #       verbose = F, pvalueCutoff = input$userPval)
+              #}
+            }
+            
           }
-          
         }
+        
         
       })
       
@@ -3933,15 +4191,12 @@ server <- function(input, output, session) {
         req(meta_react())
         req(metacol_reactVal())
         req(expr_react())
-        req(input$comparisonA2)
-        req(input$comparisonB2)
+        req(input$volcanoCompChoice)
+        #req((isTruthy(input$comparisonA2) && isTruthy(input$comparisonB2)) || isTruthy(input$comparisonA2_one))
         meta <- meta_react()
         metacol <- metacol_reactVal()
         expr <- expr_react()
         covars <- input$DEGCovarSelect
-        groupA <- input$comparisonA2
-        groupB <- input$comparisonB2
-        
         if (length(colnames(meta)) == 2) {
           metacol <- colnames(meta)[2]
         }
@@ -3949,8 +4204,24 @@ server <- function(input, output, session) {
         metaSub <- meta[,c(colnames(meta)[1],metacol,covars)]
         metaSub <- metaSub[complete.cases(metaSub),]
         
-        A <- metaSub[which(metaSub[,metacol] == groupA),1]
-        B <- metaSub[which(metaSub[,metacol] == groupB),1]
+        
+        if (input$volcanoCompChoice == "Two groups") {
+          groupA <- input$comparisonA2
+          groupB <- input$comparisonB2
+          A <- metaSub[which(metaSub[,metacol] == groupA),1]
+          B <- metaSub[which(metaSub[,metacol] == groupB),1]
+        } else if (input$volcanoCompChoice == "One group against all other") {
+          groupA <- input$comparisonA2_one
+          groupB <- paste0("Not_",groupA)
+          metaSub[,paste0(metacol,"_Dichot")] <- NA
+          metaSub[which(metaSub[,metacol] == groupA),paste0(metacol,"_Dichot")] <- groupA
+          metaSub[which(metaSub[,metacol] != groupA),paste0(metacol,"_Dichot")] <- paste0("Not_",groupA)
+          A <- metaSub[which(metaSub[,paste0(metacol,"_Dichot")] == groupA),1]
+          B <- metaSub[which(metaSub[,paste0(metacol,"_Dichot")] == paste0("Not_",groupA)),1]
+          metacol <- paste0(metacol,"_Dichot")
+        }
+        
+        
         
         metaSub <- metaSub[which(metaSub[,1] %in% c(A,B)),]
         colnames(metaSub) <- gsub(" ","_",colnames(metaSub))
@@ -3971,38 +4242,32 @@ server <- function(input, output, session) {
           form <- as.formula(paste0("~0 +",metacol))
         }
         
-        designA <- eval(substitute(model.matrix(form, data = metaSub)))
+
+        if(nlevels(metaSub[,metacol]) >= 2){
+          designA <- eval(substitute(model.matrix(form, data = metaSub)))
+          
+          fit <- lmFit(mat, design = designA)
+          colnames(designA) <- gsub(" ","_",colnames(designA))
+          colnames(designA) <- gsub("[[:punct:]]","_",colnames(designA))
+          contrast.matrix <- makeContrasts(contrasts = paste0(colnames(designA)[1],"-",colnames(designA)[2]), levels = designA)
+          fit2 <- contrasts.fit(fit, contrast.matrix)
+          fit2 <- eBayes(fit2)
+          options(digits = 4)
+          top1 <- topTable(fit2, coef = 1, n = 300000, sort = "p", p.value = 1.0, adjust.method = "BH")
+          top2 <- top1
+          
+          top2["GeneName"] <- rownames(top2)
+          top2['group'] <- "NotSignificant"
+          p_cut <- input$p_cutoff
+          f_cut <- input$fc_cutoff
+          top2[which(top2$P.Value < p_cut & abs(top2$logFC) < abs(f_cut)), "group"] <- "Significant"
+          top2[which(top2$P.Value > p_cut & abs(top2$logFC) > abs(f_cut)), "group"] <- "FoldChange"
+          top2[which(top2$P.Value < p_cut & abs(top2$logFC) > abs(f_cut)), "group"] <- "Significant&FoldChange"
+          top2['FCgroup'] <- "NotSignificant"
+          top2[which(abs(top2$logFC) > abs(f_cut)), "group2"] <- "FoldChange"
+          top2
+        }
         
-        fit <- lmFit(mat, design = designA)
-        colnames(designA) <- gsub(" ","_",colnames(designA))
-        colnames(designA) <- gsub("[[:punct:]]","_",colnames(designA))
-        contrast.matrix <- makeContrasts(contrasts = paste0(colnames(designA)[1],"-",colnames(designA)[2]), levels = designA)
-        fit2 <- contrasts.fit(fit, contrast.matrix)
-        fit2 <- eBayes(fit2)
-        options(digits = 4)
-        top1 <- topTable(fit2, coef = 1, n = 300000, sort = "p", p.value = 1.0, adjust.method = "BH")
-        top2 <- top1
-        
-        #groupAOther <- factor(c(rep("A", length(A)), rep("B", length(B))))
-        #designA <- model.matrix(~0 + groupAOther)
-        #fit <- lmFit(mat, design = designA)
-        #contrast.matrix <- makeContrasts(groupAOtherA - groupAOtherB, levels = designA)
-        #fit2 <- contrasts.fit(fit, contrast.matrix)
-        #fit2 <- eBayes(fit2)
-        #options(digits = 4)
-        #top1 <- topTable(fit2, coef = 1, n = 300000, sort = "p", p.value = 1.0, adjust.method = "BH")
-        #top2 <- top1
-        
-        top2["GeneName"] <- rownames(top2)
-        top2['group'] <- "NotSignificant"
-        p_cut <- input$p_cutoff
-        f_cut <- input$fc_cutoff
-        top2[which(top2$P.Value < p_cut & abs(top2$logFC) < abs(f_cut)), "group"] <- "Significant"
-        top2[which(top2$P.Value > p_cut & abs(top2$logFC) > abs(f_cut)), "group"] <- "FoldChange"
-        top2[which(top2$P.Value < p_cut & abs(top2$logFC) > abs(f_cut)), "group"] <- "Significant&FoldChange"
-        top2['FCgroup'] <- "NotSignificant"
-        top2[which(abs(top2$logFC) > abs(f_cut)), "group2"] <- "FoldChange"
-        top2
       })
       
       topgenereact2 <- reactive({
@@ -4012,25 +4277,33 @@ server <- function(input, output, session) {
         req(input$comparisonB2_h)
         withProgress(message = "Processing", value = 0, {
           incProgress(0.5, detail = "Calculating Differential Expression")
-          # UI Inputs
-          A_choice <- input$comparisonA2_h            #Comparison group A
-          B_choice <- input$comparisonB2_h            #Comparison group B
-          
           meta <- meta_react()
-          #metacol <- metacol_reactVal()
           metacol <- input$DEGcolHeat
           expr <- expr_react()
           covars <- input$DEGCovarSelectHeat
           if (length(colnames(meta)) == 2) {
             metacol <- colnames(meta)[2]
           }
-          
           metaSub <- meta[,c(colnames(meta)[1],metacol,covars)]
           metaSub <- metaSub[complete.cases(metaSub),]
           
-          A <- metaSub[which(metaSub[,metacol] == A_choice),1]
-          B <- metaSub[which(metaSub[,metacol] == B_choice),1]
+          if (input$volcanoCompChoice4 == "Two groups") {
+            A_choice <- input$comparisonA2_h            #Comparison group A
+            B_choice <- input$comparisonB2_h            #Comparison group B
+            A <- metaSub[which(metaSub[,metacol] == A_choice),1]
+            B <- metaSub[which(metaSub[,metacol] == B_choice),1]
+          } else if (input$volcanoCompChoice4 == "One group against all other") {
+            A_choice <- input$comparisonA2_h_one
+            B_choice <- paste0("Not_",A_choice)
+            metaSub[,paste0(metacol,"_Dichot")] <- NA
+            metaSub[which(metaSub[,metacol] == A_choice),paste0(metacol,"_Dichot")] <- A_choice
+            metaSub[which(metaSub[,metacol] != A_choice),paste0(metacol,"_Dichot")] <- paste0("Not_",A_choice)
+            A <- metaSub[which(metaSub[,paste0(metacol,"_Dichot")] == A_choice),1]
+            B <- metaSub[which(metaSub[,paste0(metacol,"_Dichot")] == paste0("Not_",A_choice)),1]
+            metacol <- paste0(metacol,"_Dichot")
+          }
           
+
           metaSub <- metaSub[which(metaSub[,1] %in% c(A,B)),]
           colnames(metaSub) <- gsub(" ","_",colnames(metaSub))
           colnames(metaSub) <- gsub("[[:punct:]]","_",colnames(metaSub))
@@ -4050,21 +4323,26 @@ server <- function(input, output, session) {
             form <- as.formula(paste0("~0 +",metacol))
           }
           
-          designA <- eval(substitute(model.matrix(form, data = metaSub)))
+          if (nlevels(metaSub[,metacol]) >= 2) {
+            
+            designA <- eval(substitute(model.matrix(form, data = metaSub)))
+            fit <- lmFit(mat, design = designA)
+            colnames(designA) <- gsub(" ","_",colnames(designA))
+            colnames(designA) <- gsub("[[:punct:]]","_",colnames(designA))
+            contrast.matrix <- makeContrasts(contrasts = paste0(colnames(designA)[1],"-",colnames(designA)[2]), levels = designA)
+            fit2 <- contrasts.fit(fit, contrast.matrix)
+            fit2 <- eBayes(fit2)
+            options(digits = 4)
+            top1 <- topTable(fit2, coef = 1, n = 300000, sort = "p", p.value = 1.0, adjust.method = "BH")
+            top2 <- top1
+          }
           
-          fit <- lmFit(mat, design = designA)
-          colnames(designA) <- gsub(" ","_",colnames(designA))
-          colnames(designA) <- gsub("[[:punct:]]","_",colnames(designA))
-          contrast.matrix <- makeContrasts(contrasts = paste0(colnames(designA)[1],"-",colnames(designA)[2]), levels = designA)
-          fit2 <- contrasts.fit(fit, contrast.matrix)
-          fit2 <- eBayes(fit2)
-          options(digits = 4)
-          top1 <- topTable(fit2, coef = 1, n = 300000, sort = "p", p.value = 1.0, adjust.method = "BH")
-          top2 <- top1
           incProgress(0.5, detail = "Complete!")
         })
         
-        top1
+        if (exists("top1")) {
+          return(top1)
+        }
         
       })
       
@@ -4079,17 +4357,14 @@ server <- function(input, output, session) {
           #if (isTruthy(input$GroupColMulti)) {
           meta <- meta_react()
           rownames(meta) <- meta[,1]
+          
           meta_sub <- meta[,input$GroupColMulti, drop = F]
           meta_sub[,input$GroupColMulti] <- as.data.frame(lapply(meta_sub[,input$GroupColMulti, drop = F], factor))
-          #if (is.null(input$GroupColMulti)) {
-          #  annoName <- "NULL"
-          #} else {
-          #  annoName <- input$GroupColMulti
-          #}
           colAnn <- ComplexHeatmap::HeatmapAnnotation(df = meta_sub,
                                                       name = input$GroupColMulti,
                                                       which = 'col'
           )
+          
           colAnn
         }  else {
           meta <- meta_react()
@@ -4301,7 +4576,66 @@ server <- function(input, output, session) {
       
       ####----DEG Heatmap----####
       
+      heat_colAnn_DEG <- reactive({
+        
+        if (length(input$GroupColMulti) > 0) {
+          #if (!is.null(input$GroupColMulti)) {
+          #if (isTruthy(input$GroupColMulti)) {
+          meta <- meta_react()
+          rownames(meta) <- meta[,1]
+          
+          
+          metacol <- input$DEGcolHeat
+          if (length(colnames(meta)) == 2) {
+            metacol <- colnames(meta)[2]
+          }
+          
+          if (input$volcanoCompChoice4 == "Two groups") {
+            groupA <- input$comparisonA2_h
+            groupB <- input$comparisonB2_h
+            meta_sub <- meta[,input$GroupColMulti, drop = F]
+            meta_sub[,input$GroupColMulti] <- as.data.frame(lapply(meta_sub[,input$GroupColMulti, drop = F], factor))
+            colAnn <- ComplexHeatmap::HeatmapAnnotation(df = meta_sub,
+                                                        name = input$GroupColMulti,
+                                                        which = 'col'
+            )
+          } else if (input$volcanoCompChoice4 == "One group against all other") {
+            groupA <- input$comparisonA2_h_one
+            groupB <- paste0("Not_",groupA)
+            meta[,paste0(metacol,"_Dichot")] <- NA
+            meta[which(meta[,metacol] == groupA),paste0(metacol,"_Dichot")] <- groupA
+            meta[which(meta[,metacol] != groupA),paste0(metacol,"_Dichot")] <- paste0("Not_",groupA)
+            metacol <- paste0(metacol,"_Dichot")
+            meta_sub <- meta[,c(metacol,input$GroupColMulti), drop = F]
+            meta_sub[,c(metacol,input$GroupColMulti)] <- as.data.frame(lapply(meta_sub[,c(metacol,input$GroupColMulti), drop = F], factor))
+            colAnn <- ComplexHeatmap::HeatmapAnnotation(df = meta_sub,
+                                                        name = c(metacol,input$GroupColMulti),
+                                                        which = 'col'
+            )
+          }
+          
+          colAnn
+        }  else {
+          meta <- meta_react()
+          if (ncol(meta) == 2) {
+            rownames(meta) <- meta[,1]
+            meta_sub <- meta[,2, drop = F]
+            meta_sub[,1] <- as.factor(meta_sub[,1])
+            colAnn <- ComplexHeatmap::HeatmapAnnotation(df = meta_sub,
+                                                        name = colnames(meta_sub)[2],
+                                                        which = 'col'
+            )
+            colAnn
+          } else {
+            colAnn <- NULL
+            colAnn
+          }
+        }
+        
+      })
+      
       DEG_heat_data <- reactive({
+        req(topgenereact2())
         withProgress(message = "Processing", value = 0, {
           incProgress(0.5, detail = "Calculating Z-Score")
           # UI Inputs
@@ -4348,7 +4682,7 @@ server <- function(input, output, session) {
           clust_rows_opt <- input$ClusRowOptDEG
           clust_cols_opt <- input$ClusColOptDEG
           
-          colAnno <- heat_colAnn()
+          colAnno <- heat_colAnn_DEG()
           dataset <- DEG_heat_data()
           
           
@@ -5561,8 +5895,24 @@ server <- function(input, output, session) {
         metaSub <- meta[,c(colnames(meta)[1],metacol,covars)]
         metaSub <- metaSub[complete.cases(metaSub),]
         
-        A <- metaSub[which(metaSub[,metacol] == input$comparisonA2.DEG),1]
-        B <- metaSub[which(metaSub[,metacol] == input$comparisonB2.DEG),1]
+        #A <- metaSub[which(metaSub[,metacol] == input$comparisonA2.DEG),1]
+        #B <- metaSub[which(metaSub[,metacol] == input$comparisonB2.DEG),1]
+        
+        if (input$volcanoCompChoice2 == "Two groups") {
+          groupA <- input$comparisonA2.DEG
+          groupB <- input$comparisonB2.DEG
+          A <- metaSub[which(metaSub[,metacol] == groupA),1]
+          B <- metaSub[which(metaSub[,metacol] == groupB),1]
+        } else if (input$volcanoCompChoice2 == "One group against all other") {
+          groupA <- input$comparisonA2.DEG_one
+          groupB <- paste0("Not_",groupA)
+          metaSub[,paste0(metacol,"_Dichot")] <- NA
+          metaSub[which(metaSub[,metacol] == groupA),paste0(metacol,"_Dichot")] <- groupA
+          metaSub[which(metaSub[,metacol] != groupA),paste0(metacol,"_Dichot")] <- paste0("Not_",groupA)
+          A <- metaSub[which(metaSub[,paste0(metacol,"_Dichot")] == groupA),1]
+          B <- metaSub[which(metaSub[,paste0(metacol,"_Dichot")] == paste0("Not_",groupA)),1]
+          metacol <- paste0(metacol,"_Dichot")
+        }
         
         metaSub <- metaSub[which(metaSub[,1] %in% c(A,B)),]
         colnames(metaSub) <- gsub(" ","_",colnames(metaSub))
@@ -5571,7 +5921,7 @@ server <- function(input, output, session) {
         metacol <- gsub("[[:punct:]]","_",metacol)
         covars <- gsub(" ","_",covars)
         covars <- gsub("[[:punct:]]","_",covars)
-        metaSub[,metacol] <- factor(metaSub[,metacol], levels = c(input$comparisonA2.DEG,input$comparisonB2.DEG))
+        metaSub[,metacol] <- factor(metaSub[,metacol], levels = c(groupA,groupB))
         
         mat <- expr[,metaSub[,1]]
         mat <- log2(mat + 1.0)
@@ -5583,37 +5933,23 @@ server <- function(input, output, session) {
           form <- as.formula(paste0("~0 +",metacol))
         }
         
-        designA <- eval(substitute(model.matrix(form, data = metaSub)))
+        if (nlevels(metaSub[,metacol]) >= 2) {
+          designA <- eval(substitute(model.matrix(form, data = metaSub)))
+          
+          fit <- lmFit(mat, design = designA)
+          colnames(designA) <- gsub(" ","_",colnames(designA))
+          colnames(designA) <- gsub("[[:punct:]]","_",colnames(designA))
+          contrast.matrix <- makeContrasts(contrasts = paste0(colnames(designA)[1],"-",colnames(designA)[2]), levels = designA)
+          fit2 <- contrasts.fit(fit, contrast.matrix)
+          fit2 <- eBayes(fit2)
+          options(digits = 4)
+          top1 <- topTable(fit2, coef = 1, n = 300000, sort = "p", p.value = 1.0, adjust.method = "BH")
+          top2 <- top1
+          
+          DT::datatable(top1, options = list(lengthMenu = c(50,100,1000, 5000, 10000), pageLength = 100, scrollX = TRUE),
+                        selection=list(mode = "multiple"))
+        }
         
-        fit <- lmFit(mat, design = designA)
-        colnames(designA) <- gsub(" ","_",colnames(designA))
-        colnames(designA) <- gsub("[[:punct:]]","_",colnames(designA))
-        contrast.matrix <- makeContrasts(contrasts = paste0(colnames(designA)[1],"-",colnames(designA)[2]), levels = designA)
-        fit2 <- contrasts.fit(fit, contrast.matrix)
-        fit2 <- eBayes(fit2)
-        options(digits = 4)
-        top1 <- topTable(fit2, coef = 1, n = 300000, sort = "p", p.value = 1.0, adjust.method = "BH")
-        top2 <- top1
-        
-        
-        
-        
-        #A <- meta[which(meta[,metacol] == input$comparisonA2.DEG),1]
-        #B <- meta[which(meta[,metacol] == input$comparisonB2.DEG),1]
-        #mat <- expr[,c(A,B)]
-        #mat <- log2(mat + 1.0)
-        #groupAOther <- factor(c(rep("A", length(A)), rep("B", length(B))))
-        #designA <- model.matrix(~0 + groupAOther)
-        #print(head(designA))
-        #print(dim(designA))
-        #fit <- lmFit(mat, design = designA)
-        #contrast.matrix <- makeContrasts(groupAOtherA - groupAOtherB, levels = designA)
-        #fit2 <- contrasts.fit(fit, contrast.matrix)
-        #fit2 <- eBayes(fit2)
-        #options(digits = 4)
-        #top1 <- topTable(fit2, coef = 1, n = 300000, sort = "p", p.value = 1.0, adjust.method = "BH")
-        DT::datatable(top1, options = list(lengthMenu = c(50,100,1000, 5000, 10000), pageLength = 100, scrollX = TRUE),
-                      selection=list(mode = "multiple"))
       })
       
       #render up regulated pathway enrichment data table
@@ -6035,12 +6371,35 @@ server <- function(input, output, session) {
           meta <- meta[which(meta[,1] %in% colnames(dataset)),]
           meta <- meta[match(colnames(dataset),meta[,1]),]
           rownames(meta) <- meta[,1]
-          meta_sub <- meta[,input$GSEAGroupColMulti, drop = F]
-          meta_sub[,input$GSEAGroupColMulti] <- as.data.frame(lapply(meta_sub[,input$GSEAGroupColMulti, drop = F], factor))
-          colAnn <- ComplexHeatmap::HeatmapAnnotation(df = meta_sub,
-                                                      name = input$GSEAGroupColMulti,
-                                                      which = 'col'
-          )
+          metacol <- metacol_reactVal()
+          if (length(colnames(meta)) == 2) {
+            metacol <- colnames(meta)[2]
+          }
+          
+          if (input$volcanoCompChoice3 == "Two groups") {
+            groupA <- input$comparisonA
+            groupB <- input$comparisonB
+            meta_sub <- meta[,input$GSEAGroupColMulti, drop = F]
+            meta_sub[,input$GSEAGroupColMulti] <- as.data.frame(lapply(meta_sub[,input$GSEAGroupColMulti, drop = F], factor))
+            colAnn <- ComplexHeatmap::HeatmapAnnotation(df = meta_sub,
+                                                        name = input$GSEAGroupColMulti,
+                                                        which = 'col'
+            )
+          } else if (input$volcanoCompChoice3 == "One group against all other") {
+            groupA <- input$comparisonA_one
+            groupB <- paste0("Not_",groupA)
+            meta[,paste0(metacol,"_Dichot")] <- NA
+            meta[which(meta[,metacol] == groupA),paste0(metacol,"_Dichot")] <- groupA
+            meta[which(meta[,metacol] != groupA),paste0(metacol,"_Dichot")] <- paste0("Not_",groupA)
+            metacol <- paste0(metacol,"_Dichot")
+            meta_sub <- meta[,c(metacol,input$GSEAGroupColMulti), drop = F]
+            meta_sub[,c(metacol,input$GSEAGroupColMulti)] <- as.data.frame(lapply(meta_sub[,c(metacol,input$GSEAGroupColMulti), drop = F], factor))
+            colAnn <- ComplexHeatmap::HeatmapAnnotation(df = meta_sub,
+                                                        name = c(metacol,input$GSEAGroupColMulti),
+                                                        which = 'col'
+            )
+          }
+          
           colAnn
         } else {
           meta <- meta_react()
@@ -6072,8 +6431,24 @@ server <- function(input, output, session) {
         }
         A <- A_raw()
         GS <- GeneSetName_React()
-        groupA <- meta[which(meta[,metacol] == input$comparisonA),1]
-        groupB <- meta[which(meta[,metacol] == input$comparisonB),1]
+        #groupA <- meta[which(meta[,metacol] == input$comparisonA),1]
+        #groupB <- meta[which(meta[,metacol] == input$comparisonB),1]
+        
+        if (input$volcanoCompChoice3 == "Two groups") {
+          groupA <- input$comparisonA
+          groupB <- input$comparisonB
+        } else if (input$volcanoCompChoice3 == "One group against all other") {
+          groupA <- input$comparisonA_one
+          groupB <- paste0("Not_",groupA)
+          meta[,paste0(metacol,"_Dichot")] <- NA
+          meta[which(meta[,metacol] == groupA),paste0(metacol,"_Dichot")] <- groupA
+          meta[which(meta[,metacol] != groupA),paste0(metacol,"_Dichot")] <- paste0("Not_",groupA)
+          metacol <- paste0(metacol,"_Dichot")
+        }
+        
+        groupA <- meta[which(meta[,metacol] == groupA),1]
+        groupB <- meta[which(meta[,metacol] == groupB),1]
+        
         res <- datasetInput()
         gsea.df <- as.data.frame(res@result)
         genes1 <- as.matrix(gsea.df[which(gsea.df$Description==GS),"core_enrichment"])
@@ -6521,6 +6896,233 @@ server <- function(input, output, session) {
         x
       })
       
+      # DGE --------------------------------------------------------------------
+      
+      ## Boxplot ---------------------------------------------------------------
+      
+      output$rendBPgroupCriteria2 <- renderUI({
+        
+        meta <- meta_react()
+        GroupChoices <- colnames(meta_react())[-1]
+        metacol <- metacol_reactVal()
+        if (length(colnames(meta)) == 2) {
+          metacol <- colnames(meta)[2]
+        }
+        if (isTruthy(input$SubsetCol)) {
+          if (input$SubsetCol != "Select All Samples") {
+            GroupChoices <- GroupChoices[which(GroupChoices!=input$SubsetCol)]
+          }
+        }
+        selectInput("BPgroupCriteria2","Grouping Criteria:",choices = GroupChoices, selected = metacol)
+        
+      })
+      
+      output$rendBPgroupSelection2 <- renderUI({
+        
+        req(input$BPgroupCriteria2)
+        req(meta_react())
+        meta <- meta_react()
+        groupCrit <- input$BPgroupCriteria2
+        if (input$BPremoveSingles2 == T) {
+          tab <- table(meta[,groupCrit])
+          meta <- meta[meta[,groupCrit] %in% names(tab[tab >= 2]), ]
+        }
+        GroupSelec <- unique(meta[,groupCrit])
+        selectInput("BPgroupSelection2","Select Groups:",choices = GroupSelec, selected = GroupSelec, multiple = T)
+        
+      })
+      
+      BP_Feature_Choices2 <- reactive({
+        
+        req(expr_react())
+        req(meta_react())
+        Features <- NULL
+        FeatCat <- input$BPFeatureCategory2
+        if (FeatCat == "Matrix Features") {
+          Features <- rownames(expr_react())
+          Features
+        } else if (FeatCat == "Meta Features") {
+          #Features <- colnames(aligned_meta_file())[-1]
+          Features <- colnames(meta_react())[-1]
+          Features
+        } else if (FeatCat == "Immune Deconvolution Features") {
+          Features <- ImmDeconv_uncorr_react()[,1]
+          Features
+        } else {
+          Features <- NULL
+          Features
+        }
+        
+      })
+      
+      shiny::observe({
+        
+        updateSelectizeInput(session = session, inputId = "BPFeatSelection2",
+                             choices = BP_Feature_Choices2(),
+                             server = T)
+        
+      })
+      
+      CohortBPPlot_df_react2 <- reactive({
+        
+        meta <- meta_react()
+        mat <- expr_react()
+        req(input$BPgroupCriteria2)
+        groupCrit <- input$BPgroupCriteria2
+        FeatCat <- input$BPFeatureCategory2
+        Feature <- input$BPFeatSelection2
+        NameCol <- colnames(meta)[1]
+        removeSingles <- input$BPremoveSingles2
+        BPlog <- input$BPlogOpt2
+        if (FeatCat == "Matrix Features") {
+          #featdf <- mat[which(mat[,1] == Feature),]
+          featdf <- mat[Feature,]
+          #rownames(featdf) <- featdf[,1]
+          #featdf <- featdf[,-1]
+          featdf <- as.data.frame(t(featdf))
+          featdf[,NameCol] <- rownames(featdf)
+          meta <- merge(meta,featdf)
+        } #else if (FeatCat == "Immune Deconvolution Features") {
+        #mat <- ImmDeconv_uncorr_react()
+        #featdf <- mat[which(mat[,1] == Feature),]
+        #rownames(featdf) <- featdf[,1]
+        #featdf <- featdf[,-1]
+        #featdf <- as.data.frame(t(featdf))
+        #featdf[,NameCol] <- rownames(featdf)
+        #meta <- merge(meta,featdf)
+        #} 
+        
+        if (isTruthy(Feature)) {
+          if (Feature %in% colnames(meta)) {
+            meta <- meta %>% select(any_of(c(NameCol,groupCrit,Feature)))
+            if (removeSingles == T) {
+              tab <- table(meta[,groupCrit])
+              meta <- meta[meta[,groupCrit] %in% names(tab[tab >= 2]), ]
+            }
+            meta[,Feature] <- as.numeric(meta[,Feature])
+            meta <- meta[which(!is.na(meta[,Feature])),]
+            meta <- meta[which(meta[,Feature]!=Inf & meta[,Feature]!=-Inf),]
+            meta[,groupCrit] <- as.factor(meta[,groupCrit])
+            if (BPlog == "Log2") {
+              meta[,Feature] <- log2(meta[,Feature])
+            } else if (BPlog == "Log2+1") {
+              meta[,Feature] <- log2(meta[,Feature]+1)
+            } else if (BPlog == "Log10") {
+              meta[,Feature] <- log10(meta[,Feature])
+            } else if (BPlog == "Log10+1") {
+              meta[,Feature] <- log10(meta[,Feature]+1)
+            }
+            #meta
+          }
+          meta <- meta %>%
+            group_by(!!sym(groupCrit)) %>%
+            mutate(Outlier = ifelse(rstatix::is_outlier(!!sym(Feature)),TRUE,FALSE)) %>%
+            as.data.frame()
+          meta
+        }
+      })
+      
+      output$DataExplor_Box_plot_df2 <- DT::renderDataTable({
+        
+        df <- CohortBPPlot_df_react2()
+        DT::datatable(df,
+                      options = list(lengthMenu = c(5,10, 20, 100, 1000),
+                                     pageLength = 10,
+                                     scrollX = T),
+                      rownames = F)
+        
+      })
+      
+      CohortBPPlot_react2 <- reactive({
+        
+        plotdf_full <- CohortBPPlot_df_react2()
+        groupCrit <- input$BPgroupCriteria2
+        FeatCat <- input$BPFeatureCategory2
+        Feature <- input$BPFeatSelection2
+        NameCol <- colnames(plotdf_full)[1]
+        BPplottheme <- input$BPTheme2
+        StatMethod <- input$BPplotstatComp2
+        dotChoice <- input$BPplotsampledots2
+        dotSize <- input$BPplotDotSize2
+        bpFlip <- input$BPflipBP2
+        BPorVI <- input$BPorViolin2
+        Xaxis_font <- input$BPplot1XAxisSize2              # Axis font size
+        Yaxis_font <- input$BPplot1YAxisSize2              # Axis font size
+        Yaxis_lim <- input$BPplot1YAxisLim2
+        hjust_orient <- 1                                # Initial hjust
+        axis_orient <- as.numeric(input$BPxAxisOrient2)  # X-axis label orientation
+        if (axis_orient == 0) {                          # Adjust hjust if orientation is 0
+          hjust_orient <- 0.5
+        }
+        BPorder <- input$BPplotXaxOrder2
+        BPGroupSelect <- input$BPgroupSelection2
+        
+        if (isTruthy(Feature)) {
+          plotdf <- plotdf_full[,c(NameCol,groupCrit,Feature)]
+          plotdf <- plotdf[which(plotdf[,groupCrit] %in% BPGroupSelect),]
+          colnames(plotdf) <- c("SampleName","Group","Feature")
+          
+          if (BPorder == "Descending"){
+            barp <- ggplot(data = plotdf, aes(x=reorder(Group,-Feature, FUN = median),y=Feature, fill=Group))
+            plotdf_dots <- plotdf
+            plotdf_dots$Group <- reorder(plotdf_dots$Group,-plotdf_dots$Feature, FUN = median)
+            plotdf_dots$xj <- jitter(as.numeric(factor(plotdf_dots$Group)))
+          }
+          if (BPorder == "Ascending"){
+            barp <- ggplot(data = plotdf, aes(x=reorder(Group,Feature, FUN = median),y=Feature, fill=Group))
+            plotdf_dots <- plotdf
+            plotdf_dots$Group <- reorder(plotdf_dots$Group,plotdf_dots$Feature, FUN = median)
+            plotdf_dots$xj <- jitter(as.numeric(factor(plotdf_dots$Group)))
+          }
+          if (BPorder == "Not Specificed"){
+            barp <- ggplot(data = plotdf, aes(x=Group,y=Feature, fill=Group))
+            plotdf_dots <- plotdf
+            plotdf_dots$xj <- jitter(as.numeric(factor(plotdf_dots$Group)))
+          }
+          if (BPorVI == "Box Plot") {
+            barp <- barp + geom_boxplot(width = 0.5, lwd = 1)
+          }
+          if (BPorVI == "Violin Plot") {
+            barp <- barp + geom_violin() +
+              stat_summary(fun=median, geom="crossbar", width=0.5, color="black")
+          }
+          if (isTruthy(Yaxis_lim)) {
+            barp <- barp +
+              ylim(paste0(as.numeric(strsplit(Yaxis_lim,",")[[1]][1]),as.numeric(strsplit(Yaxis_lim,",")[[1]][2])))
+          }
+          
+          barp <- barp +
+            get(BPplottheme)() +
+            labs(#title = BPTitle_in,
+              x = groupCrit, y = Feature,
+              fill = groupCrit)
+          if (StatMethod != "none") {
+            barp <- barp + ggpubr::stat_compare_means(method = StatMethod)
+          }
+          if (dotChoice) {
+            barp <- barp + geom_point(data = plotdf_dots, aes(x=xj), col="grey14", size=dotSize)
+          }
+          barp <- barp + theme(axis.text.x = element_text(size = Xaxis_font,angle = axis_orient, hjust = hjust_orient),
+                               axis.title.x = element_text(size = Xaxis_font),
+                               axis.text.y = element_text(size = Yaxis_font),
+                               axis.title.y = element_text(size = Yaxis_font),
+                               legend.position = "none")
+          if (bpFlip) {
+            barp <- barp + coord_flip()
+          }
+          barp
+        }
+        
+      })
+      
+      output$uncorrected_Box_plot2 <- renderPlot({
+        
+        barp <- CohortBPPlot_react2()
+        barp
+        
+      })
+      
+      
       #render boxplot
       output$boxplot1 <- renderPlot({
         
@@ -6564,48 +7166,276 @@ server <- function(input, output, session) {
         }
       })
       
-      #render boxplot
-      output$boxplot3 <- renderPlot({
+      
+      # Data Exploration -------------------------------------------------------
+      
+      ## Boxplot ---------------------------------------------------------------
+      
+      output$rendBPgroupCriteria <- renderUI({
         
         meta <- meta_react()
+        GroupChoices <- colnames(meta_react())[-1]
         metacol <- metacol_reactVal()
         if (length(colnames(meta)) == 2) {
           metacol <- colnames(meta)[2]
         }
-        expr <- expr_react()
-        geneList <- geneList_raw()
-        title_font <- input$boxplot1TitleSize
-        axis_font <- input$boxplot1AxisSize
-        #if (ncol(meta) > 2) {
-        #  metacol <- input$BoxPlot1MetaCol
-        #}
-        #else if (ncol(meta) == 2) {
-        #  metacol <- colnames(meta)[2]
-        #}
+        if (isTruthy(input$SubsetCol)) {
+          if (input$SubsetCol != "Select All Samples") {
+            GroupChoices <- GroupChoices[which(GroupChoices!=input$SubsetCol)]
+          }
+        }
+        selectInput("BPgroupCriteria","Grouping Criteria:",choices = GroupChoices, selected = metacol)
         
-        if (length(input$GeneListTable2_rows_selected) > 0){
-          gene <- geneList[input$GeneListTable2_rows_selected, 1]
-          min <- min(log2(expr[gene,] + 1.0))
-          max <- max(log2(expr[gene,] + 1.0))
-          meta_temp <- meta
-          rownames(meta_temp) <- meta[,1]
-          meta_temp <- meta_temp[,metacol,drop = F]
-          meta_temp[,metacol] <- as.factor(meta_temp[,metacol])
-          #meta_temp <- meta_temp %>%
-          #  select(Group)
-          data = merge(t(expr[gene,]), meta_temp, by=0)
-          colnames(data) = c("SampleName", "GeneExpr", "Cluster")
-          ggplot(data, aes(x=Cluster, y=log2(GeneExpr + 1.0))) +
-            geom_boxplot(outlier.colour="red", outlier.shape=8, outlier.size=1) +
-            geom_dotplot(binaxis='y', stackdir='center', dotsize=input$boxplotDot2) +
-            stat_compare_means(label = "p.signif") + ylim(min * 0.9, max * 1.3) +
-            theme_bw() +
-            labs(title= paste(gene, "Expression (log2)")) +
-            theme(axis.text.x = element_text(angle = 90, vjust = 0.25, hjust = 1),
-                  axis.title = element_text(size = axis_font),
-                  plot.title = element_text(size = title_font))
+      })
+      
+      output$rendBPgroupSelection <- renderUI({
+        
+        req(input$BPgroupCriteria)
+        req(meta_react())
+        meta <- meta_react()
+        groupCrit <- input$BPgroupCriteria
+        if (input$BPremoveSingles == T) {
+          tab <- table(meta[,groupCrit])
+          meta <- meta[meta[,groupCrit] %in% names(tab[tab >= 2]), ]
+        }
+        GroupSelec <- unique(meta[,groupCrit])
+        selectInput("BPgroupSelection","Select Groups:",choices = GroupSelec, selected = GroupSelec, multiple = T)
+        
+      })
+      
+      BP_Feature_Choices <- reactive({
+        
+        req(expr_react())
+        req(meta_react())
+        Features <- NULL
+        FeatCat <- input$BPFeatureCategory
+        if (FeatCat == "Matrix Features") {
+          Features <- rownames(expr_react())
+          Features
+        } else if (FeatCat == "Meta Features") {
+          #Features <- colnames(aligned_meta_file())[-1]
+          Features <- colnames(meta_react())[-1]
+          Features
+        } else if (FeatCat == "Immune Deconvolution Features") {
+          Features <- ImmDeconv_uncorr_react()[,1]
+          Features
+        } else {
+          Features <- NULL
+          Features
+        }
+        
+      })
+      
+      shiny::observe({
+        
+        updateSelectizeInput(session = session, inputId = "BPFeatSelection",
+                             choices = BP_Feature_Choices(),
+                             server = T)
+        
+      })
+      
+      CohortBPPlot_df_react <- reactive({
+        
+        meta <- meta_react()
+        mat <- expr_react()
+        req(input$BPgroupCriteria)
+        groupCrit <- input$BPgroupCriteria
+        FeatCat <- input$BPFeatureCategory
+        Feature <- input$BPFeatSelection
+        NameCol <- colnames(meta)[1]
+        removeSingles <- input$BPremoveSingles
+        BPlog <- input$BPlogOpt
+        if (FeatCat == "Matrix Features") {
+          #featdf <- mat[which(mat[,1] == Feature),]
+          featdf <- mat[Feature,]
+          #rownames(featdf) <- featdf[,1]
+          #featdf <- featdf[,-1]
+          featdf <- as.data.frame(t(featdf))
+          featdf[,NameCol] <- rownames(featdf)
+          meta <- merge(meta,featdf)
+        } #else if (FeatCat == "Immune Deconvolution Features") {
+          #mat <- ImmDeconv_uncorr_react()
+          #featdf <- mat[which(mat[,1] == Feature),]
+          #rownames(featdf) <- featdf[,1]
+          #featdf <- featdf[,-1]
+          #featdf <- as.data.frame(t(featdf))
+          #featdf[,NameCol] <- rownames(featdf)
+          #meta <- merge(meta,featdf)
+        #} 
+        
+        if (isTruthy(Feature)) {
+          if (Feature %in% colnames(meta)) {
+            meta <- meta %>% select(any_of(c(NameCol,groupCrit,Feature)))
+            if (removeSingles == T) {
+              tab <- table(meta[,groupCrit])
+              meta <- meta[meta[,groupCrit] %in% names(tab[tab >= 2]), ]
+            }
+            meta[,Feature] <- as.numeric(meta[,Feature])
+            meta <- meta[which(!is.na(meta[,Feature])),]
+            meta <- meta[which(meta[,Feature]!=Inf & meta[,Feature]!=-Inf),]
+            meta[,groupCrit] <- as.factor(meta[,groupCrit])
+            if (BPlog == "Log2") {
+              meta[,Feature] <- log2(meta[,Feature])
+            } else if (BPlog == "Log2+1") {
+              meta[,Feature] <- log2(meta[,Feature]+1)
+            } else if (BPlog == "Log10") {
+              meta[,Feature] <- log10(meta[,Feature])
+            } else if (BPlog == "Log10+1") {
+              meta[,Feature] <- log10(meta[,Feature]+1)
+            }
+            #meta
+          }
+          meta <- meta %>%
+            group_by(!!sym(groupCrit)) %>%
+            mutate(Outlier = ifelse(rstatix::is_outlier(!!sym(Feature)),TRUE,FALSE)) %>%
+            as.data.frame()
+          meta
         }
       })
+      
+      output$DataExplor_Box_plot_df <- DT::renderDataTable({
+        
+        df <- CohortBPPlot_df_react()
+        DT::datatable(df,
+                      options = list(lengthMenu = c(5,10, 20, 100, 1000),
+                                     pageLength = 10,
+                                     scrollX = T),
+                      rownames = F)
+        
+      })
+      
+      CohortBPPlot_react <- reactive({
+        
+        plotdf_full <- CohortBPPlot_df_react()
+        groupCrit <- input$BPgroupCriteria
+        FeatCat <- input$BPFeatureCategory
+        Feature <- input$BPFeatSelection
+        NameCol <- colnames(plotdf_full)[1]
+        BPplottheme <- input$BPTheme
+        StatMethod <- input$BPplotstatComp
+        dotChoice <- input$BPplotsampledots
+        dotSize <- input$BPplotDotSize
+        bpFlip <- input$BPflipBP
+        BPorVI <- input$BPorViolin
+        Xaxis_font <- input$BPplot1XAxisSize              # Axis font size
+        Yaxis_font <- input$BPplot1YAxisSize              # Axis font size
+        Yaxis_lim <- input$BPplot1YAxisLim
+        hjust_orient <- 1                                # Initial hjust
+        axis_orient <- as.numeric(input$BPxAxisOrient)  # X-axis label orientation
+        if (axis_orient == 0) {                          # Adjust hjust if orientation is 0
+          hjust_orient <- 0.5
+        }
+        BPorder <- input$BPplotXaxOrder
+        BPGroupSelect <- input$BPgroupSelection
+        
+        if (isTruthy(Feature)) {
+          plotdf <- plotdf_full[,c(NameCol,groupCrit,Feature)]
+          plotdf <- plotdf[which(plotdf[,groupCrit] %in% BPGroupSelect),]
+          colnames(plotdf) <- c("SampleName","Group","Feature")
+          
+          if (BPorder == "Descending"){
+            barp <- ggplot(data = plotdf, aes(x=reorder(Group,-Feature, FUN = median),y=Feature, fill=Group))
+            plotdf_dots <- plotdf
+            plotdf_dots$Group <- reorder(plotdf_dots$Group,-plotdf_dots$Feature, FUN = median)
+            plotdf_dots$xj <- jitter(as.numeric(factor(plotdf_dots$Group)))
+          }
+          if (BPorder == "Ascending"){
+            barp <- ggplot(data = plotdf, aes(x=reorder(Group,Feature, FUN = median),y=Feature, fill=Group))
+            plotdf_dots <- plotdf
+            plotdf_dots$Group <- reorder(plotdf_dots$Group,plotdf_dots$Feature, FUN = median)
+            plotdf_dots$xj <- jitter(as.numeric(factor(plotdf_dots$Group)))
+          }
+          if (BPorder == "Not Specificed"){
+            barp <- ggplot(data = plotdf, aes(x=Group,y=Feature, fill=Group))
+            plotdf_dots <- plotdf
+            plotdf_dots$xj <- jitter(as.numeric(factor(plotdf_dots$Group)))
+          }
+          if (BPorVI == "Box Plot") {
+            barp <- barp + geom_boxplot(width = 0.5, lwd = 1)
+          }
+          if (BPorVI == "Violin Plot") {
+            barp <- barp + geom_violin() +
+              stat_summary(fun=median, geom="crossbar", width=0.5, color="black")
+          }
+          if (isTruthy(Yaxis_lim)) {
+            barp <- barp +
+              ylim(paste0(as.numeric(strsplit(Yaxis_lim,",")[[1]][1]),as.numeric(strsplit(Yaxis_lim,",")[[1]][2])))
+          }
+          
+          barp <- barp +
+            get(BPplottheme)() +
+            labs(#title = BPTitle_in,
+              x = groupCrit, y = Feature,
+              fill = groupCrit)
+          if (StatMethod != "none") {
+            barp <- barp + ggpubr::stat_compare_means(method = StatMethod)
+          }
+          if (dotChoice) {
+            barp <- barp + geom_point(data = plotdf_dots, aes(x=xj), col="grey14", size=dotSize)
+          }
+          barp <- barp + theme(axis.text.x = element_text(size = Xaxis_font,angle = axis_orient, hjust = hjust_orient),
+                               axis.title.x = element_text(size = Xaxis_font),
+                               axis.text.y = element_text(size = Yaxis_font),
+                               axis.title.y = element_text(size = Yaxis_font),
+                               legend.position = "none")
+          if (bpFlip) {
+            barp <- barp + coord_flip()
+          }
+          barp
+        }
+        
+      })
+      
+      output$uncorrected_Box_plot <- renderPlot({
+        
+        barp <- CohortBPPlot_react()
+        barp
+        
+      })
+      
+      
+      #render boxplot
+      #output$boxplot3 <- renderPlot({
+      #  
+      #  meta <- meta_react()
+      #  metacol <- metacol_reactVal()
+      #  if (length(colnames(meta)) == 2) {
+      #    metacol <- colnames(meta)[2]
+      #  }
+      #  expr <- expr_react()
+      #  geneList <- geneList_raw()
+      #  title_font <- input$boxplot1TitleSize
+      #  axis_font <- input$boxplot1AxisSize
+      #  #if (ncol(meta) > 2) {
+      #  #  metacol <- input$BoxPlot1MetaCol
+      #  #}
+      #  #else if (ncol(meta) == 2) {
+      #  #  metacol <- colnames(meta)[2]
+      #  #}
+      #  
+      #  if (length(input$GeneListTable2_rows_selected) > 0){
+      #    gene <- geneList[input$GeneListTable2_rows_selected, 1]
+      #    min <- min(log2(expr[gene,] + 1.0))
+      #    max <- max(log2(expr[gene,] + 1.0))
+      #    meta_temp <- meta
+      #    rownames(meta_temp) <- meta[,1]
+      #    meta_temp <- meta_temp[,metacol,drop = F]
+      #    meta_temp[,metacol] <- as.factor(meta_temp[,metacol])
+      #    #meta_temp <- meta_temp %>%
+      #    #  select(Group)
+      #    data = merge(t(expr[gene,]), meta_temp, by=0)
+      #    colnames(data) = c("SampleName", "GeneExpr", "Cluster")
+      #    ggplot(data, aes(x=Cluster, y=log2(GeneExpr + 1.0))) +
+      #      geom_boxplot(outlier.colour="red", outlier.shape=8, outlier.size=1) +
+      #      geom_dotplot(binaxis='y', stackdir='center', dotsize=input$boxplotDot2) +
+      #      stat_compare_means(label = "p.signif") + ylim(min * 0.9, max * 1.3) +
+      #      theme_bw() +
+      #      labs(title= paste(gene, "Expression (log2)")) +
+      #      theme(axis.text.x = element_text(angle = 90, vjust = 0.25, hjust = 1),
+      #            axis.title = element_text(size = axis_font),
+      #            plot.title = element_text(size = title_font))
+      #  }
+      #})
       
       ####----Bar Plot----####
       barplot_react <- reactive({
@@ -6824,6 +7654,7 @@ server <- function(input, output, session) {
       })
       
       Volcano3_react <- reactive({
+        req(topgenereact())
         #title_font <- input$VolMATitleSize
         axis_font <- input$VolMAAxisSize
         tick_font <- input$VolMATickSize
@@ -9723,11 +10554,18 @@ server <- function(input, output, session) {
           Pval = gsea.df$pvalue[which(gsea.df[,'ID']==GS)]
           NES.o <- paste0("NES: ", NES)
           Pval.o <- paste0("Pvalue: ", Pval)
+          if (input$volcanoCompChoice3 == "Two groups") {
+            groupA <- input$comparisonA
+            groupB <- input$comparisonB
+          } else if (input$volcanoCompChoice3 == "One group against all other") {
+            groupA <- input$comparisonA_one
+            groupB <- paste0("Not_",groupA)
+          }
           if (NES > 0){
-            UpOrDown <- paste("Based on the normalized enrichment score above, the", GS, "gene set is upregulated in", input$comparisonA , "group.")
+            UpOrDown <- paste("Based on the normalized enrichment score above, the", GS, "gene set is upregulated in", groupA , "group.")
           }
           else {
-            UpOrDown <- paste("Based on the normalized enrichment score above, the", GS, "gene set is downregulated in", input$comparisonA , "group.")
+            UpOrDown <- paste("Based on the normalized enrichment score above, the", GS, "gene set is downregulated in", groupA , "group.")
           }
           paste(NES.o, Pval.o, UpOrDown, sep = '\n')
         }
@@ -9804,6 +10642,7 @@ server <- function(input, output, session) {
       
       output$GenesAboveCutoff1 <- renderText({
         
+        req(topgenereact2())
         req(input$DEGcolHeat)
         FC_cutoff <- input$fc_cutoff_h              #FC cutoff for top gene selection
         P_cutoff <- input$p_cutoff_h                #P-value cutoff for top gene selections
@@ -9824,24 +10663,43 @@ server <- function(input, output, session) {
           metacol <- colnames(meta)[2]
         }
         covars <- input$DEGCovarSelect
-        metaSub <- meta[which(meta[,metacol] %in% c(input$comparisonA2,input$comparisonB2)),c(colnames(meta)[1],metacol,covars)]
+        
+        
+        metaSub <- meta[,c(colnames(meta)[1],metacol,covars)]
         metaSub_noNA <- metaSub[complete.cases(metaSub),]
-        A <- metaSub_noNA[which(metaSub_noNA[,metacol] == input$comparisonA2),1]
-        B <- metaSub_noNA[which(metaSub_noNA[,metacol] == input$comparisonB2),1]
+        
+        if (input$volcanoCompChoice == "Two groups") {
+          groupA <- input$comparisonA2
+          groupB <- input$comparisonB2
+          A <- metaSub_noNA[which(metaSub_noNA[,metacol] == groupA),1]
+          B <- metaSub_noNA[which(metaSub_noNA[,metacol] == groupB),1]
+        } else if (input$volcanoCompChoice == "One group against all other") {
+          groupA <- input$comparisonA2_one
+          groupB <- paste0("Not_",groupA)
+          metaSub_noNA[,paste0(metacol,"_Dichot")] <- NA
+          metaSub_noNA[which(metaSub_noNA[,metacol] == groupA),paste0(metacol,"_Dichot")] <- groupA
+          metaSub_noNA[which(metaSub_noNA[,metacol] != groupA),paste0(metacol,"_Dichot")] <- paste0("Not_",groupA)
+          A <- metaSub_noNA[which(metaSub_noNA[,paste0(metacol,"_Dichot")] == groupA),1]
+          B <- metaSub_noNA[which(metaSub_noNA[,paste0(metacol,"_Dichot")] == paste0("Not_",groupA)),1]
+          metacol <- paste0(metacol,"_Dichot")
+          metaSub_noNA <- metaSub_noNA[which(metaSub_noNA[,metacol] %in% c(groupA,groupB)),c(colnames(metaSub_noNA)[1],metacol,covars)]
+          metaSub_noNA <- metaSub_noNA[complete.cases(metaSub_noNA),]
+        }
+        
         
         form <- paste0("~0 + ",paste(c(metacol,covars),collapse = " + "))
         
         if (nrow(metaSub_noNA) < nrow(metaSub)) {
           RowsTaken <- nrow(metaSub)-nrow(metaSub_noNA)
           paste(RowsTaken," samples removed due to NA values in covariates.",
-                "\nThis volcano plot is comparing group A: ",input$comparisonA2," (N=",length(A),")", " and group B: ",input$comparisonB2," (N=",length(B),")",
-                ".\nGenes with a positive log fold change are upregulated in the ",input$comparisonA2,
-                " group.\nGenes with a negative log fold change are upregulated in the ",input$comparisonB2, " group.",
+                "\nThis volcano plot is comparing group A: ",groupA," (N=",length(A),")", " and group B: ",groupB," (N=",length(B),")",
+                ".\nGenes with a positive log fold change are upregulated in the ",groupA,
+                " group.\nGenes with a negative log fold change are upregulated in the ",groupB, " group.",
                 "\nFormula: ",form, sep = "")
         } else {
-          paste("This volcano plot is comparing group A: ",input$comparisonA2," (N=",length(A),")", " and group B: ",input$comparisonB2," (N=",length(B),")",
-                ".\nGenes with a positive log fold change are upregulated in the ",input$comparisonA2,
-                " group.\nGenes with a negative log fold change are upregulated in the ",input$comparisonB2, " group.",
+          paste("This volcano plot is comparing group A: ",groupA," (N=",length(A),")", " and group B: ",groupB," (N=",length(B),")",
+                ".\nGenes with a positive log fold change are upregulated in the ",groupA,
+                " group.\nGenes with a negative log fold change are upregulated in the ",groupB, " group.",
                 "\nFormula: ",form, sep = "")
         }
       })
@@ -9853,23 +10711,39 @@ server <- function(input, output, session) {
           metacol <- colnames(meta)[2]
         }
         covars <- input$DEGCovarSelect
-        metaSub <- meta[which(meta[,metacol] %in% c(input$comparisonA2,input$comparisonB2)),c(colnames(meta)[1],metacol,covars)]
+        metaSub <- meta[,c(colnames(meta)[1],metacol,covars)]
         metaSub_noNA <- metaSub[complete.cases(metaSub),]
-        A <- metaSub_noNA[which(metaSub_noNA[,metacol] == input$comparisonA2),1]
-        B <- metaSub_noNA[which(metaSub_noNA[,metacol] == input$comparisonB2),1]
+        
+        if (input$volcanoCompChoice == "Two groups") {
+          groupA <- input$comparisonA2
+          groupB <- input$comparisonB2
+          A <- metaSub_noNA[which(metaSub_noNA[,metacol] == groupA),1]
+          B <- metaSub_noNA[which(metaSub_noNA[,metacol] == groupB),1]
+        } else if (input$volcanoCompChoice == "One group against all other") {
+          groupA <- input$comparisonA2_one
+          groupB <- paste0("Not_",groupA)
+          metaSub_noNA[,paste0(metacol,"_Dichot")] <- NA
+          metaSub_noNA[which(metaSub_noNA[,metacol] == groupA),paste0(metacol,"_Dichot")] <- groupA
+          metaSub_noNA[which(metaSub_noNA[,metacol] != groupA),paste0(metacol,"_Dichot")] <- paste0("Not_",groupA)
+          A <- metaSub_noNA[which(metaSub_noNA[,paste0(metacol,"_Dichot")] == groupA),1]
+          B <- metaSub_noNA[which(metaSub_noNA[,paste0(metacol,"_Dichot")] == paste0("Not_",groupA)),1]
+          metacol <- paste0(metacol,"_Dichot")
+          metaSub_noNA <- metaSub_noNA[which(metaSub_noNA[,metacol] %in% c(groupA,groupB)),c(colnames(metaSub_noNA)[1],metacol,covars)]
+          metaSub_noNA <- metaSub_noNA[complete.cases(metaSub_noNA),]
+        }
         form <- paste0("~0 + ",paste(c(metacol,covars),collapse = " + "))
         
         if (nrow(metaSub_noNA) < nrow(metaSub)) {
           RowsTaken <- nrow(metaSub)-nrow(metaSub_noNA)
           paste(RowsTaken," samples removed due to NA values in covariates.",
-                "\nThis MA plot is comparing group A: ",input$comparisonA2," (N=",length(A),")", " and group B: ",input$comparisonB2," (N=",length(B),")",
-                ".\nGenes with a positive log fold change are upregulated in the ",input$comparisonA2,
-                " group.\nGenes with a negative log fold change are upregulated in the ",input$comparisonB2, " group.",
+                "\nThis MA plot is comparing group A: ",groupA," (N=",length(A),")", " and group B: ",groupB," (N=",length(B),")",
+                ".\nGenes with a positive log fold change are upregulated in the ",groupA,
+                " group.\nGenes with a negative log fold change are upregulated in the ",groupB, " group.",
                 "\nFormula: ",form, sep = "")
         } else {
-          paste("This MA plot is comparing group A: ",input$comparisonA2," (N=",length(A),")", " and group B: ",input$comparisonB2," (N=",length(B),")",
-                ".\nGenes with a positive log fold change are upregulated in the ",input$comparisonA2,
-                " group.\nGenes with a negative log fold change are upregulated in the ",input$comparisonB2, " group.",
+          paste("This MA plot is comparing group A: ",groupA," (N=",length(A),")", " and group B: ",groupB," (N=",length(B),")",
+                ".\nGenes with a positive log fold change are upregulated in the ",groupA,
+                " group.\nGenes with a negative log fold change are upregulated in the ",groupB, " group.",
                 "\nFormula: ",form, sep = "")
         }
         
@@ -9891,25 +10765,43 @@ server <- function(input, output, session) {
           metacol <- colnames(meta)[2]
         }
         covars <- input$DEGCovarSelectTab
-        metaSub <- meta[which(meta[,metacol] %in% c(input$comparisonA2,input$comparisonB2)),c(colnames(meta)[1],metacol,covars)]
+        
+        metaSub <- meta[,c(colnames(meta)[1],metacol,covars)]
         metaSub_noNA <- metaSub[complete.cases(metaSub),]
-        A <- metaSub_noNA[which(metaSub_noNA[,metacol] == input$comparisonA2),1]
-        B <- metaSub_noNA[which(metaSub_noNA[,metacol] == input$comparisonB2),1]
+        
+        if (input$volcanoCompChoice2 == "Two groups") {
+          groupA <- input$comparisonA2.DEG
+          groupB <- input$comparisonB2.DEG
+          A <- metaSub_noNA[which(metaSub_noNA[,metacol] == groupA),1]
+          B <- metaSub_noNA[which(metaSub_noNA[,metacol] == groupB),1]
+        } else if (input$volcanoCompChoice2 == "One group against all other") {
+          groupA <- input$comparisonA2.DEG_one
+          groupB <- paste0("Not_",groupA)
+          metaSub_noNA[,paste0(metacol,"_Dichot")] <- NA
+          metaSub_noNA[which(metaSub_noNA[,metacol] == groupA),paste0(metacol,"_Dichot")] <- groupA
+          metaSub_noNA[which(metaSub_noNA[,metacol] != groupA),paste0(metacol,"_Dichot")] <- paste0("Not_",groupA)
+          A <- metaSub_noNA[which(metaSub_noNA[,paste0(metacol,"_Dichot")] == groupA),1]
+          B <- metaSub_noNA[which(metaSub_noNA[,paste0(metacol,"_Dichot")] == paste0("Not_",groupA)),1]
+          metacol <- paste0(metacol,"_Dichot")
+          metaSub_noNA <- metaSub_noNA[which(metaSub_noNA[,metacol] %in% c(groupA,groupB)),c(colnames(metaSub_noNA)[1],metacol,covars)]
+          metaSub_noNA <- metaSub_noNA[complete.cases(metaSub_noNA),]
+        }
+        
         form <- paste0("~0 + ",paste(c(metacol,covars),collapse = " + "))
         
         if (nrow(metaSub_noNA) < nrow(metaSub)) {
           RowsTaken <- nrow(metaSub)-nrow(metaSub_noNA)
           paste(RowsTaken," samples removed due to NA values in covariates.",
-                "This table represents differentially expressed genes when comparing group A: ",input$comparisonA2.DEG," (N=",length(A),")"," and group B: ",input$comparisonB2.DEG," (N=",length(B),")",
-                ".\nGenes with a positive logFC, indicate an upregulation in group A: ", input$comparisonA2.DEG,
-                ".\nGenes with a negative logFC, indicate an upregulation in group B: ", input$comparisonB2.DEG,
-                ".\nThe 'AveExpr' column represents the log transformed average expression between group A: ",input$comparisonA2.DEG," and group B: ",input$comparisonB2.DEG,".",
+                "This table represents differentially expressed genes when comparing group A: ",groupA," (N=",length(A),")"," and group B: ",input$comparisonB2.DEG," (N=",length(B),")",
+                ".\nGenes with a positive logFC, indicate an upregulation in group A: ", groupA,
+                ".\nGenes with a negative logFC, indicate an upregulation in group B: ", groupB,
+                ".\nThe 'AveExpr' column represents the log transformed average expression between group A: ",groupA," and group B: ",input$comparisonB2.DEG,".",
                 "\nFormula: ",form, sep = "")
         } else {
-          paste("This table represents differentially expressed genes when comparing group A: ",input$comparisonA2.DEG," (N=",length(A),")"," and group B: ",input$comparisonB2.DEG," (N=",length(B),")",
-                ".\nGenes with a positive logFC, indicate an upregulation in group A: ", input$comparisonA2.DEG,
-                ".\nGenes with a negative logFC, indicate an upregulation in group B: ", input$comparisonB2.DEG,
-                ".\nThe 'AveExpr' column represents the log transformed average expression between group A: ",input$comparisonA2.DEG," and group B: ",input$comparisonB2.DEG,".",
+          paste("This table represents differentially expressed genes when comparing group A: ",groupA," (N=",length(A),")"," and group B: ",groupB," (N=",length(B),")",
+                ".\nGenes with a positive logFC, indicate an upregulation in group A: ", groupA,
+                ".\nGenes with a negative logFC, indicate an upregulation in group B: ", groupB,
+                ".\nThe 'AveExpr' column represents the log transformed average expression between group A: ",groupA," and group B: ",groupB,".",
                 "\nFormula: ",form, sep = "")
         }
       })
