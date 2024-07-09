@@ -1,4 +1,4 @@
-type_id <- paste0("v2.0.20240626")
+type_id <- paste0("v2.0.20240703")
 
 # User Data Input --------------------------------------------------------------
 # Project Name
@@ -27,9 +27,10 @@ PasswordSet <- 'password'
 ExampleExpr_File <- "Example_Data/TCGA_CHOL_Expression_PatientID.txt"
 ExampleClin_File <- "Example_Data/TCGA_CHOL_Clinical_PatientID.txt"
 GeneSetHS_File <- "Genesets/GeneSet_List_HS_v6.RData"
-GeneSetTableHS_File <- "Genesets/GeneSet_CatTable_v6.txt"
+GeneSetTableHS_File <- "Genesets/GeneSet_Categories_HS.txt"
 GeneSetMM_File <- "Genesets/GeneSet_List_MM.RData"
-GeneSetTableMM_File <- "Genesets/GeneSet_CatTable_MM.txt"
+GeneSetTableMM_File <- "Genesets/GeneSet_Categories_MM.txt"
+MM_HS_Conversion_File <- "Genesets/hs_mm_conversion_20240701.txt"
 
 
 #increase file upload size
@@ -70,6 +71,7 @@ library("ComplexHeatmap")
 library("GEOquery")
 library("edgeR")
 library("DESeq2")
+library("svglite")
 
 if ("recount" %in% rownames(installed.packages()) && "recount3" %in% rownames(installed.packages())) {
   library("recount")
@@ -176,6 +178,12 @@ mouse <- ifelse(!as.logical(human),TRUE,FALSE)
 #
 #}
 
+get_feat_cols <- function(data) {
+  data <- data[sapply(data, function(x) length(unique(x))>1)]
+  data <- data[sapply(data, function(x) length(unique(x))<length(x))]
+  return(colnames(data))
+}
+
 # Function to identify numeric or character columns
 column_type_check <- function(data, type = "numeric", max_na_prop = 0.1) {
   # Check if the 'data' argument is a data frame
@@ -226,6 +234,26 @@ ExprFilter2 <- function(vec,criteria,proportion) {
 
 boxopt <- c("none","wilcox.test","t.test","kruskal.test","anova")
 
+detect_species <- function(genes) {
+  # check the capitalization pattern
+  is_human_gene <- function(gene) {
+    return(grepl("^[A-Z]+$", gene))
+  }
+  is_mouse_gene <- function(gene) {
+    return(grepl("^[A-Z][a-z]*$", gene))
+  }
+  # Count the number of human and mouse gene patterns
+  human_count <- sum(sapply(genes, is_human_gene))
+  mouse_count <- sum(sapply(genes, is_mouse_gene))
+  # Determine the majority match
+  if (human_count > mouse_count) {
+    return("human")
+  } else if (mouse_count > human_count) {
+    return("mouse")
+  } else {
+    return("undetermined") # If counts are equal or if there are no matches
+  }
+}
 
 
 # Password Table ---------------------------------------------------------------
@@ -249,7 +277,7 @@ login_tab <- tabPanel(
 )
 
 ## About Tab -------------------------------------------------------------------
-About_tab <- tabPanel("Intro/Methodology",
+About_tab <- tabPanel("About",
                       fluidPage(
                         mainPanel(
                           h3("Introduction"),
@@ -271,7 +299,7 @@ About_tab <- tabPanel("Intro/Methodology",
                             The identified most variable genes can be downloaded as a table for the user. The “complete” method was chosen as the default
                             algorithm for clustering, but other methods such as Ward, average, and centroid could be chosen based on the ‘hclust()’ function in R."),
                           h3("Differential Gene Expression Methods"),
-                          p("Differential gene expression analysis is performed on the expression data between two groups defined by the provided metadata file.
+                          p("Differential gene expression analysis is performed on the expression data between Limma: Two groups defined by the provided metadata file.
                             The samples chosen are log-transformed (log2 + 1). A model matrix is then designed for LIMMA linear modeling followed by empirical
                             Bayes statistics to moderate gene variance and modeling of the global characteristic of the data. Of note, the current pipeline expects
                             the matrix input quantification are pre-normalized, such as in CPM, TMM, or FPKM."),
@@ -342,6 +370,13 @@ DataInput_tab <- tabPanel("Data Input",
                               ),
                               hr(),
                               tabsetPanel(
+                                tabPanel("Subest Data",
+                                         p(),
+                                         selectizeInput("SubsetCol","Subset Samples By:",choices = NULL,selected = NULL),
+                                         #selectizeInput("SubsetCrit","Sample Criteria:",choices = NULL,selected = 1),
+                                         #uiOutput("rendSubsetCol"),
+                                         uiOutput("rendSubsetCrit")
+                                         ),
                                 tabPanel("Split Columns",
                                          p(),
                                          fluidRow(
@@ -442,9 +477,9 @@ Data_Exploration_tab <- tabPanel("Data Exploration",
                                        ),
                                        ### Sidebar --------------------------------------------
                                        
-                                       uiOutput("rendSubsetCol"),
-                                       uiOutput("rendSubsetCrit"),
-                                       conditionalPanel(condition = "input.dataset != '1'",
+                                       #uiOutput("rendSubsetCol"),
+                                       #uiOutput("rendSubsetCrit"),
+                                       conditionalPanel(condition = "input.dataset == '2' | input.dataset == '4'",
                                                         uiOutput("rendGroupCol")
                                        ),
                                        conditionalPanel(condition = "input.dataset == '1'",
@@ -503,10 +538,10 @@ Data_Exploration_tab <- tabPanel("Data Exploration",
                                                                                     ),
                                                                                     fluidRow(
                                                                                       column(6,
-                                                                                             numericInput("heatmapHeight1","Download Height (in)",value = 8)
+                                                                                             numericInput("heatmapHeight1","Download Height (in)",value = 20)
                                                                                       ),
                                                                                       column(6,
-                                                                                             numericInput("heatmapWidth1","Download Width (in)",value = 10)
+                                                                                             numericInput("heatmapWidth1","Download Width (in)",value = 15)
                                                                                       )
                                                                                     )
                                                                            )
@@ -557,10 +592,10 @@ Data_Exploration_tab <- tabPanel("Data Exploration",
                                                                                     ),
                                                                                     fluidRow(
                                                                                       column(6,
-                                                                                             numericInput("heatmapHeight2","Download Height (in)",value = 8)
+                                                                                             numericInput("heatmapHeight2","Download Height (in)",value = 20)
                                                                                       ),
                                                                                       column(6,
-                                                                                             numericInput("heatmapWidth2","Download Width (in)",value = 10)
+                                                                                             numericInput("heatmapWidth2","Download Width (in)",value = 15)
                                                                                       )
                                                                                     )
                                                                            )
@@ -578,8 +613,8 @@ Data_Exploration_tab <- tabPanel("Data Exploration",
                                                                                     uiOutput("rendDEGcolHeat"),
                                                                                     uiOutput("rendDESeqDesignColRef_heat"),
                                                                                     radioButtons("volcanoCompChoice4","Comparison Method:",
-                                                                                                 choices = c("Two groups","One group against all other"), inline = T),
-                                                                                    conditionalPanel(condition = "input.volcanoCompChoice4 == 'Two groups'",
+                                                                                                 choices = c("Limma: Two groups","Limma: One group"), inline = T),
+                                                                                    conditionalPanel(condition = "input.volcanoCompChoice4 == 'Limma: Two groups'",
                                                                                                      fluidRow(
                                                                                                        column(6,
                                                                                                               uiOutput("rendcomparisonA2_h")
@@ -588,7 +623,7 @@ Data_Exploration_tab <- tabPanel("Data Exploration",
                                                                                                                uiOutput("rendcomparisonB2_h"))
                                                                                                      )
                                                                                     ),
-                                                                                    conditionalPanel(condition = "input.volcanoCompChoice4 == 'One group against all other'",
+                                                                                    conditionalPanel(condition = "input.volcanoCompChoice4 == 'Limma: One group'",
                                                                                                      uiOutput("rendcomparisonA2_h_one")
                                                                                     ),
                                                                                     #conditionalPanel(condition = "input.RawCountQuantNorm.includes('Normalize Raw Counts') & input.volcanoCompChoice4 == 'DESeq2'",
@@ -647,10 +682,10 @@ Data_Exploration_tab <- tabPanel("Data Exploration",
                                                                                     ),
                                                                                     fluidRow(
                                                                                       column(6,
-                                                                                             numericInput("heatmapHeight3","Download Height (in)",value = 8)
+                                                                                             numericInput("heatmapHeight3","Download Height (in)",value = 20)
                                                                                       ),
                                                                                       column(6,
-                                                                                             numericInput("heatmapWidth3","Download Width (in)",value = 10)
+                                                                                             numericInput("heatmapWidth3","Download Width (in)",value = 15)
                                                                                       )
                                                                                     )
                                                                            )
@@ -960,7 +995,8 @@ Data_Exploration_tab <- tabPanel("Data Exploration",
                                                              value = 3),
                                                     ##### Average Expr Heatmaps
                                                     tabPanel("Custom Genes Average Expression Heatmap",
-                                                             withSpinner(jqui_resizable(plotOutput("avgheatmap1Cust", width = "100%", height = "1000px")), type = 6),
+                                                             jqui_resizable(plotOutput("avgheatmap1Cust", width = "100%", height = "1000px")),
+                                                             #withSpinner(jqui_resizable(plotOutput("avgheatmap1Cust", width = "100%", height = "1000px")), type = 6),
                                                              p(),
                                                              fluidRow(
                                                                downloadButton("dnldPlotSVG_heat5","Download as SVG"),
@@ -978,6 +1014,7 @@ Data_Exploration_tab <- tabPanel("Data Exploration",
                                                     downloadButton("dnldPlotSVG_scatter","Download as SVG"),
                                                     downloadButton("dnldPlotPDF_scatter","Download as PDF")
                                                   ),
+                                                  p(),
                                                   DT::dataTableOutput("geneScatterTable"),
                                                   downloadButton("geneScatterDownload", "Download Non-log2 Transformed .tsv"),
                                                   value = 2),
@@ -987,11 +1024,13 @@ Data_Exploration_tab <- tabPanel("Data Exploration",
                                                   #withSpinner(jqui_resizable(plotOutput('boxplot3', width = "100%", height = "600px")), type = 6),
                                                   #jqui_resizable(plotOutput('boxplot3', width = "100%", height = "600px")),
                                                   jqui_resizable(plotOutput('uncorrected_Box_plot', width = "100%", height = "600px")),
-                                                  DT::dataTableOutput("DataExplor_Box_plot_df"),
                                                   fluidRow(
                                                     downloadButton("dnldPlotSVG_exprBox","Download as SVG"),
                                                     downloadButton("dnldPlotPDF_exprBox","Download as PDF")
                                                   ),
+                                                  p(),
+                                                  DT::dataTableOutput("DataExplor_Box_plot_df"),
+                                                  downloadButton("dnldDataExplor_Box_plot_df","Download table"),
                                                   value = 3),
                                          #### Bar Plot
                                          tabPanel("Bar Plot",
@@ -1017,10 +1056,9 @@ DGE_tab <- tabPanel("Differential Expression Analysis",
                         sidebarPanel(
                           width = 3,
                           
-                          uiOutput("rendDEGSubsetCol"),
-                          uiOutput("rendDEGSubsetCrit"),
-                          uiOutput("rendDEGGroupCol"),
-                          uiOutput("rendDESeqDesignColRef_vol"),
+                          #uiOutput("rendDEGSubsetCol"),
+                          #uiOutput("rendDEGSubsetCrit"),
+                          #uiOutput("rendDEGGroupCol"),
                           
                           ### Sidebar -----------------------------------------
                           #### Volcano and MA plot
@@ -1029,9 +1067,11 @@ DGE_tab <- tabPanel("Differential Expression Analysis",
                                            tabsetPanel(
                                              tabPanel("Data Input",
                                                       h4("Condition Selection:"),
+                                                      uiOutput("rendDEGGroupCol"),
+                                                      uiOutput("rendDESeqDesignColRef_vol"),
                                                       radioButtons("volcanoCompChoice","Comparison Method:",
-                                                                   choices = c("Two groups","One group against all other"), inline = T),
-                                                      conditionalPanel(condition = "input.volcanoCompChoice == 'Two groups'",
+                                                                   choices = c("Limma: Two groups","Limma: One group"), inline = T),
+                                                      conditionalPanel(condition = "input.volcanoCompChoice == 'Limma: Two groups'",
                                                                        fluidRow(
                                                                          column(6,
                                                                                 uiOutput("rendcomparisonA2")
@@ -1040,7 +1080,7 @@ DGE_tab <- tabPanel("Differential Expression Analysis",
                                                                                  uiOutput("rendcomparisonB2"))
                                                                        )
                                                       ),
-                                                      conditionalPanel(condition = "input.volcanoCompChoice == 'One group against all other'",
+                                                      conditionalPanel(condition = "input.volcanoCompChoice == 'Limma: One group'",
                                                                        uiOutput("rendcomparisonA2_one")
                                                       ),
                                                       #conditionalPanel(condition = "input.RawCountQuantNorm.includes('Normalize Raw Counts') & input.volcanoCompChoice == 'DESeq2'",
@@ -1059,8 +1099,9 @@ DGE_tab <- tabPanel("Differential Expression Analysis",
                                                                             min = 0, max = 10, step = 0.1, value = 0.05)
                                                         )
                                                       ),
-                                                      conditionalPanel(condition = "input.datasettwo == '2' & input.volcanoCompChoice == 'DESeq2'",
-                                                                       radioButtons("MAxAxis","X-Axis Transformation",choices = c("Normalized","Log2+1","Raw"), inline = T)
+                                                      conditionalPanel(condition = "input.datasettwo == '1'" ,
+                                                                       radioButtons("PorAdjPval","Y-Axis Scale:",choices = c("-log10(P.value)","-log10(Adjusted P.value)"),
+                                                                                    inline = T)
                                                                        ),
                                                       h4("Gene Selection Parameters:"),
                                                       numericInput("top_x", "Number of Top Hits:", value = 10,
@@ -1227,6 +1268,7 @@ DGE_tab <- tabPanel("Differential Expression Analysis",
                                            tabsetPanel(
                                              tabPanel("Data Input",
                                                       p(),
+                                                      uiOutput("rendAvgGroupCol"),
                                                       fluidRow(
                                                         column(6,
                                                                uiOutput("rendcomparisonA2.avg")
@@ -1263,9 +1305,10 @@ DGE_tab <- tabPanel("Differential Expression Analysis",
                           
                           conditionalPanel(condition = "input.datasettwo == '6'",
                                            h4("Condition Selection:"),
+                                           uiOutput("rendDEGtabGroupCol"),
                                            radioButtons("volcanoCompChoice2","Comparison Method:",
-                                                        choices = c("Two groups","One group against all other"), inline = T),
-                                           conditionalPanel(condition = "input.volcanoCompChoice2 == 'Two groups'",
+                                                        choices = c("Limma: Two groups","Limma: One group"), inline = T),
+                                           conditionalPanel(condition = "input.volcanoCompChoice2 == 'Limma: Two groups'",
                                                             fluidRow(
                                                               column(6,
                                                                      uiOutput("rendcomparisonA2.DEG")
@@ -1274,21 +1317,13 @@ DGE_tab <- tabPanel("Differential Expression Analysis",
                                                                       uiOutput("rendcomparisonB2.DEG"))
                                                             )
                                            ),
-                                           conditionalPanel(condition = "input.volcanoCompChoice2 == 'One group against all other'",
+                                           conditionalPanel(condition = "input.volcanoCompChoice2 == 'Limma: One group'",
                                                             uiOutput("rendcomparisonA2.DEG_one")
                                            ),
                                            conditionalPanel(condition = "input.RawCountQuantNorm.includes('Normalize Raw Counts') & input.volcanoCompChoice2 == 'DESeq2'",
                                                             uiOutput("rendDESeqDesignCol_tab"),
                                                             uiOutput("rendDESeqDesignColRef_tab")
                                            ),
-                                           #fluidRow(
-                                           #  column(6,
-                                           #         uiOutput("rendcomparisonA2.DEG")
-                                           #         ),
-                                           #  column(6,
-                                           #         uiOutput("rendcomparisonB2.DEG")
-                                           #         )
-                                           #),
                                            selectizeInput("DEGCovarSelectTab","Select Covariates:", choices = NULL, selected = 1, multiple = T),
                                            h4("Download DEG Table as GMT File"),
                                            textInput("DEGfileName", "File Name for Download:",value = "DEGgeneSet"),
@@ -1298,7 +1333,7 @@ DGE_tab <- tabPanel("Differential Expression Analysis",
                                                                  min = 0, max = 5, step = 0.1, value = 1)
                                              ),
                                              column(6,
-                                                    numericInput("p_cutoff2", "Adj.P.Value Cutoff:",
+                                                    numericInput("p_cutoff2", "P.Value Cutoff:",
                                                                  min = 0, max = 10, step = 0.1, value = 0.05)
                                              )
                                            ),
@@ -1356,11 +1391,13 @@ DGE_tab <- tabPanel("Differential Expression Analysis",
                                      #withSpinner(jqui_resizable(plotOutput('boxplot1', width = "100%", height = "600px")), type = 6),
                                      #jqui_resizable(plotOutput('boxplot1', width = "100%", height = "600px")),
                                      jqui_resizable(plotOutput('uncorrected_Box_plot2', width = "100%", height = "600px")),
-                                     DT::dataTableOutput("DataExplor_Box_plot_df2"),
                                      fluidRow(
                                        downloadButton("dnldPlotSVG_exprBox2","Download as SVG"),
                                        downloadButton("dnldPlotPDF_exprBox2","Download as PDF")
                                      ),
+                                     p(),
+                                     DT::dataTableOutput("DataExplor_Box_plot_df2"),
+                                     downloadButton("dnldDataExplor_Box_plot_df2","Download table"),
                                      value = 3),
                             #### Avg Expr Scatter plot
                             tabPanel("Average Expression Scatter Plot",
@@ -1374,6 +1411,7 @@ DGE_tab <- tabPanel("Differential Expression Analysis",
                                        downloadButton("dnldPlotSVG_AvgScatter","Download as SVG"),
                                        downloadButton("dnldPlotPDF_AvgScatter","Download as PDF")
                                      ),
+                                     p(),
                                      DT::dataTableOutput("AvggeneScatterTable"),
                                      downloadButton("AvggeneScatterDownload", "Download Non-log2 Transformed .tsv"),
                                      value = 4),
@@ -1381,8 +1419,10 @@ DGE_tab <- tabPanel("Differential Expression Analysis",
                             tabPanel("DEG Table",
                                      p(),
                                      verbatimTextOutput("degtext"),
+                                     p(),
+                                     downloadButton("DEGtableDownload", "Download DEG table .txt"),
+                                     p(),
                                      div(DT::dataTableOutput("DEGtable1"), style = "font-size:12px"),
-                                     downloadButton("DEGtableDownload", "Download DEG table .tsv"),
                                      value = 6)
                           )
                         )
@@ -1396,31 +1436,33 @@ GSEA_tab <- tabPanel("GSEA Analysis",
                        title = "GSEA Analysis",
                        sidebarLayout(
                          sidebarPanel(
+                           width = 3,
                            
-                           uiOutput("rendGSEASubsetCol"),
-                           uiOutput("rendGSEASubsetCrit"),
-                           conditionalPanel(condition = "input.datasetthree != '6'",
-                                            uiOutput("rendGSEAGroupCol")
-                           ),
-                           conditionalPanel(condition = "input.datasetthree == '2'",
-                                            uiOutput("rendGSEAGroupColMulti")
-                           ),
-                           conditionalPanel(condition = "input.datasetthree == '6'",
-                                            conditionalPanel(condition = "input.datasetssheat == '2' | input.datasetssheat == '1'",
-                                                             uiOutput("rendssGSEAGroupColMulti")
-                                            ),
-                                            conditionalPanel(condition = "input.datasetssheat == '3'",
-                                                             uiOutput("rendssGSEAGroupColAvg")
-                                            )
-                           ),
+                           #uiOutput("rendGSEASubsetCol"),
+                           #uiOutput("rendGSEASubsetCrit"),
                            
                            ### Sidebar -----------------------------------------
                            tabsetPanel(id = "GSEA",
                                        tabPanel("Data Input",
-                                                conditionalPanel(condition = "input.datasetthree == '1' | input.datasetthree == '2' | input.datasetthree == '4'",
+                                                p(),
+                                                conditionalPanel(condition = "input.datasetthree != '6'",
                                                                  h4("Condition Selection:"),
+                                                                 uiOutput("rendGSEAGroupCol")
+                                                ),
+                                                conditionalPanel(condition = "input.datasetthree == '2'",
+                                                                 uiOutput("rendGSEAGroupColMulti")
+                                                ),
+                                                conditionalPanel(condition = "input.datasetthree == '6'",
+                                                                 conditionalPanel(condition = "input.datasetssheat == '2' | input.datasetssheat == '1'",
+                                                                                  uiOutput("rendssGSEAGroupColMulti")
+                                                                 ),
+                                                                 conditionalPanel(condition = "input.datasetssheat == '3'",
+                                                                                  uiOutput("rendssGSEAGroupColAvg")
+                                                                 )
+                                                ),
+                                                conditionalPanel(condition = "input.datasetthree == '1' | input.datasetthree == '2' | input.datasetthree == '4'",
                                                                  radioButtons("volcanoCompChoice3","Comparison Method:",
-                                                                              choices = c("Two groups","One group against all other"), inline = T),
+                                                                              choices = c("Two groups","One group"), inline = T),
                                                                  conditionalPanel(condition = "input.volcanoCompChoice3 == 'Two groups'",
                                                                                   fluidRow(
                                                                                     column(6,
@@ -1431,7 +1473,7 @@ GSEA_tab <- tabPanel("GSEA Analysis",
                                                                                             )
                                                                                   )
                                                                  ),
-                                                                 conditionalPanel(condition = "input.volcanoCompChoice3 == 'One group against all other'",
+                                                                 conditionalPanel(condition = "input.volcanoCompChoice3 == 'One group'",
                                                                                   uiOutput("rendcomparisonA_one")
                                                                  ),
                                                                  #fluidRow(
@@ -1505,6 +1547,16 @@ GSEA_tab <- tabPanel("GSEA Analysis",
                                        ),
                                        tabPanel("Figure Settings",
                                                 p(),
+                                                conditionalPanel(condition = "input.datasetthree == '2'",
+                                                                 fluidRow(
+                                                                   column(6,
+                                                                          numericInput("GSEAheatmapHeight1","Download Height (in)",value = 20)
+                                                                   ),
+                                                                   column(6,
+                                                                          numericInput("GSEAheatmapWidth1","Download Width (in)",value = 15)
+                                                                   )
+                                                                 )
+                                                                 ),
                                                 conditionalPanel(condition = "input.datasetthree == '6'",
                                                                  conditionalPanel("input.datasetssheat == '3'",
                                                                                   selectInput("ColorPalette_gseaHeat", "Select Color Palette:",
@@ -1535,10 +1587,10 @@ GSEA_tab <- tabPanel("GSEA Analysis",
                                                                  uiOutput("rendClusterMethodSSheat"),
                                                                  fluidRow(
                                                                    column(6,
-                                                                          numericInput("ssgseaheatmapHeight","Download Height (in)",value = 8)
+                                                                          numericInput("ssgseaheatmapHeight","Download Height (in)",value = 20)
                                                                    ),
                                                                    column(6,
-                                                                          numericInput("ssgseaheatmapWidth","Download Width (in)",value = 10)
+                                                                          numericInput("ssgseaheatmapWidth","Download Width (in)",value = 15)
                                                                    )
                                                                  )
                                                 ),
@@ -1599,7 +1651,8 @@ GSEA_tab <- tabPanel("GSEA Analysis",
                              #### Enrich Sig Table
                              tabPanel("Generate Enriched Signatures Table",
                                       p("Please note this may take several minutes depending on size and quantity of gene sets in GMT file."),
-                                      uiOutput("genESTbutton"),
+                                      #uiOutput("genESTbutton"),
+                                      actionButton("GenerateEST", "Generate enriched signature table for selected gene set"),
                                       p(),
                                       withSpinner(DT::dataTableOutput("enrich_sig_table_gen"), type = 6),
                                       downloadButton("enrich_sig_download.u","Download .tsv"),
@@ -1789,11 +1842,11 @@ server <- function(input, output, session) {
           HM_select <- "Human"
         }
         fluidRow(
-          column(9,
+          column(8,
                  fileInput("ExprFileInput","Expression Matrix")
           ),
-          column(3, style = "margin-top:15px",
-                 shiny::radioButtons("HumanOrMouse",NULL,c("Human","Mouse"), selected = HM_select)
+          column(4, style = "margin-top:15px",
+                 shiny::radioButtons("HumanOrMouse",NULL,c("Human","Mouse","Mouse to Human Conv"), selected = HM_select)
           )
         )
       })
@@ -1813,7 +1866,8 @@ server <- function(input, output, session) {
                         c("No Normalization" = "none",
                           "DESeq2" = "DESeq2",
                           "TMM" = "TMM",
-                          "Upper Quartile" = "upperquartile"))
+                          "Upper Quartile" = "upperquartile"),
+                        selected = "TMM")
           }
           
         }
@@ -1844,14 +1898,14 @@ server <- function(input, output, session) {
       })
       observe({
         if ("Normalize Raw Counts" %in% input$RawCountQuantNorm) {
-          updateRadioButtons(session,"volcanoCompChoice", choices = c("Two groups","One group against all other","DESeq2"), inline = T)
-          updateRadioButtons(session,"volcanoCompChoice2", choices = c("Two groups","One group against all other","DESeq2"), inline = T)
-          updateRadioButtons(session,"volcanoCompChoice4", choices = c("Two groups","One group against all other","DESeq2"), inline = T)
+          updateRadioButtons(session,"volcanoCompChoice", choices = c("Limma: Two groups","Limma: One group","DESeq2"), inline = T)
+          updateRadioButtons(session,"volcanoCompChoice2", choices = c("Limma: Two groups","Limma: One group","DESeq2"), inline = T)
+          updateRadioButtons(session,"volcanoCompChoice4", choices = c("Limma: Two groups","Limma: One group","DESeq2"), inline = T)
         }
         if (!"Normalize Raw Counts" %in% input$RawCountQuantNorm) {
-          updateRadioButtons(session,"volcanoCompChoice", choices = c("Two groups","One group against all other"), inline = T)
-          updateRadioButtons(session,"volcanoCompChoice2", choices = c("Two groups","One group against all other"), inline = T)
-          updateRadioButtons(session,"volcanoCompChoice4", choices = c("Two groups","One group against all other"), inline = T)
+          updateRadioButtons(session,"volcanoCompChoice", choices = c("Limma: Two groups","Limma: One group"), inline = T)
+          updateRadioButtons(session,"volcanoCompChoice2", choices = c("Limma: Two groups","Limma: One group"), inline = T)
+          updateRadioButtons(session,"volcanoCompChoice4", choices = c("Limma: Two groups","Limma: One group"), inline = T)
         }
       })
       
@@ -1863,11 +1917,11 @@ server <- function(input, output, session) {
       #  }
       #})
       output$rendDESeqDesignColRef_heat <- renderUI({
-        req(input$DEGcolHeat)
+        req(metacol_reactVal())
         if ("Normalize Raw Counts" %in% input$RawCountQuantNorm) {
           if (input$volcanoCompChoice4 == "DESeq2") {
             meta <- meta_react()
-            selectInput("DESeqDesignColRef_heat","Design Reference:",choices = unique(meta[,input$DEGcolHeat]))
+            selectInput("DESeqDesignColRef_heat","Design Reference:",choices = unique(meta[,metacol_reactVal()]))
           }
         }
       })
@@ -1879,11 +1933,11 @@ server <- function(input, output, session) {
       #  }
       #})
       output$rendDESeqDesignColRef_vol <- renderUI({
-        req(input$DEGGroupCol)
+        req(metacol_reactVal())
         if ("Normalize Raw Counts" %in% input$RawCountQuantNorm) {
           if (input$volcanoCompChoice == "DESeq2") {
             meta <- meta_react()
-            selectInput("DESeqDesignColRef_vol","Design Reference:",choices = unique(meta[,input$DEGGroupCol]))
+            selectInput("DESeqDesignColRef_vol","Design Reference:",choices = unique(meta[,metacol_reactVal()]))
           }
         }
       })
@@ -1895,10 +1949,10 @@ server <- function(input, output, session) {
       #  }
       #})
       output$rendDESeqDesignColRef_tab <- renderUI({
-        req(input$DEGGroupCol)
+        req(metacol_reactVal())
         if ("Normalize Raw Counts" %in% input$RawCountQuantNorm) {
           meta <- meta_react()
-          selectInput("DESeqDesignColRef_tab","Design Reference:",choices = unique(meta[,input$DEGGroupCol]))
+          selectInput("DESeqDesignColRef_tab","Design Reference:",choices = unique(meta[,metacol_reactVal()]))
         }
       })
       output$rendClinFileInput <- renderUI({
@@ -2006,7 +2060,18 @@ server <- function(input, output, session) {
         metacol_reactVal("ajcc_pathologic_tumor_stage")
         Feature_Selected_react("ajcc_pathologic_tumor_stage")
         MM_react(FALSE)
+        Subsetting_Feature_react("Select All Samples")
+        SubCol_reactVal("Select All Samples")
         updateTextInput(session,"UserProjectName",value = "TCGA_CHOL")
+      })
+      
+      observe({
+        meta <- meta_react()
+        if (length(colnames(meta)) == 2) {
+          metacol <- colnames(meta)[2]
+          metacol_reactVal(metacol)
+        }
+        
       })
       
       ### User Upload ----------------------------------------------------------
@@ -2133,8 +2198,15 @@ server <- function(input, output, session) {
       
       observe({
         if (isTruthy(recount_id_react())) {
-          updateCheckboxGroupInput(session,"RawCountQuantNorm",choices = c("Normalize Raw Counts","Quantile Normalization","Filter Matrix"),
+          updateCheckboxGroupInput(session,"RawCountQuantNorm",choices = c("Input data is log-transformed","Normalize Raw Counts","Quantile Normalization","Filter Matrix"),
                                    selected = "Normalize Raw Counts")
+        }
+      })
+      
+      observe({
+        req(input$HumanOrMouse)
+        if (input$HumanOrMouse == "Mouse to Human Conv"){
+          MM_react(FALSE)
         }
       })
       
@@ -2272,6 +2344,12 @@ server <- function(input, output, session) {
             }
           }
           
+          SpecDetect <- detect_species(expr[,1])
+          if (SpecDetect == "mouse") {
+            updateRadioButtons(session,"HumanOrMouse",NULL,c("Human","Mouse","Mouse to Human Conv"), selected = "Mouse")
+            MM_react(TRUE)
+            FileCheckAlerts_list <- c(FileCheckAlerts_list,paste0("Mouse gene symbols detected."))
+          }
           
           colnames(expr)[1] <- "Gene"
           expr$Gene <- date_to_gene(expr$Gene)
@@ -2280,6 +2358,29 @@ server <- function(input, output, session) {
               expr$Gene <- date_to_gene(expr$Gene, mouse = T)
             }
           }
+          
+          
+          if (isTruthy(input$HumanOrMouse)) {
+            if (input$HumanOrMouse == "Mouse to Human Conv") {
+              conv_df <- as.data.frame(fread(MM_HS_Conversion_File))
+              colnames(conv_df)[1] <- colnames(expr)[1]
+              expr_new <- merge(conv_df,expr)
+              message1 <- "Mouse gene symbols converted to human"
+              FileCheckAlerts_list <- c(FileCheckAlerts_list,message1)
+              if (nrow(expr) == nrow(expr_new)) {
+                message2 <- "All genes converted successfully"
+                FileCheckAlerts_list <- c(FileCheckAlerts_list,message2)
+              } else {
+                message2 <- paste0(abs(nrow(expr)-nrow(expr_new))," genes unable to be converted.")
+                FileCheckAlerts_list <- c(FileCheckAlerts_list,message2)
+              }
+              expr <- expr_new
+            }
+            
+          }
+          
+          
+          
           if (length(expr[sapply(expr, is.infinite)]) > 0) {
             message <- paste0(length(expr[sapply(expr, is.infinite)]), " infinite values found. Replaced with NA." )
             FileCheckAlerts_list <- c(FileCheckAlerts_list,message)
@@ -2341,10 +2442,8 @@ server <- function(input, output, session) {
                   sortedIndices <- match(colnames(mat), meta[,1])
                   meta_deseq <- meta[sortedIndices,,drop=FALSE]
                   rownames(meta_deseq) <- meta_deseq[,1]
-                  print(head(meta_deseq))
                   if (desCol != "Select column") {
                     desRef <- input$DESeqDesignColRef
-                    print(desRef)
                     if (isTruthy(desRef)) {
                       meta_deseq[,desCol] <- relevel(factor(meta_deseq[,desCol]), ref = desRef)
                       colnames(meta_deseq) <- gsub(" ","_",colnames(meta_deseq))
@@ -2504,9 +2603,9 @@ server <- function(input, output, session) {
       })
       
       output$ClinFile_Preview <- DT::renderDataTable({
-        req(meta_input())
+        req(meta_react())
         req(input$ClinHead)
-        clin <- meta_input()
+        clin <- meta_react()
         if (input$ClinHead == "View table head") {
           clin <- head(clin,c(100,100))
         }
@@ -2539,8 +2638,10 @@ server <- function(input, output, session) {
           paste(ProjectName_react(),"_expr_matrix_", ExpressionMatrix_file_react(), "_", Sys.Date(), ".txt", sep = "")
         },
         content = function(file) {
-          gene_name = rownames(expr_input())
-          write_tsv(cbind(gene_name, expr_input()), file, col_names = T)
+          expr <- as.data.frame(expr_react())
+          expr <- cbind(rownames(expr),expr)
+          colnames(expr)[1] <- "Gene"
+          write.table(expr, file, sep = '\t', row.names = F)
         }
       )
       
@@ -2549,7 +2650,7 @@ server <- function(input, output, session) {
           paste(ProjectName_react(),"_meta_data_", MetaData_file_react(), "_", Sys.Date(), ".txt", sep = "")
         },
         content = function(file) {
-          write_tsv(meta_input(), file, col_names = T)
+          write.table(meta_react(), file, sep = '\t', row.names = F)
         }
       )
       
@@ -2706,7 +2807,7 @@ server <- function(input, output, session) {
         GeneSetTable <- geneset_cat_tab()
         gs_choices <- c()
         if (any(ssgsea_heat_gs_cat %in% GeneSetTable[,1])) {
-          gs_choices <- GeneSetTable[which(GeneSetTable[,1] %in% ssgsea_heat_gs_cat),4]
+          gs_choices <- GeneSetTable[which(GeneSetTable[,1] %in% ssgsea_heat_gs_cat),ncol(GeneSetTable)]
         }
         if ("User Input" %in% ssgsea_heat_gs_cat) {
           gs_choices <- c(userGeneSet_table()[,1],gs_choices)
@@ -2843,7 +2944,7 @@ server <- function(input, output, session) {
         gs <- geneset_list()
         if (input$tables == 1) {
           req(GeneSetTable_React())
-          geneset_name <- GeneSetTable_React()[input$GeneSetTable_rows_selected,3]
+          geneset_name <- GeneSetTable_React()[input$GeneSetTable_rows_selected,ncol(GeneSetTable_React())]
           geneset <- gs[geneset_name]
           geneset
         } else if (input$tables == 5) {
@@ -2868,13 +2969,51 @@ server <- function(input, output, session) {
         }
       })
       
+      geneset_gmt <- reactive({
+        
+        req(input$tables)
+        gs <- geneset_list()
+        GS_database <- input$GeneSetCat_Select
+        GeneSetTable <- geneset_cat_tab()
+        sub_tab <- GeneSetTable[which(GeneSetTable[,1] == GS_database),]
+        gs <- gs[sub_tab[,ncol(sub_tab)]]
+        withProgress(message = "Processing", value = 0, {
+          incProgress(0.25, detail = "Generating GMT table of geneset")
+          if (input$tables == 1) {
+            geneset <- gs
+            term <- rep(names(geneset), times = sapply(geneset, length))
+            gene <- unlist(geneset)
+            geneset <- data.frame(term = term, gene = gene)
+            geneset
+          } else if (input$tables == 5) {
+            req(input$userGeneSet)
+            gs.u <- input$userGeneSet
+            ext <- tools::file_ext(gs.u$datapath)
+            geneset <- userGeneSet_loaded()
+            if (isTruthy(geneset_name)) {
+              if (ext == "RData") {
+                term <- rep(names(geneset), times = sapply(geneset, length))
+                gene <- unlist(geneset)
+                geneset <- data.frame(term = term, gene = gene)
+              } else {
+                geneset
+              }
+              geneset
+            }
+          }
+          incProgress(0.5, detail = "Complete!")
+        })
+        geneset
+        
+      })
+      
       
       gmt_react <- reactive({
         req(input$tables)
         gs <- geneset_list()
         if (input$tables == 1) {
           req(GeneSetTable_React())
-          geneset_name <- GeneSetTable_React()[input$GeneSetTable_rows_selected,3]
+          geneset_name <- GeneSetTable_React()[input$GeneSetTable_rows_selected,ncol(GeneSetTable_React())]
           geneset <- gs[geneset_name]
           term <- rep(names(geneset), times = sapply(geneset, length))
           gene <- unlist(geneset)
@@ -2893,7 +3032,7 @@ server <- function(input, output, session) {
             if (ext == "gmt") {
               geneset <- geneset[which(geneset[,1] %in% geneset_name),]
             } else if (ext == "RData") {
-              geneset <- gmt[geneset_name]
+              geneset <- geneset[geneset_name]
               term <- rep(names(geneset), times = sapply(geneset, length))
               gene <- unlist(geneset)
               geneset <- data.frame(term = term, gene = gene)
@@ -2908,45 +3047,70 @@ server <- function(input, output, session) {
       })
       
       
+      
+      
+      
+      
       # Render UI ------------------------------------------------------------------
       
       ## Data Exploration ----------------------------------------------------------
-      output$rendSubsetCol <- renderUI({
+      observe({
         
+        req(meta_input())
         meta <- meta_input()
         if (ncol(meta) > 2) {
-          CharCols <- c("Select All Samples",suppressWarnings(column_type_check(meta,"character"))[-1])
-          selectInput("SubsetCol","Subset Samples By:",
+          #CharCols <- c("Select All Samples",suppressWarnings(column_type_check(meta,"character"))[-1])
+          CharCols <- c("Select All Samples",get_feat_cols(meta))
+          if (isTruthy(SubCol_reactVal())) {
+            preSelect <- SubCol_reactVal()
+          } else {
+            preSelect <- "Select All Samples"
+          }
+          updateSelectizeInput(session,"SubsetCol","Subset Samples By:",
                       choices = CharCols,
-                      selected = SubCol_reactVal())
+                      selected = preSelect, server = T)
         }
         
       })
-      observeEvent(input$DEGSubsetCol, {
-        updateSelectInput(session, "SubsetCol",selected = isolate(input$DEGSubsetCol))
-      })
-      observeEvent(input$GSEASubsetCol, {
-        updateSelectInput(session, "SubsetCol",selected = isolate(input$GSEASubsetCol))
-      })
-      observeEvent(input$SubsetCol,{SubCol_reactVal(input$SubsetCol)})
+      #output$rendSubsetCol <- renderUI({
+      #  
+      #  req(meta_input())
+      #  meta <- meta_input()
+      #  if (ncol(meta) > 2) {
+      #    #CharCols <- c("Select All Samples",suppressWarnings(column_type_check(meta,"character"))[-1])
+      #    CharCols <- c("Select All Samples",get_feat_cols(meta))
+      #    selectInput("SubsetCol","Subset Samples By:",
+      #                choices = CharCols,
+      #                selected = SubCol_reactVal())
+      #  }
+      #  
+      #})
+      #observeEvent(input$DEGSubsetCol, {
+      #  updateSelectInput(session, "SubsetCol",selected = isolate(input$DEGSubsetCol))
+      #})
+      #observeEvent(input$GSEASubsetCol, {
+      #  updateSelectInput(session, "SubsetCol",selected = isolate(input$GSEASubsetCol))
+      #})
+      #observeEvent(input$SubsetCol,{SubCol_reactVal(input$SubsetCol)})
+      
       
       output$rendSubsetCrit <- renderUI({
         
         req(input$SubsetCol)
         meta <- meta_input()
         if (input$SubsetCol != "Select All Samples") {
-          SubCrit <- unique(meta[,SubCol_reactVal()])
+          SubCrit <- unique(meta[,input$SubsetCol])
           #selectInput("SubsetCrit","Sample Criteria:",choices = SubCrit, selected = SubCrit_reactVal())
           selectInput("SubsetCrit","Sample Criteria:",choices = SubCrit)
         }
         
       })
-      observeEvent(input$DEGSubsetCrit, {
-        updateSelectInput(session, "SubsetCrit",selected = isolate(input$DEGSubsetCrit))
-      })
-      observeEvent(input$GSEASubsetCrit, {
-        updateSelectInput(session, "SubsetCrit",selected = isolate(input$GSEASubsetCrit))
-      })
+      #observeEvent(input$DEGSubsetCrit, {
+      #  updateSelectInput(session, "SubsetCrit",selected = isolate(input$DEGSubsetCrit))
+      #})
+      #observeEvent(input$GSEASubsetCrit, {
+      #  updateSelectInput(session, "SubsetCrit",selected = isolate(input$GSEASubsetCrit))
+      #})
       observeEvent(input$SubsetCrit,{SubCrit_reactVal(input$SubsetCrit)})
       
       output$rendGroupCol <- renderUI({
@@ -2954,11 +3118,12 @@ server <- function(input, output, session) {
         req(input$SubsetCol)
         meta <- meta_react()
         #FeatureChoices <- c("Select All Samples",suppressWarnings(column_type_check(meta,"character"))[-1])
-        FeatureChoices <- suppressWarnings(column_type_check(meta,"character"))[-1]
+        #FeatureChoices <- suppressWarnings(column_type_check(meta,"character"))[-1]
+        FeatureChoices <- get_feat_cols(meta)
         if (input$SubsetCol != "Select All Samples") {
           FeatureChoices <- FeatureChoices[which(FeatureChoices!=input$SubsetCol)]
         }
-        selectInput("GroupCol","Select Grouping Column:",
+        selectInput("GroupCol","Select Color Grouping Column:",
                     choices = FeatureChoices,
                     #selected = Feature_Selected,
                     selected = metacol_reactVal())
@@ -2984,9 +3149,11 @@ server <- function(input, output, session) {
       output$rendGroupColMulti <- renderUI({
         
         req(input$SubsetCol)
+        req(meta_react())
         meta <- meta_react()
         #FeatureChoices <- c("Select All Samples",suppressWarnings(column_type_check(meta,"character"))[-1])
-        FeatureChoices <- suppressWarnings(column_type_check(meta,"character"))[-1]
+        #FeatureChoices <- suppressWarnings(column_type_check(meta,"character"))[-1]
+        FeatureChoices <- get_feat_cols(meta)
         if (input$SubsetCol != "Select All Samples") {
           FeatureChoices <- FeatureChoices[which(FeatureChoices!=input$SubsetCol)]
         }
@@ -3014,7 +3181,8 @@ server <- function(input, output, session) {
         req(input$SubsetCol)
         meta <- meta_react()
         #FeatureChoices <- c("Select All Samples",suppressWarnings(column_type_check(meta,"character"))[-1])
-        FeatureChoices <- suppressWarnings(column_type_check(meta,"character"))[-1]
+        #FeatureChoices <- suppressWarnings(column_type_check(meta,"character"))[-1]
+        FeatureChoices <- get_feat_cols(meta)
         if (input$SubsetCol != "Select All Samples") {
           FeatureChoices <- FeatureChoices[which(FeatureChoices!=input$SubsetCol)]
         }
@@ -3065,54 +3233,57 @@ server <- function(input, output, session) {
       
       
       ## DEG -----------------------------------------------------------------------
-      output$rendDEGSubsetCol <- renderUI({
-        
-        meta <- meta_react()
-        if (ncol(meta) > 2) {
-          CharCols <- c("Select All Samples",suppressWarnings(column_type_check(meta,"character"))[-1])
-          selectInput("DEGSubsetCol","Subset Samples By:",
-                      choices = CharCols,
-                      selected = SubCol_reactVal())
-        }
-        
-      })
-      observeEvent(input$SubsetCol, ignoreInit = TRUE, {
-        updateSelectInput(session, "DEGSubsetCol",selected = isolate(input$SubsetCol))
-      })
-      observeEvent(input$GSEASubsetCol, ignoreInit = TRUE, {
-        updateSelectInput(session, "DEGSubsetCol",selected = isolate(input$GSEASubsetCol))
-      })
-      observeEvent(input$DEGSubsetCol,{SubCol_reactVal(input$DEGSubsetCol)})
+      #output$rendDEGSubsetCol <- renderUI({
+      #  
+      #  meta <- meta_react()
+      #  if (ncol(meta) > 2) {
+      #    #CharCols <- c("Select All Samples",suppressWarnings(column_type_check(meta,"character"))[-1])
+      #    CharCols <- c("Select All Samples",get_feat_cols(meta))
+      #    selectInput("DEGSubsetCol","Subset Samples By:",
+      #                choices = CharCols,
+      #                selected = SubCol_reactVal())
+      #  }
+      #  
+      #})
+      #observeEvent(input$SubsetCol, ignoreInit = TRUE, {
+      #  updateSelectInput(session, "DEGSubsetCol",selected = isolate(input$SubsetCol))
+      #})
+      #observeEvent(input$GSEASubsetCol, ignoreInit = TRUE, {
+      #  updateSelectInput(session, "DEGSubsetCol",selected = isolate(input$GSEASubsetCol))
+      #})
+      #observeEvent(input$DEGSubsetCol,{SubCol_reactVal(input$DEGSubsetCol)})
       
-      output$rendDEGSubsetCrit <- renderUI({
-        
-        req(input$DEGSubsetCol)
-        if (input$DEGSubsetCol != "Select All Samples") {
-          meta <- meta_input()
-          SubCrit <- unique(meta[,input$DEGSubsetCol])
-          selectInput("DEGSubsetCrit","Sample Criteria:",choices = SubCrit, selected = SubCrit_reactVal())
-        }
-        
-      })
-      observeEvent(input$SubsetCrit, ignoreInit = TRUE, {
-        updateSelectInput(session, "DEGSubsetCrit",selected = isolate(input$SubsetCrit))
-      })
-      observeEvent(input$GSEASubsetCrit, ignoreInit = TRUE, {
-        updateSelectInput(session, "DEGSubsetCrit",selected = isolate(input$GSEASubsetCrit))
-      })
-      observeEvent(input$DEGSubsetCrit,{SubCrit_reactVal(input$DEGSubsetCrit)})
+      #output$rendDEGSubsetCrit <- renderUI({
+      #  
+      #  req(input$DEGSubsetCol)
+      #  if (input$DEGSubsetCol != "Select All Samples") {
+      #    meta <- meta_input()
+      #    SubCrit <- unique(meta[,input$DEGSubsetCol])
+      #    selectInput("DEGSubsetCrit","Sample Criteria:",choices = SubCrit, selected = SubCrit_reactVal())
+      #  }
+      #  
+      #})
+      #observeEvent(input$SubsetCrit, ignoreInit = TRUE, {
+      #  updateSelectInput(session, "DEGSubsetCrit",selected = isolate(input$SubsetCrit))
+      #})
+      #observeEvent(input$GSEASubsetCrit, ignoreInit = TRUE, {
+      #  updateSelectInput(session, "DEGSubsetCrit",selected = isolate(input$GSEASubsetCrit))
+      #})
+      #observeEvent(input$DEGSubsetCrit,{SubCrit_reactVal(input$DEGSubsetCrit)})
       
       output$rendDEGGroupCol <- renderUI({
         
-        req(input$DEGSubsetCol)
+        req(input$SubsetCol)
+        req(meta_react())
         meta <- meta_react()
         #FeatureChoices <- c("Select All Samples",suppressWarnings(column_type_check(meta,"character"))[-1])
-        FeatureChoices <- suppressWarnings(column_type_check(meta,"character"))[-1]
-        if (input$DEGSubsetCol != "Select All Samples") {
-          FeatureChoices <- FeatureChoices[which(FeatureChoices!=input$DEGSubsetCol)]
+        #FeatureChoices <- suppressWarnings(column_type_check(meta,"character"))[-1]
+        FeatureChoices <- get_feat_cols(meta)
+        if (input$SubsetCol != "Select All Samples") {
+          FeatureChoices <- FeatureChoices[which(FeatureChoices!=input$SubsetCol)]
         }
         
-        selectInput("DEGGroupCol","Select Grouping Column:",
+        selectInput("DEGGroupCol","Select Differential Expression Feature:",
                     choices = FeatureChoices,
                     selected = metacol_reactVal())
         
@@ -3132,25 +3303,110 @@ server <- function(input, output, session) {
       observeEvent(input$DEGcolHeat, {
         updateSelectInput(session, "DEGGroupCol",selected = isolate(input$DEGcolHeat))
       })
+      observeEvent(input$AvgGroupCol, {
+        updateSelectInput(session, "DEGGroupCol",selected = isolate(input$AvgGroupCol))
+      })
+      observeEvent(input$DEGtabGroupCol, {
+        updateSelectInput(session, "DEGGroupCol",selected = isolate(input$DEGtabGroupCol))
+      })
       observeEvent(input$DEGGroupCol,{metacol_reactVal(input$DEGGroupCol)})
       
       observe({
         req(input$DEGGroupCol)
         req(meta_react())
         meta <- meta_react()
-        FeatureChoices <- suppressWarnings(column_type_check(meta,"character"))[-1]
-        if (input$DEGSubsetCol != "Select All Samples") {
-          FeatureChoices <- FeatureChoices[which(FeatureChoices!=input$DEGSubsetCol)]
+        #FeatureChoices <- suppressWarnings(column_type_check(meta,"character"))[-1]
+        FeatureChoices <- get_feat_cols(meta)
+        if (input$SubsetCol != "Select All Samples") {
+          FeatureChoices <- FeatureChoices[which(FeatureChoices!=input$SubsetCol)]
         }
         FeatureChoices <- FeatureChoices[which(FeatureChoices != input$DEGGroupCol)]
         updateSelectizeInput(session,"DEGCovarSelect", choices = FeatureChoices, server = T)
       })
       
+      output$rendAvgGroupCol <- renderUI({
+        
+        req(input$SubsetCol)
+        meta <- meta_react()
+        #FeatureChoices <- c("Select All Samples",suppressWarnings(column_type_check(meta,"character"))[-1])
+        #FeatureChoices <- suppressWarnings(column_type_check(meta,"character"))[-1]
+        FeatureChoices <- get_feat_cols(meta)
+        if (input$SubsetCol != "Select All Samples") {
+          FeatureChoices <- FeatureChoices[which(FeatureChoices!=input$SubsetCol)]
+        }
+        
+        selectInput("AvgGroupCol","Select Comparison Feature:",
+                    choices = FeatureChoices,
+                    selected = metacol_reactVal())
+        
+      })
+      observeEvent(input$GroupCol, ignoreInit = TRUE, {
+        updateSelectInput(session, "AvgGroupCol",selected = isolate(input$GroupCol))
+      })
+      observeEvent(input$GSEAGroupCol, ignoreInit = TRUE, {
+        updateSelectInput(session, "AvgGroupCol",selected = isolate(input$GSEAGroupCol))
+      })
+      observeEvent(input$GroupColAvgHeat, {
+        updateSelectInput(session, "AvgGroupCol",selected = isolate(input$GroupColAvgHeat))
+      })
+      observeEvent(input$ssGSEAGroupColAvg, {
+        updateSelectInput(session, "AvgGroupCol",selected = isolate(input$ssGSEAGroupColAvg))
+      })
+      observeEvent(input$DEGcolHeat, {
+        updateSelectInput(session, "AvgGroupCol",selected = isolate(input$DEGcolHeat))
+      })
+      observeEvent(input$DEGGroupCol, {
+        updateSelectInput(session, "AvgGroupCol",selected = isolate(input$DEGGroupCol))
+      })
+      observeEvent(input$DEGtabGroupCol, {
+        updateSelectInput(session, "AvgGroupCol",selected = isolate(input$DEGtabGroupCol))
+      })
+      observeEvent(input$AvgGroupCol,{metacol_reactVal(input$AvgGroupCol)})
+      
+      output$rendDEGtabGroupCol <- renderUI({
+        
+        req(input$SubsetCol)
+        meta <- meta_react()
+        #FeatureChoices <- c("Select All Samples",suppressWarnings(column_type_check(meta,"character"))[-1])
+        #FeatureChoices <- suppressWarnings(column_type_check(meta,"character"))[-1]
+        FeatureChoices <- get_feat_cols(meta)
+        if (input$SubsetCol != "Select All Samples") {
+          FeatureChoices <- FeatureChoices[which(FeatureChoices!=input$SubsetCol)]
+        }
+        
+        selectInput("DEGtabGroupCol","Select Differential Expression Feature:",
+                    choices = FeatureChoices,
+                    selected = metacol_reactVal())
+        
+      })
+      observeEvent(input$GroupCol, ignoreInit = TRUE, {
+        updateSelectInput(session, "DEGtabGroupCol",selected = isolate(input$GroupCol))
+      })
+      observeEvent(input$GSEAGroupCol, ignoreInit = TRUE, {
+        updateSelectInput(session, "DEGtabGroupCol",selected = isolate(input$GSEAGroupCol))
+      })
+      observeEvent(input$GroupColAvgHeat, {
+        updateSelectInput(session, "DEGtabGroupCol",selected = isolate(input$GroupColAvgHeat))
+      })
+      observeEvent(input$ssGSEAGroupColAvg, {
+        updateSelectInput(session, "DEGtabGroupCol",selected = isolate(input$ssGSEAGroupColAvg))
+      })
+      observeEvent(input$DEGcolHeat, {
+        updateSelectInput(session, "DEGtabGroupCol",selected = isolate(input$DEGcolHeat))
+      })
+      observeEvent(input$AvgGroupCol, {
+        updateSelectInput(session, "DEGtabGroupCol",selected = isolate(input$AvgGroupCol))
+      })
+      observeEvent(input$DEGtabGroupCol,{metacol_reactVal(input$DEGtabGroupCol)})
+      
+      
+      
       observe({
         req(input$DEGcolHeat)
         req(meta_react())
         meta <- meta_react()
-        FeatureChoices <- suppressWarnings(column_type_check(meta,"character"))[-1]
+        #FeatureChoices <- suppressWarnings(column_type_check(meta,"character"))[-1]
+        FeatureChoices <- get_feat_cols(meta)
         if (isTruthy(input$SubsetCol)) {
           if (input$SubsetCol != "Select All Samples") {
             FeatureChoices <- FeatureChoices[which(FeatureChoices!=input$SubsetCol)]
@@ -3165,7 +3421,8 @@ server <- function(input, output, session) {
         req(input$DEGGroupCol)
         req(meta_react())
         meta <- meta_react()
-        FeatureChoices <- suppressWarnings(column_type_check(meta,"character"))[-1]
+        #FeatureChoices <- suppressWarnings(column_type_check(meta,"character"))[-1]
+        FeatureChoices <- get_feat_cols(meta)
         if (input$DEGGroupCol != "Select All Samples") {
           FeatureChoices <- FeatureChoices[which(FeatureChoices!=input$DEGGroupCol)]
         }
@@ -3202,58 +3459,61 @@ server <- function(input, output, session) {
       })
       
       observe({
-        meta <- meta_react()
+        req(meta_input())
+        meta <- meta_input()
         if (ncol(meta) == 2) {
           metacol_reactVal(colnames(meta)[2])
         }
       })
       
-      output$rendGSEASubsetCol <- renderUI({
-        
-        meta <- meta_react()
-        if (ncol(meta) > 2) {
-          #if ()
-          CharCols <- c("Select All Samples",suppressWarnings(column_type_check(meta,"character"))[-1])
-          selectInput("GSEASubsetCol","Subset Samples By:",
-                      choices = CharCols,
-                      selected = SubCol_reactVal())
-        }
-        
-      })
-      observeEvent(input$SubsetCol, ignoreInit = TRUE, {
-        updateSelectInput(session, "GSEASubsetCol",selected = isolate(input$SubsetCol))
-      })
-      observeEvent(input$DEGSubsetCol, ignoreInit = TRUE, {
-        updateSelectInput(session, "GSEASubsetCol",selected = isolate(input$DEGSubsetCol))
-      })
-      observeEvent(input$GSEASubsetCol,{SubCol_reactVal(input$GSEASubsetCol)})
+      #output$rendGSEASubsetCol <- renderUI({
+      #  
+      #  meta <- meta_react()
+      #  if (ncol(meta) > 2) {
+      #    #if ()
+      #    #CharCols <- c("Select All Samples",suppressWarnings(column_type_check(meta,"character"))[-1])
+      #    CharCols <- c("Select All Samples",get_feat_cols(meta))
+      #    selectInput("GSEASubsetCol","Subset Samples By:",
+      #                choices = CharCols,
+      #                selected = SubCol_reactVal())
+      #  }
+      #  
+      #})
+      #observeEvent(input$SubsetCol, ignoreInit = TRUE, {
+      #  updateSelectInput(session, "GSEASubsetCol",selected = isolate(input$SubsetCol))
+      #})
+      #observeEvent(input$DEGSubsetCol, ignoreInit = TRUE, {
+      #  updateSelectInput(session, "GSEASubsetCol",selected = isolate(input$DEGSubsetCol))
+      #})
+      #observeEvent(input$GSEASubsetCol,{SubCol_reactVal(input$GSEASubsetCol)})
       
-      output$rendGSEASubsetCrit <- renderUI({
-        
-        req(input$GSEASubsetCol)
-        if (input$GSEASubsetCol != "Select All Samples") {
-          meta <- meta_input()
-          SubCrit <- unique(meta[,input$GSEASubsetCol])
-          selectInput("GSEASubsetCrit","Sample Criteria:",choices = SubCrit, selected = SubCrit_reactVal())
-        }
-        
-      })
-      observeEvent(input$SubsetCrit, ignoreInit = TRUE, {
-        updateSelectInput(session, "GSEASubsetCrit",selected = isolate(input$SubsetCrit))
-      })
-      observeEvent(input$DEGSubsetCrit, ignoreInit = TRUE, {
-        updateSelectInput(session, "GSEASubsetCrit",selected = isolate(input$DEGSubsetCrit))
-      })
-      observeEvent(input$GSEASubsetCrit,{SubCrit_reactVal(input$GSEASubsetCrit)})
+      #output$rendGSEASubsetCrit <- renderUI({
+      #  
+      #  req(input$GSEASubsetCol)
+      #  if (input$GSEASubsetCol != "Select All Samples") {
+      #    meta <- meta_input()
+      #    SubCrit <- unique(meta[,input$GSEASubsetCol])
+      #    selectInput("GSEASubsetCrit","Sample Criteria:",choices = SubCrit, selected = SubCrit_reactVal())
+      #  }
+      #  
+      #})
+      #observeEvent(input$SubsetCrit, ignoreInit = TRUE, {
+      #  updateSelectInput(session, "GSEASubsetCrit",selected = isolate(input$SubsetCrit))
+      #})
+      #observeEvent(input$DEGSubsetCrit, ignoreInit = TRUE, {
+      #  updateSelectInput(session, "GSEASubsetCrit",selected = isolate(input$DEGSubsetCrit))
+      #})
+      #observeEvent(input$GSEASubsetCrit,{SubCrit_reactVal(input$GSEASubsetCrit)})
       
       output$rendGSEAGroupCol <- renderUI({
         
-        req(input$GSEASubsetCol)
+        req(input$SubsetCol)
         meta <- meta_react()
         #FeatureChoices <- c("Select All Samples",suppressWarnings(column_type_check(meta,"character"))[-1])
-        FeatureChoices <- suppressWarnings(column_type_check(meta,"character"))[-1]
-        if (input$GSEASubsetCol != "Select All Samples") {
-          FeatureChoices <- FeatureChoices[which(FeatureChoices!=input$GSEASubsetCol)]
+        #FeatureChoices <- suppressWarnings(column_type_check(meta,"character"))[-1]
+        FeatureChoices <- get_feat_cols(meta)
+        if (input$SubsetCol != "Select All Samples") {
+          FeatureChoices <- FeatureChoices[which(FeatureChoices!=input$SubsetCol)]
         }
         selectInput("GSEAGroupCol","Select GSEA Grouping Column:",
                     choices = FeatureChoices,
@@ -3278,12 +3538,13 @@ server <- function(input, output, session) {
       observeEvent(input$GSEAGroupCol,{metacol_reactVal(input$GSEAGroupCol)})
       output$rendssGSEAGroupColAvg <- renderUI({
         
-        req(input$GSEASubsetCol)
+        req(input$SubsetCol)
         meta <- meta_react()
         #FeatureChoices <- c("Select All Samples",suppressWarnings(column_type_check(meta,"character"))[-1])
-        FeatureChoices <- suppressWarnings(column_type_check(meta,"character"))[-1]
-        if (input$GSEASubsetCol != "Select All Samples") {
-          FeatureChoices <- FeatureChoices[which(FeatureChoices!=input$GSEASubsetCol)]
+        #FeatureChoices <- suppressWarnings(column_type_check(meta,"character"))[-1]
+        FeatureChoices <- get_feat_cols(meta)
+        if (input$SubsetCol != "Select All Samples") {
+          FeatureChoices <- FeatureChoices[which(FeatureChoices!=input$SubsetCol)]
         }
         selectInput("ssGSEAGroupColAvg","Select Grouping Data:",
                     choices = FeatureChoices,
@@ -3308,12 +3569,13 @@ server <- function(input, output, session) {
       observeEvent(input$ssGSEAGroupColAvg,{metacol_reactVal(input$ssGSEAGroupColAvg)})
       output$rendssGSEAGroupColMulti <- renderUI({
         
-        req(input$GSEASubsetCol)
+        req(input$SubsetCol)
         meta <- meta_react()
         #FeatureChoices <- c("Select All Samples",suppressWarnings(column_type_check(meta,"character"))[-1])
-        FeatureChoices <- suppressWarnings(column_type_check(meta,"character"))[-1]
-        if (input$GSEASubsetCol != "Select All Samples") {
-          FeatureChoices <- FeatureChoices[which(FeatureChoices!=input$GSEASubsetCol)]
+        #FeatureChoices <- suppressWarnings(column_type_check(meta,"character"))[-1]
+        FeatureChoices <- get_feat_cols(meta)
+        if (input$SubsetCol != "Select All Samples") {
+          FeatureChoices <- FeatureChoices[which(FeatureChoices!=input$SubsetCol)]
         }
         selectInput("ssGSEAGroupColMulti","Select Annotation Data:",
                     choices = FeatureChoices,
@@ -3323,12 +3585,13 @@ server <- function(input, output, session) {
       })
       output$rendGSEAGroupColMulti <- renderUI({
         
-        req(input$GSEASubsetCol)
+        req(input$SubsetCol)
         meta <- meta_react()
         #FeatureChoices <- c("Select All Samples",suppressWarnings(column_type_check(meta,"character"))[-1])
-        FeatureChoices <- suppressWarnings(column_type_check(meta,"character"))[-1]
-        if (input$GSEASubsetCol != "Select All Samples") {
-          FeatureChoices <- FeatureChoices[which(FeatureChoices!=input$GSEASubsetCol)]
+        #FeatureChoices <- suppressWarnings(column_type_check(meta,"character"))[-1]
+        FeatureChoices <- get_feat_cols(meta)
+        if (input$SubsetCol != "Select All Samples") {
+          FeatureChoices <- FeatureChoices[which(FeatureChoices!=input$SubsetCol)]
         }
         selectInput("GSEAGroupColMulti","Select Annotation Data:",
                     choices = FeatureChoices,
@@ -3342,16 +3605,32 @@ server <- function(input, output, session) {
         req(meta_input())
         meta <- meta_input()
         if (ncol(meta) > 2) {
-          meta2 <- meta
-          SubCol <- SubCol_reactVal()
-          SubCrit <- SubCrit_reactVal()
+          SubCol <- input$SubsetCol
+          SubCrit <- input$SubsetCrit
           if (SubCol != "Select All Samples") {
-            meta2 <- meta2[which(meta2[,SubCol] == SubCrit),]
+            if (SubCol %in% colnames(meta)){
+              if (isTruthy(SubCrit)) {
+                meta <- meta[which(meta[,SubCol] == SubCrit),]
+                meta
+              }
+            }
+          } else {
+            meta
           }
         } else {
-          meta2 <- meta
+          meta
         }
-        meta2
+        
+      })
+      
+      observe({
+        
+        req(meta_react())
+        meta <- meta_react()
+        updateSelectizeInput(session = session, inputId = "userheatsamp2",
+                             choices = meta[,1],selected = meta[,1], server = T)
+        updateSelectizeInput(session = session, inputId = "userheatsampSS",
+                             choices = meta[,1],selected = meta[,1], server = T)
         
       })
       
@@ -3947,11 +4226,11 @@ server <- function(input, output, session) {
       
       
       #render enrich signature table generation button for msigdb data
-      output$genESTbutton <- renderUI({
-        if (input$tables == 1) {
-          actionButton("GenerateEST", "Generate Enriched Signature Table with MSigDB Gene Sets")
-        }
-      })
+      #output$genESTbutton <- renderUI({
+      #  if (input$tables == 1) {
+      #    
+      #  }
+      #})
       
       #render user gmt data upload if indicated
       output$user.gmt <- renderUI({
@@ -3976,6 +4255,16 @@ server <- function(input, output, session) {
       #  actionButton("user.RData.Gen", "Generate RData list for ssGSEA Boxplot and Heatmap")
       #})
       
+      observe({
+        if (input$PorAdjPval == "-log10(P.value)") {
+          updateNumericInput(session,"p_cutoff", label = "P.Value Threshold:",
+                             min = 0, max = 10, step = 0.1, value = 0.05)
+        } else if (input$PorAdjPval == "-log10(Adjusted P.value)") {
+          updateNumericInput(session,"p_cutoff", label = "Adj.P.Value Threshold:",
+                             min = 0, max = 10, step = 0.1, value = 1)
+        }
+      })
+      
       #render UI for hover text in volcano plot
       output$hover_info <- renderUI({
         req(topgenereact())
@@ -3985,6 +4274,10 @@ server <- function(input, output, session) {
         colnames(df)[3] <- "-log10(P.Value)"
         df$P.Value <- df$'-log10(P.Value)'
         df$`-log10(P.Value)` <- -log10(df$`-log10(P.Value)`)
+        
+        colnames(df)[4] <- "-log10(adj.P.Val)"
+        df$adj.P.Val <- df$'-log10(adj.P.Val)'
+        df$`-log10(adj.P.Val)` <- -log10(df$`-log10(adj.P.Val)`)
         hover <- input$plot_hover
         point <- nearPoints(df, hover, threshold = 10, maxpoints = 1, addDist = FALSE)
         if (nrow(point) == 0) return(NULL)
@@ -3995,21 +4288,16 @@ server <- function(input, output, session) {
                         "<b> adj P Value: </b>", point[4], "<br/>",
                         NULL
           ))))
+        
+        
       })
       
       #render UI for hover text in MA plot
       output$hover_info2 <- renderUI({
         req(topgenereact())
         top2 <- topgenereact()
-        if (isTruthy(input$MAxAxis)) {
-          if (input$MAxAxis == "Normalized") {
-            expr <- expr_react()
-            AveExpr <- rowMeans(expr)
-            AveExpr2 <- AveExpr[order(match(names(AveExpr),rownames(top2)))]
-            top2$AveExpr <- unname(AveExpr2)
-          } else if (input$MAxAxis == "Log2+1") {
-            top2$AveExpr <- log2(top2$AveExpr+1)
-          }
+        if (input$volcanoCompChoice == "DESeq2") {
+          top2$AveExpr <- log2(top2$AveExpr+1)
         }
         df <- top2 %>%
           select(GeneName,AveExpr,logFC,P.Value,adj.P.Val)
@@ -4059,6 +4347,8 @@ server <- function(input, output, session) {
           mat_B <- log2(mat_B + 1)
           logFC_text <- " (log2 +1)"
         }
+        mat_A <- as.data.frame(mat_A)
+        mat_B <- as.data.frame(mat_B)
         # Get avg expression of each gene
         mat_A$AvgExpression_GroupA <- rowMeans(mat_A)
         mat_B$AvgExpression_GroupB <- rowMeans(mat_B)
@@ -4131,68 +4421,69 @@ server <- function(input, output, session) {
         
       })
       
-      GeneratedMSigDBEST <- reactive({
-        if (input$GenerateEST == TRUE) {
+      GeneratedMSigDBEST <- eventReactive(input$GenerateEST,{
+        #if (input$GenerateEST == TRUE) {
           meta <- meta_react()
           metacol <- metacol_reactVal()
           if (length(colnames(meta)) == 2) {
             metacol <- colnames(meta)[2]
           }
           A <- A_raw()
-          gmt <- gmt_react()
-          #if (ncol(meta) > 2) {
-          #  metacol <- input$GSEAmetaCol
-          #}
-          #else if (ncol(meta) == 2) {
-          #  metacol <- colnames(meta)[2]
-          #}
-          groupA <- meta[which(meta[,metacol] == input$comparisonA),1]
-          groupB <- meta[which(meta[,metacol] == input$comparisonB),1]
-          ##----Signal-to-Noise Calculation----##
-          A <- A + 0.00000001
-          P = as.matrix(as.numeric(colnames(A) %in% groupA))
-          n1 <- sum(P[,1])
-          M1 <- A %*% P
-          M1 <- M1/n1
-          A2 <- A*A
-          S1 <- A2 %*% P
-          S1 <- S1/n1 - M1*M1
-          S1 <- sqrt(abs((n1/(n1-1)) * S1))
-          P = as.matrix(as.numeric(colnames(A) %in% groupB))
-          n2 <- sum(P[,1])
-          M2 <- A %*% P
-          M2 <- M2/n2
-          A2 <- A*A
-          S2 <- A2 %*% P
-          S2 <- S2/n2 - M2*M2
-          S2 <- sqrt(abs((n2/(n2-1)) * S2))
-          rm(A2)
-          # small sigma "fix" as used in GeneCluster
-          S2 <- ifelse(0.2*abs(M2) < S2, S2, 0.2*abs(M2))
-          S2 <- ifelse(S2 == 0, 0.2, S2)
-          S1 <- ifelse(0.2*abs(M1) < S1, S1, 0.2*abs(M1))
-          S1 <- ifelse(S1 == 0, 0.2, S1)
-          M1 <- M1 - M2
-          rm(M2)
-          S1 <- S1 + S2
-          rm(S2)
-          s2n.matrix <- M1/S1
-          ##----Reformatting----##
-          s2n.df <- as.data.frame(s2n.matrix)
-          s2n.df$GeneID <- rownames(s2n.df)
-          rownames(s2n.df) <- NULL
-          data <- dplyr::select(s2n.df, GeneID, V1)
-          data.gsea <- data$V1
-          names(data.gsea) <- as.character(data$GeneID)
-          s2n.matrix.s <- sort(data.gsea, decreasing = T)
-          ####----GSEA----####
-          #perform GSEA
-          gsea.res <- GSEA(s2n.matrix.s, TERM2GENE = gmt, verbose = F, pvalueCutoff = 1)
-          #gsea.res <- GSEA(s2n.matrix.s, TERM2GENE = gmt(), verbose = F, pvalueCutoff = 1)
-          #extract results and convert to tibble
-          gsea.df <- gsea.res@result
+          gmt <- geneset_gmt()
+          #withProgress(message = "Processing", value = 0, {
+          #  incProgress(0.25, detail = "Calculating Signal-to-Noise")
+            groupA <- meta[which(meta[,metacol] == input$comparisonA),1]
+            groupB <- meta[which(meta[,metacol] == input$comparisonB),1]
+            ##----Signal-to-Noise Calculation----##
+            A <- A + 0.00000001
+            P = as.matrix(as.numeric(colnames(A) %in% groupA))
+            n1 <- sum(P[,1])
+            M1 <- A %*% P
+            M1 <- M1/n1
+            A2 <- A*A
+            S1 <- A2 %*% P
+            S1 <- S1/n1 - M1*M1
+            S1 <- sqrt(abs((n1/(n1-1)) * S1))
+            P = as.matrix(as.numeric(colnames(A) %in% groupB))
+            n2 <- sum(P[,1])
+            M2 <- A %*% P
+            M2 <- M2/n2
+            A2 <- A*A
+            S2 <- A2 %*% P
+            S2 <- S2/n2 - M2*M2
+            S2 <- sqrt(abs((n2/(n2-1)) * S2))
+            rm(A2)
+            # small sigma "fix" as used in GeneCluster
+            S2 <- ifelse(0.2*abs(M2) < S2, S2, 0.2*abs(M2))
+            S2 <- ifelse(S2 == 0, 0.2, S2)
+            S1 <- ifelse(0.2*abs(M1) < S1, S1, 0.2*abs(M1))
+            S1 <- ifelse(S1 == 0, 0.2, S1)
+            M1 <- M1 - M2
+            rm(M2)
+            S1 <- S1 + S2
+            rm(S2)
+            s2n.matrix <- M1/S1
+            ##----Reformatting----##
+            #incProgress(0.25, detail = "Formatting Data")
+            s2n.df <- as.data.frame(s2n.matrix)
+            s2n.df$GeneID <- rownames(s2n.df)
+            rownames(s2n.df) <- NULL
+            data <- dplyr::select(s2n.df, GeneID, V1)
+            data.gsea <- data$V1
+            names(data.gsea) <- as.character(data$GeneID)
+            s2n.matrix.s <- sort(data.gsea, decreasing = T)
+            #incProgress(0.25, detail = "Performing GSEA")
+            ####----GSEA----####
+            #perform GSEA
+            gsea.res <- GSEA(s2n.matrix.s, TERM2GENE = gmt, verbose = F, pvalueCutoff = input$userPval, eps = NA)
+            #gsea.res <- GSEA(s2n.matrix.s, TERM2GENE = gmt(), verbose = F, pvalueCutoff = 1)
+            #extract results and convert to tibble
+            gsea.df <- gsea.res@result
+            gsea.df
+          #  incProgress(0.25, detail = "Complete!")
+          #})
           gsea.df
-        }
+        #}
       })
       
       #reactive to generate RData list
@@ -4278,6 +4569,7 @@ server <- function(input, output, session) {
       datasetInput <- reactive({
         req(input$comparisonA)
         req(input$comparisonB)
+        req(gmt_react())
         meta <- meta_react()
         metacol <- metacol_reactVal()
         if (length(colnames(meta)) == 2) {
@@ -4287,7 +4579,7 @@ server <- function(input, output, session) {
         if (input$volcanoCompChoice3 == "Two groups") {
           groupA <- input$comparisonA
           groupB <- input$comparisonB
-        } else if (input$volcanoCompChoice3 == "One group against all other") {
+        } else if (input$volcanoCompChoice3 == "One group") {
           groupA <- input$comparisonA_one
           groupB <- paste0("Not_",groupA)
           meta[,paste0(metacol,"_Dichot")] <- NA
@@ -4342,8 +4634,8 @@ server <- function(input, output, session) {
               names(data.gsea) <- as.character(data$GeneID)
               s2n.matrix.s <- sort(data.gsea, decreasing = T)
               ##----GSEA----##
-              GSEA(s2n.matrix.s, TERM2GENE = gmt,
-                   verbose = F, pvalueCutoff = input$userPval)
+              GSEA(s2n.matrix.s, TERM2GENE = gmt,minGSSize = 5, maxGSSize  = 1000,
+                   verbose = F, pvalueCutoff = 1, eps = NA)
               #if (input$tables == 1){
               #  GSEA(s2n.matrix.s, TERM2GENE = gmt()[which(gmt()[,1] == as.character(msigdb.gsea2()[input$msigdbTable_rows_selected,3])),],
               #       verbose = F, pvalueCutoff = input$userPval)
@@ -4375,8 +4667,8 @@ server <- function(input, output, session) {
         #req((isTruthy(input$comparisonA2) && isTruthy(input$comparisonB2)) || isTruthy(input$comparisonA2_one))
         
         if (input$volcanoCompChoice == "DESeq2") {
-          if (isTruthy(input$DEGGroupCol)) {
-            desCol <- input$DEGGroupCol
+          if (isTruthy(metacol_reactVal())) {
+            desCol <- metacol_reactVal()
             expr <- expr_raw()
             meta <- meta_react()
             covars <- input$DEGCovarSelect
@@ -4401,7 +4693,7 @@ server <- function(input, output, session) {
                 
                 if (isTruthy(covars)) {
                   meta_deseq[,covars] <- lapply(meta_deseq[,covars,drop = F], factor)
-                  desCol <- paste(c(desCol,covars),collapse = "+")
+                  desCol <- paste(c(covars, desCol),collapse = "+")
                 }
                 
                 
@@ -4412,6 +4704,8 @@ server <- function(input, output, session) {
                 
                 dds <- DESeq(dds)
                 res <- results(dds)
+                print(as.formula(paste0("~ ",desCol)));
+                
                 resOrdered <- res[order(res$padj),]
                 top1 <- as.data.frame(resOrdered)
                 
@@ -4444,12 +4738,12 @@ server <- function(input, output, session) {
             metaSub <- metaSub[complete.cases(metaSub),]
             
             
-            if (input$volcanoCompChoice == "Two groups") {
+            if (input$volcanoCompChoice == "Limma: Two groups") {
               groupA <- input$comparisonA2
               groupB <- input$comparisonB2
               A <- metaSub[which(metaSub[,metacol] == groupA),1]
               B <- metaSub[which(metaSub[,metacol] == groupB),1]
-            } else if (input$volcanoCompChoice == "One group against all other") {
+            } else if (input$volcanoCompChoice == "Limma: One group") {
               groupA <- input$comparisonA2_one
               groupB <- paste0("Not_",groupA)
               metaSub[,paste0(metacol,"_Dichot")] <- NA
@@ -4485,10 +4779,6 @@ server <- function(input, output, session) {
               
               if(nlevels(metaSub[,metacol]) >= 2){
                 designA <- eval(substitute(model.matrix(form, data = metaSub)))
-                
-                print(designA)
-                print(head(mat,c(5,5)))
-                
                 fit <- lmFit(mat, design = designA)
                 colnames(designA) <- gsub(" ","_",colnames(designA))
                 colnames(designA) <- gsub("[[:punct:]]","_",colnames(designA))
@@ -4524,13 +4814,13 @@ server <- function(input, output, session) {
       
       topgenereact2 <- reactive({
         
-        req(input$DEGcolHeat)
+        req(metacol_reactVal())
         withProgress(message = "Processing", value = 0, {
           incProgress(0.5, detail = "Calculating Differential Expression")
           
           if (input$volcanoCompChoice4 == "DESeq2") {
-            if (isTruthy(input$DEGcolHeat)) {
-              desCol <- input$DEGcolHeat
+            if (isTruthy(metacol_reactVal())) {
+              desCol <- metacol_reactVal()
               expr <- expr_raw()
               meta <- meta_react()
               covars <- input$DEGCovarSelectHeat
@@ -4544,7 +4834,6 @@ server <- function(input, output, session) {
               rownames(meta_deseq) <- meta_deseq[,1]
               if (desCol != "Select column") {
                 desRef <- input$DESeqDesignColRef_heat
-                print(desRef)
                 if (isTruthy(desRef)) {
                   meta_deseq[,desCol] <- relevel(factor(meta_deseq[,desCol]), ref = desRef)
                   colnames(meta_deseq) <- gsub(" ","_",colnames(meta_deseq))
@@ -4556,7 +4845,7 @@ server <- function(input, output, session) {
                   
                   if (isTruthy(covars)) {
                     meta_deseq[,covars] <- lapply(meta_deseq[,covars,drop = F], factor)
-                    desCol <- paste(c(desCol,covars),collapse = "+")
+                    desCol <- paste(c(covars, desCol),collapse = "+")
                   }
                   dds <- DESeq2::DESeqDataSetFromMatrix(countData = mat,
                                                         colData = meta_deseq,
@@ -4581,12 +4870,12 @@ server <- function(input, output, session) {
             metaSub <- meta[,c(colnames(meta)[1],metacol,covars)]
             metaSub <- metaSub[complete.cases(metaSub),]
             
-            if (input$volcanoCompChoice4 == "Two groups") {
+            if (input$volcanoCompChoice4 == "Limma: Two groups") {
               A_choice <- input$comparisonA2_h            #Comparison group A
               B_choice <- input$comparisonB2_h            #Comparison group B
               A <- metaSub[which(metaSub[,metacol] == A_choice),1]
               B <- metaSub[which(metaSub[,metacol] == B_choice),1]
-            } else if (input$volcanoCompChoice4 == "One group against all other") {
+            } else if (input$volcanoCompChoice4 == "Limma: One group") {
               A_choice <- input$comparisonA2_h_one
               B_choice <- paste0("Not_",A_choice)
               metaSub[,paste0(metacol,"_Dichot")] <- NA
@@ -4715,13 +5004,14 @@ server <- function(input, output, session) {
             cv <- head(cv, n = (top_probes +1))
             out <- cbind(names(cv), cv[names(cv)], exp[names(cv),])
             colnames(out) <- c("Gene", "CV", colnames(exp))
+            print(head(out))
             dataset <- exp[names(cv),]
           }
           incProgress(0.25, detail = "Calculating Z-Score")
           dataset <- log2(dataset + 1)
           zdataset <- apply(dataset, 1, scale)
           zdataset <- apply(zdataset, 1, rev)
-          colnames(zdataset) <- names(dataset)
+          colnames(zdataset) <- colnames(dataset)
           dataset <- as.matrix(zdataset)
           dataset[is.na(dataset)] <- 0
           dataset = dataset[apply(dataset, 1, function(x) !all(x==0)),]
@@ -4773,6 +5063,7 @@ server <- function(input, output, session) {
           meta <- meta_react()
           usersamps <- input$userheatsamp2
           meta <- meta[which(meta[,1] %in% usersamps),]
+          meta <- meta[match(usersamps,meta[,1]),]
           rownames(meta) <- meta[,1]
           meta_sub <- meta[,input$GroupColMulti, drop = F]
           meta_sub[,input$GroupColMulti] <- as.data.frame(lapply(meta_sub[,input$GroupColMulti, drop = F], factor))
@@ -4787,6 +5078,8 @@ server <- function(input, output, session) {
             rownames(meta) <- meta[,1]
             usersamps <- input$userheatsamp2
             meta <- meta[which(meta[,1] %in% usersamps),]
+            meta <- meta[match(usersamps,meta[,1]),]
+            rownames(meta) <- meta[,1]
             meta_sub <- meta[,2, drop = F]
             meta_sub[,1] <- as.factor(meta_sub[,1])
             colAnn <- ComplexHeatmap::HeatmapAnnotation(df = meta_sub,
@@ -4820,13 +5113,15 @@ server <- function(input, output, session) {
             heatgenes <- heatgenes[!is.null(heatgenes)]
             usersamps <- input$userheatsamp2
             exp <- expr[heatgenes,which(colnames(expr) %in% usersamps)]
-            meta <- meta[which(meta[,1] %in% usersamps),]
+            exp <- exp[,match(usersamps,colnames(exp))]
+            #meta <- meta[which(meta[,1] %in% usersamps),]
+            #meta <- meta[match(colnames(usersamps),meta[,1]),]
             incProgress(0.25, detail = "Calculating Z-Score")
             dataset <- exp
             dataset <- log2(dataset + 1)
             zdataset <- apply(dataset, 1, scale)
             zdataset <- apply(zdataset, 1, rev)
-            colnames(zdataset) <- names(dataset)
+            colnames(zdataset) <- colnames(dataset)
             dataset <- as.matrix(zdataset)
             dataset[is.na(dataset)] <- 0
             dataset = dataset[apply(dataset, 1, function(x) !all(x==0)),]
@@ -4885,7 +5180,7 @@ server <- function(input, output, session) {
             metacol <- colnames(meta)[2]
           }
           
-          if (input$volcanoCompChoice4 == "Two groups" | input$volcanoCompChoice4 == "DESeq2") {
+          if (input$volcanoCompChoice4 == "Limma: Two groups" | input$volcanoCompChoice4 == "DESeq2") {
             groupA <- input$comparisonA2_h
             groupB <- input$comparisonB2_h
             meta_sub <- meta[,input$GroupColMulti, drop = F]
@@ -4894,12 +5189,14 @@ server <- function(input, output, session) {
                                                         name = input$GroupColMulti,
                                                         which = 'col'
             )
-          } else if (input$volcanoCompChoice4 == "One group against all other") {
+          } else if (input$volcanoCompChoice4 == "Limma: One group") {
             groupA <- input$comparisonA2_h_one
-            groupB <- paste0("Not_",groupA)
+            groupB <- paste0(unique(meta[which(meta[,metacol] != groupA),metacol]), collapse = " - ")
+            #groupB <- paste0("Not_",groupA)
             meta[,paste0(metacol,"_Dichot")] <- NA
             meta[which(meta[,metacol] == groupA),paste0(metacol,"_Dichot")] <- groupA
-            meta[which(meta[,metacol] != groupA),paste0(metacol,"_Dichot")] <- paste0("Not_",groupA)
+            #metaSub_noNA[which(metaSub_noNA[,metacol] != groupA),paste0(metacol,"_Dichot")] <- paste0("Not_",groupA)
+            metaSub_noNA[which(metaSub_noNA[,metacol] != groupA),paste0(metacol,"_Dichot")] <- groupB
             metacol <- paste0(metacol,"_Dichot")
             meta_sub <- meta[,c(metacol,input$GroupColMulti), drop = F]
             meta_sub[,c(metacol,input$GroupColMulti)] <- as.data.frame(lapply(meta_sub[,c(metacol,input$GroupColMulti), drop = F], factor))
@@ -4955,7 +5252,7 @@ server <- function(input, output, session) {
             dataset <- log2(dataset + 1)
             zdataset <- apply(dataset, 1, scale)
             zdataset <- apply(zdataset, 1, rev)
-            colnames(zdataset) <- names(dataset)
+            colnames(zdataset) <- colnames(dataset)
             dataset <- as.matrix(zdataset)
             dataset[is.na(dataset)] <- 0
             dataset = dataset[apply(dataset, 1, function(x) !all(x==0)),]
@@ -5003,7 +5300,6 @@ server <- function(input, output, session) {
       ####----Avg Expr Heatmap----####
       
       
-      #Custom average heatmap reactive
       AvgExprHeatmap_react <- reactive({
         
         if (length(input$avgheatmapGeneSelec) >= 2 || length(input$avguserheatgenes) > 1) {
@@ -5033,6 +5329,7 @@ server <- function(input, output, session) {
             heatgenes <- c(genelist.ush,genelist.uih,genelist.uih2)
             heatgenes <- heatgenes[!is.na(heatgenes)]
             heatgenes <- heatgenes[!is.null(heatgenes)]
+            req(length(heatgenes) > 2)
             incProgress(0.25, detail = "Averaging Groups")
             AvgExprDF <- data.frame(rownames(expr))
             for (i in group_choices) {
@@ -5054,7 +5351,7 @@ server <- function(input, output, session) {
             dataset <- log2(dataset + 1)
             zdataset <- apply(dataset, 1, scale)
             zdataset <- apply(zdataset, 1, rev)
-            colnames(zdataset) <- names(dataset)
+            colnames(zdataset) <- colnames(dataset)
             dataset <- as.matrix(zdataset)
             dataset[is.na(dataset)] <- 0
             anno_meta <- data.frame(colnames(AvgExprDF))
@@ -5119,10 +5416,6 @@ server <- function(input, output, session) {
           })
           
           
-          
-          
-          
-          
         }
         
         
@@ -5149,7 +5442,11 @@ server <- function(input, output, session) {
           colAnn
         } else {
           meta <- meta_react()
+          dataset <- ssgsea_heat_data()
           if (ncol(meta) == 2) {
+            dataset <- ssgsea_heat_data()
+            meta <- meta[which(meta[,1] %in% colnames(dataset)),]
+            meta <- meta[match(colnames(dataset),meta[,1]),]
             rownames(meta) <- meta[,1]
             dataset <- ssgsea_heat_data()
             meta <- meta[which(meta[,1] %in% colnames(dataset)),]
@@ -5516,9 +5813,10 @@ server <- function(input, output, session) {
         } else {
           meta <- meta_react()
           if (ncol(meta) == 2) {
-            rownames(meta) <- meta[,1]
-            dataset <- ssgsea_heat_data()
+            dataset <- ssgsea_heat2_data()
             meta <- meta[which(meta[,1] %in% colnames(dataset)),]
+            meta <- meta[match(colnames(dataset),meta[,1]),]
+            rownames(meta) <- meta[,1]
             meta_sub <- meta[,2, drop = F]
             meta_sub[,1] <- as.factor(meta_sub[,1])
             colAnn <- ComplexHeatmap::HeatmapAnnotation(df = meta_sub,
@@ -5974,8 +6272,7 @@ server <- function(input, output, session) {
         
       })
       
-      #render leading edge genes list
-      output$LeadingEdgeGenes <- DT::renderDataTable({
+      LeadingEdgeGenes_react <- reactive({
         req(datasetInput())
         if (length(input$GeneSetTable_rows_selected) > 0){
           res <- datasetInput()
@@ -6001,50 +6298,15 @@ server <- function(input, output, session) {
             GeneSymbol <- as.data.frame(genes2, col.names = "GeneSymbol")
             colnames(GeneSymbol)[1] <- "Gene Symbol"
           }
-          
-          DT::datatable(GeneSymbol, options = list(paging = F), rownames = F)
+          GeneSymbol
         }
         
-        
-        #if (input$tables == 1){
-        #  if (length(input$msigdbTable_rows_selected) > 0){
-        #    res <- datasetInput()
-        #    gsea.df <- as.data.frame(res@result)
-        #    GS <- as.character(msigdb.gsea2()[input$msigdbTable_rows_selected,3])
-        #    ## Subset core enriched genes
-        #    genes1 <- as.matrix(gsea.df[which(gsea.df$Description==GS),"core_enrichment"])
-        #    genes2 <- sort(strsplit(genes1,"/")[[1]])
-        #    GeneSymbol <- as.data.frame(genes2, col.names = "GeneSymbol")
-        #    colnames(GeneSymbol)[1] <- "Gene Symbol"
-        #    DT::datatable(GeneSymbol, options = list(paging = F), rownames = F)
-        #  }
-        #}
-        #else if (input$tables == 3){
-        #  if (length(input$tab2table_rows_selected) > 0){
-        #    res <- datasetInput()
-        #    gsea.df <- as.data.frame(res@result)
-        #    GS <- as.character(GeneSet2()[input$tab2table_rows_selected,1])
-        #    ## Subset core enriched genes
-        #    genes1 <- as.matrix(gsea.df[which(gsea.df$Description==GS),"core_enrichment"])
-        #    genes2 <- sort(strsplit(genes1,"/")[[1]])
-        #    GeneSymbol <- as.data.frame(genes2, col.names = "GeneSymbol")
-        #    colnames(GeneSymbol)[1] <- "Gene Symbol"
-        #    DT::datatable(GeneSymbol, options = list(paging = F), rownames = F)
-        #  }
-        #}
-        #else if (input$tables == 5){
-        #  if (length(input$GStable.u_rows_selected) > 0){
-        #    res <- datasetInput()
-        #    gsea.df <- as.data.frame(res@result)
-        #    GS <- as.character(user_gs_mirror()[input$GStable.u_rows_selected,1])
-        #    ## Subset core enriched genes
-        #    genes1 <- as.matrix(gsea.df[which(gsea.df$Description==GS),"core_enrichment"])
-        #    genes2 <- sort(strsplit(genes1,"/")[[1]])
-        #    GeneSymbol <- as.data.frame(genes2, col.names = "GeneSymbol")
-        #    colnames(GeneSymbol)[1] <- "Gene Symbol"
-        #    DT::datatable(GeneSymbol, options = list(paging = F), rownames = F)
-        #  }
-        #}
+      })
+      
+      #render leading edge genes list
+      output$LeadingEdgeGenes <- DT::renderDataTable({
+        GeneSymbol  <- LeadingEdgeGenes_react()
+        DT::datatable(GeneSymbol, options = list(paging = F), rownames = F)
       })
       
       #render pre-loaded enriched signatures table
@@ -6059,155 +6321,165 @@ server <- function(input, output, session) {
       
       #render user generated enriched signature table based off other gmt
       output$enrich_sig_table_gen <- DT::renderDataTable({
-        meta <- meta_react()
-        metacol <- metacol_reactVal()
-        if (length(colnames(meta)) == 2) {
-          metacol <- colnames(meta)[2]
-        }
-        A <- A_raw()
-        if (input$tables == 3) {
-          #if (ncol(meta) > 2) {
-          #  req(input$GSEAmetaCol)
-          #  metacol <- input$GSEAmetaCol
-          #}
-          #else if (ncol(meta) == 2) {
-          #  metacol <- colnames(meta)[2]
-          #}
-          groupA <- meta[which(meta[,metacol] == input$comparisonA),1]
-          groupB <- meta[which(meta[,metacol] == input$comparisonB),1]
-          ##----Signal-to-Noise Calculation----##
-          A <- A + 0.00000001
-          P = as.matrix(as.numeric(colnames(A) %in% groupA))
-          n1 <- sum(P[,1])
-          M1 <- A %*% P
-          M1 <- M1/n1
-          A2 <- A*A
-          S1 <- A2 %*% P
-          S1 <- S1/n1 - M1*M1
-          S1 <- sqrt(abs((n1/(n1-1)) * S1))
-          P = as.matrix(as.numeric(colnames(A) %in% groupB))
-          n2 <- sum(P[,1])
-          M2 <- A %*% P
-          M2 <- M2/n2
-          A2 <- A*A
-          S2 <- A2 %*% P
-          S2 <- S2/n2 - M2*M2
-          S2 <- sqrt(abs((n2/(n2-1)) * S2))
-          rm(A2)
-          # small sigma "fix" as used in GeneCluster
-          S2 <- ifelse(0.2*abs(M2) < S2, S2, 0.2*abs(M2))
-          S2 <- ifelse(S2 == 0, 0.2, S2)
-          S1 <- ifelse(0.2*abs(M1) < S1, S1, 0.2*abs(M1))
-          S1 <- ifelse(S1 == 0, 0.2, S1)
-          M1 <- M1 - M2
-          rm(M2)
-          S1 <- S1 + S2
-          rm(S2)
-          s2n.matrix <- M1/S1
-          ##----Reformatting----##
-          s2n.df <- as.data.frame(s2n.matrix)
-          s2n.df$GeneID <- rownames(s2n.df)
-          rownames(s2n.df) <- NULL
-          data <- dplyr::select(s2n.df, GeneID, V1)
-          data.gsea <- data$V1
-          names(data.gsea) <- as.character(data$GeneID)
-          s2n.matrix.s <- sort(data.gsea, decreasing = T)
-          ##----GSEA----##
-          gmt.i <- tab2()
-          gsea.res <- GSEA(s2n.matrix.s, TERM2GENE = gmt.i, verbose = F, pvalueCutoff = input$userPval)
-          gsea.df <- as_tibble(gsea.res@result)
-          ## displaying the GSEA results as interactive data table
-          DT::datatable(gsea.df,
-                        extensions = c("KeyTable", "FixedHeader"),
-                        caption = "Enriched Signatures",
-                        options = list(keys = T, searchHighlight = T, pageLength = 10, lengthMenu = c("10", "25", "50", "100"), scrollX = T)) %>%
-            formatRound(columns = c(2:10), digits = 2)
-        }
-        else if (input$tables == 5) {
-          #if (ncol(meta) > 2) {
-          #  metacol <- input$GSEAmetaCol
-          #}
-          #else if (ncol(meta) == 2) {
-          #  metacol <- colnames(meta)[2]
-          #}
-          groupA <- meta[which(meta[,metacol] == input$comparisonA),1]
-          groupB <- meta[which(meta[,metacol] == input$comparisonB),1]
-          ##----Signal-to-Noise Calculation----##
-          A <- A + 0.00000001
-          P = as.matrix(as.numeric(colnames(A) %in% groupA))
-          n1 <- sum(P[,1])
-          M1 <- A %*% P
-          M1 <- M1/n1
-          A2 <- A*A
-          S1 <- A2 %*% P
-          S1 <- S1/n1 - M1*M1
-          S1 <- sqrt(abs((n1/(n1-1)) * S1))
-          P = as.matrix(as.numeric(colnames(A) %in% groupB))
-          n2 <- sum(P[,1])
-          M2 <- A %*% P
-          M2 <- M2/n2
-          A2 <- A*A
-          S2 <- A2 %*% P
-          S2 <- S2/n2 - M2*M2
-          S2 <- sqrt(abs((n2/(n2-1)) * S2))
-          rm(A2)
-          # small sigma "fix" as used in GeneCluster
-          S2 <- ifelse(0.2*abs(M2) < S2, S2, 0.2*abs(M2))
-          S2 <- ifelse(S2 == 0, 0.2, S2)
-          S1 <- ifelse(0.2*abs(M1) < S1, S1, 0.2*abs(M1))
-          S1 <- ifelse(S1 == 0, 0.2, S1)
-          M1 <- M1 - M2
-          rm(M2)
-          S1 <- S1 + S2
-          rm(S2)
-          s2n.matrix <- M1/S1
-          ##----Reformatting----##
-          s2n.df <- as.data.frame(s2n.matrix)
-          s2n.df$GeneID <- rownames(s2n.df)
-          rownames(s2n.df) <- NULL
-          data <- dplyr::select(s2n.df, GeneID, V1)
-          data.gsea <- data$V1
-          names(data.gsea) <- as.character(data$GeneID)
-          s2n.matrix.s <- sort(data.gsea, decreasing = T)
-          ##----GSEA----##
-          gmt.i <- GStable.ubg()
-          gsea.res <- GSEA(s2n.matrix.s, TERM2GENE = gmt.i, verbose = F, pvalueCutoff = input$userPval)
-          gsea.df <- as_tibble(gsea.res@result)
-          ## displaying the GSEA results as interactive data table
-          DT::datatable(gsea.df,
-                        extensions = c("KeyTable", "FixedHeader"),
-                        caption = "Enriched Signatures",
-                        options = list(keys = T, searchHighlight = T, pageLength = 10, lengthMenu = c("10", "25", "50", "100"), scrollX = T)) %>%
-            formatRound(columns = c(2:10), digits = 2)
-        }
-        else if (input$tables == 1) {
-          if (input$GenerateEST == TRUE) {
-            #extract results and convert to tibble
-            gsea.df <- GeneratedMSigDBEST()
-            gsea.df <- as_tibble(gsea.df)
-            ## displaying the GSEA results as interactive data table
-            DT::datatable(gsea.df,
-                          extensions = c("KeyTable", "FixedHeader"),
-                          caption = "Enriched Signatures",
-                          options = list(keys = T, searchHighlight = T, pageLength = 10, lengthMenu = c("10", "25", "50", "100"), scrollX = T)) %>%
-              formatRound(columns = c(2:10), digits = 2)
-          }
-        }
+        #meta <- meta_react()
+        #metacol <- metacol_reactVal()
+        #if (length(colnames(meta)) == 2) {
+        #  metacol <- colnames(meta)[2]
+        #}
+        #A <- A_raw()
+        #gmt <- gmt_react()
+        req(GeneratedMSigDBEST())
+        gsea.df <- GeneratedMSigDBEST()
+        gsea.df <- as_tibble(gsea.df)
+        gsea.df <- gsea.df[,-2]
+        ## displaying the GSEA results as interactive data table
+        DT::datatable(gsea.df,
+                      extensions = c("KeyTable", "FixedHeader"),
+                      caption = "Enriched Signatures",
+                      options = list(keys = T, searchHighlight = T, pageLength = 10,
+                                     lengthMenu = c("10", "25", "50", "100"), scrollX = T)) %>%
+          formatSignif(columns = c(5:7), digits = 3) %>%
+          formatRound(columns = c(3,4), digits = 3)
+            
+        #if (input$tables == 3) {
+        #  #if (ncol(meta) > 2) {
+        #  #  req(input$GSEAmetaCol)
+        #  #  metacol <- input$GSEAmetaCol
+        #  #}
+        #  #else if (ncol(meta) == 2) {
+        #  #  metacol <- colnames(meta)[2]
+        #  #}
+        #  groupA <- meta[which(meta[,metacol] == input$comparisonA),1]
+        #  groupB <- meta[which(meta[,metacol] == input$comparisonB),1]
+        #  ##----Signal-to-Noise Calculation----##
+        #  A <- A + 0.00000001
+        #  P = as.matrix(as.numeric(colnames(A) %in% groupA))
+        #  n1 <- sum(P[,1])
+        #  M1 <- A %*% P
+        #  M1 <- M1/n1
+        #  A2 <- A*A
+        #  S1 <- A2 %*% P
+        #  S1 <- S1/n1 - M1*M1
+        #  S1 <- sqrt(abs((n1/(n1-1)) * S1))
+        #  P = as.matrix(as.numeric(colnames(A) %in% groupB))
+        #  n2 <- sum(P[,1])
+        #  M2 <- A %*% P
+        #  M2 <- M2/n2
+        #  A2 <- A*A
+        #  S2 <- A2 %*% P
+        #  S2 <- S2/n2 - M2*M2
+        #  S2 <- sqrt(abs((n2/(n2-1)) * S2))
+        #  rm(A2)
+        #  # small sigma "fix" as used in GeneCluster
+        #  S2 <- ifelse(0.2*abs(M2) < S2, S2, 0.2*abs(M2))
+        #  S2 <- ifelse(S2 == 0, 0.2, S2)
+        #  S1 <- ifelse(0.2*abs(M1) < S1, S1, 0.2*abs(M1))
+        #  S1 <- ifelse(S1 == 0, 0.2, S1)
+        #  M1 <- M1 - M2
+        #  rm(M2)
+        #  S1 <- S1 + S2
+        #  rm(S2)
+        #  s2n.matrix <- M1/S1
+        #  ##----Reformatting----##
+        #  s2n.df <- as.data.frame(s2n.matrix)
+        #  s2n.df$GeneID <- rownames(s2n.df)
+        #  rownames(s2n.df) <- NULL
+        #  data <- dplyr::select(s2n.df, GeneID, V1)
+        #  data.gsea <- data$V1
+        #  names(data.gsea) <- as.character(data$GeneID)
+        #  s2n.matrix.s <- sort(data.gsea, decreasing = T)
+        #  ##----GSEA----##
+        #  gmt.i <- tab2()
+        #  gsea.res <- GSEA(s2n.matrix.s, TERM2GENE = gmt.i, verbose = F, pvalueCutoff = input$userPval)
+        #  gsea.df <- as_tibble(gsea.res@result)
+        #  ## displaying the GSEA results as interactive data table
+        #  DT::datatable(gsea.df,
+        #                extensions = c("KeyTable", "FixedHeader"),
+        #                caption = "Enriched Signatures",
+        #                options = list(keys = T, searchHighlight = T, pageLength = 10, lengthMenu = c("10", "25", "50", "100"), scrollX = T)) %>%
+        #    formatRound(columns = c(2:10), digits = 2)
+        #}
+        #else if (input$tables == 5) {
+        #  #if (ncol(meta) > 2) {
+        #  #  metacol <- input$GSEAmetaCol
+        #  #}
+        #  #else if (ncol(meta) == 2) {
+        #  #  metacol <- colnames(meta)[2]
+        #  #}
+        #  groupA <- meta[which(meta[,metacol] == input$comparisonA),1]
+        #  groupB <- meta[which(meta[,metacol] == input$comparisonB),1]
+        #  ##----Signal-to-Noise Calculation----##
+        #  A <- A + 0.00000001
+        #  P = as.matrix(as.numeric(colnames(A) %in% groupA))
+        #  n1 <- sum(P[,1])
+        #  M1 <- A %*% P
+        #  M1 <- M1/n1
+        #  A2 <- A*A
+        #  S1 <- A2 %*% P
+        #  S1 <- S1/n1 - M1*M1
+        #  S1 <- sqrt(abs((n1/(n1-1)) * S1))
+        #  P = as.matrix(as.numeric(colnames(A) %in% groupB))
+        #  n2 <- sum(P[,1])
+        #  M2 <- A %*% P
+        #  M2 <- M2/n2
+        #  A2 <- A*A
+        #  S2 <- A2 %*% P
+        #  S2 <- S2/n2 - M2*M2
+        #  S2 <- sqrt(abs((n2/(n2-1)) * S2))
+        #  rm(A2)
+        #  # small sigma "fix" as used in GeneCluster
+        #  S2 <- ifelse(0.2*abs(M2) < S2, S2, 0.2*abs(M2))
+        #  S2 <- ifelse(S2 == 0, 0.2, S2)
+        #  S1 <- ifelse(0.2*abs(M1) < S1, S1, 0.2*abs(M1))
+        #  S1 <- ifelse(S1 == 0, 0.2, S1)
+        #  M1 <- M1 - M2
+        #  rm(M2)
+        #  S1 <- S1 + S2
+        #  rm(S2)
+        #  s2n.matrix <- M1/S1
+        #  ##----Reformatting----##
+        #  s2n.df <- as.data.frame(s2n.matrix)
+        #  s2n.df$GeneID <- rownames(s2n.df)
+        #  rownames(s2n.df) <- NULL
+        #  data <- dplyr::select(s2n.df, GeneID, V1)
+        #  data.gsea <- data$V1
+        #  names(data.gsea) <- as.character(data$GeneID)
+        #  s2n.matrix.s <- sort(data.gsea, decreasing = T)
+        #  ##----GSEA----##
+        #  gmt.i <- GStable.ubg()
+        #  gsea.res <- GSEA(s2n.matrix.s, TERM2GENE = gmt.i, verbose = F, pvalueCutoff = input$userPval)
+        #  gsea.df <- as_tibble(gsea.res@result)
+        #  ## displaying the GSEA results as interactive data table
+        #  DT::datatable(gsea.df,
+        #                extensions = c("KeyTable", "FixedHeader"),
+        #                caption = "Enriched Signatures",
+        #                options = list(keys = T, searchHighlight = T, pageLength = 10, lengthMenu = c("10", "25", "50", "100"), scrollX = T)) %>%
+        #    formatRound(columns = c(2:10), digits = 2)
+        #}
+        #else if (input$tables == 1) {
+        #  if (input$GenerateEST == TRUE) {
+        #    #extract results and convert to tibble
+        #    gsea.df <- GeneratedMSigDBEST()
+        #    gsea.df <- as_tibble(gsea.df)
+        #    ## displaying the GSEA results as interactive data table
+        #    DT::datatable(gsea.df,
+        #                  extensions = c("KeyTable", "FixedHeader"),
+        #                  caption = "Enriched Signatures",
+        #                  options = list(keys = T, searchHighlight = T, pageLength = 10, lengthMenu = c("10", "25", "50", "100"), scrollX = T)) %>%
+        #      formatRound(columns = c(2:10), digits = 2)
+        #  }
+        #}
       })
       
-      #render DEG table
-      output$DEGtable1 <- DT::renderDataTable({
-        
+      DEGtable1_react <- reactive({
         
         req(meta_react())
         req(metacol_reactVal())
         req(expr_react())
         req(input$volcanoCompChoice2)
-        print(input$volcanoCompChoice2)
         if (input$volcanoCompChoice2 == "DESeq2") {
-          if (isTruthy(input$DEGGroupCol)) {
-            print(input$DEGGroupCol)
-            desCol <- input$DEGGroupCol
+          if (isTruthy(metacol_reactVal())) {
+            desCol <- metacol_reactVal()
             expr <- expr_raw()
             meta <- meta_react()
             covars <- input$DEGCovarSelectTab
@@ -6220,7 +6492,6 @@ server <- function(input, output, session) {
             meta_deseq <- meta[sortedIndices,,drop=FALSE]
             rownames(meta_deseq) <- meta_deseq[,1]
             if (desCol != "Select column") {
-              print(input$DESeqDesignColRef_tab)
               desRef <- input$DESeqDesignColRef_tab
               if (isTruthy(desRef)) {
                 meta_deseq[,desCol] <- relevel(factor(meta_deseq[,desCol]), ref = desRef)
@@ -6233,7 +6504,7 @@ server <- function(input, output, session) {
                 
                 if (isTruthy(covars)) {
                   meta_deseq[,covars] <- lapply(meta_deseq[,covars,drop = F], factor)
-                  desCol <- paste(c(desCol,covars),collapse = "+")
+                  desCol <- paste(c(covars, desCol),collapse = "+")
                 }
                 dds <- DESeq2::DESeqDataSetFromMatrix(countData = mat,
                                                       colData = meta_deseq,
@@ -6242,14 +6513,13 @@ server <- function(input, output, session) {
                 res <- results(dds)
                 resOrdered <- res[order(res$padj),]
                 top1 <- as.data.frame(resOrdered)
-                DT::datatable(top1, options = list(lengthMenu = c(50,100,1000, 5000, 10000), pageLength = 100, scrollX = TRUE),
-                              selection=list(mode = "multiple"))
+                top1
               }
             }
           }
         } else {
-          req(input$comparisonA2.DEG)
-          req(input$comparisonB2.DEG)
+          #req(input$comparisonA2.DEG)
+          #req(input$comparisonB2.DEG)
           meta <- meta_react()
           metacol <- metacol_reactVal()
           if (length(colnames(meta)) == 2) {
@@ -6262,12 +6532,12 @@ server <- function(input, output, session) {
           metaSub <- metaSub[complete.cases(metaSub),]
           
           
-          if (input$volcanoCompChoice2 == "Two groups") {
+          if (input$volcanoCompChoice2 == "Limma: Two groups") {
             groupA <- input$comparisonA2.DEG
             groupB <- input$comparisonB2.DEG
             A <- metaSub[which(metaSub[,metacol] == groupA),1]
             B <- metaSub[which(metaSub[,metacol] == groupB),1]
-          } else if (input$volcanoCompChoice2 == "One group against all other") {
+          } else if (input$volcanoCompChoice2 == "Limma: One group") {
             groupA <- input$comparisonA2.DEG_one
             groupB <- paste0("Not_",groupA)
             metaSub[,paste0(metacol,"_Dichot")] <- NA
@@ -6309,11 +6579,20 @@ server <- function(input, output, session) {
             fit2 <- eBayes(fit2)
             options(digits = 4)
             top1 <- topTable(fit2, coef = 1, n = 300000, sort = "p", p.value = 1.0, adjust.method = "BH")
-            DT::datatable(top1, options = list(lengthMenu = c(50,100,1000, 5000, 10000), pageLength = 100, scrollX = TRUE),
-                          selection=list(mode = "multiple"))
+            top1
+          }
+          
         }
         
-        }
+        
+      })
+      
+      #render DEG table
+      output$DEGtable1 <- DT::renderDataTable({
+        
+        top1 <- DEGtable1_react()
+        DT::datatable(top1, options = list(lengthMenu = c(50,100,1000, 5000, 10000), pageLength = 100, scrollX = TRUE),
+                      selection=list(mode = "multiple"))
         
         
         
@@ -6483,7 +6762,7 @@ server <- function(input, output, session) {
         
       })
       
-      output$AvggeneScatterTable <- renderDataTable({
+      AvgGeneScatterTable_react <- reactive({
         
         meta <- meta_react()
         metacol <- metacol_reactVal()
@@ -6494,13 +6773,6 @@ server <- function(input, output, session) {
         A_choice <- input$comparisonA2.avg
         B_choice <- input$comparisonB2.avg
         log_choice <- input$AvgExpLogFC
-        #if (ncol(meta) > 2){
-        #  metacol <- input$AvgExprScatterMetaCol
-        #}
-        #else if (ncol(meta) == 2){
-        #  metacol <- colnames(meta)[2]
-        #}
-        
         # Get A and B sample names
         A <- meta[which(meta[,metacol] == A_choice),1]
         B <- meta[which(meta[,metacol] == B_choice),1]
@@ -6518,6 +6790,9 @@ server <- function(input, output, session) {
           logFC_text <- " (log2 +1)"
         }
         
+        mat_A <- as.data.frame(mat_A)
+        mat_B <- as.data.frame(mat_B)
+        
         # Get avg expression of each gene
         mat_A$AvgExpression_GroupA <- rowMeans(mat_A)
         mat_B$AvgExpression_GroupB <- rowMeans(mat_B)
@@ -6534,6 +6809,13 @@ server <- function(input, output, session) {
         
         colnames(AvgExpr_Table)[2] <- paste("Average Expression ", A_choice, sep = "")
         colnames(AvgExpr_Table)[3] <- paste("Average Expression ", B_choice, sep = "")
+        AvgExpr_Table
+        
+      })
+      
+      output$AvggeneScatterTable <- renderDataTable({
+        
+        AvgExpr_Table <- AvgGeneScatterTable_react()
         
         #table output
         DT::datatable(AvgExpr_Table,
@@ -6659,9 +6941,8 @@ server <- function(input, output, session) {
       
       ####----Plots----####
       
-      
-      #render GSEA plot
-      output$enrichplot0 <- renderPlot({
+      enrichplot0_react <- reactive({
+        
         req(datasetInput())
         gmt <- gmt_react()
         res <- datasetInput()
@@ -6669,42 +6950,13 @@ server <- function(input, output, session) {
                   geneSetID = 1:length(res@result[["ID"]]),
                   title = paste(unique(gmt[,1]),collapse = "\n"),
                   pvalue_table = F)
-        #if (input$tables == 1){
-        #  if (length(input$msigdbTable_rows_selected) > 0){
-        #    res <- datasetInput()
-        #    gsea.df <- as.data.frame(res@result)
-        #    geneset <- as.character(msigdb.gsea2()[input$msigdbTable_rows_selected,3])
-        #    title <- geneset
-        #    gseaplot2(res,
-        #              geneset,
-        #              title,
-        #              pvalue_table = F)
-        #  }
-        #}
-        #else if (input$tables == 3){
-        #  if (length(input$tab2table_rows_selected) > 0){
-        #    res <- datasetInput()
-        #    gsea.df <- as.data.frame(res@result)
-        #    geneset <- as.character(GeneSet2()[input$tab2table_rows_selected,1])
-        #    title <- geneset
-        #    gseaplot2(res,
-        #              geneset,
-        #              title,
-        #              pvalue_table = F)
-        #  }
-        #}
-        #else if (input$tables == 5){
-        #  if (length(input$GStable.u_rows_selected) > 0){
-        #    res <- datasetInput()
-        #    gsea.df <- as.data.frame(res@result)
-        #    geneset <- as.character(user_gs_mirror()[input$GStable.u_rows_selected,1])
-        #    title <- geneset
-        #    gseaplot2(res,
-        #              geneset,
-        #              title,
-        #              pvalue_table = F)
-        #  }
-        #}
+        
+      })
+      
+      #render GSEA plot
+      output$enrichplot0 <- renderPlot({
+       p <- enrichplot0_react()
+       p
       })
       
       GeneSetName_React <- reactive({
@@ -6751,7 +7003,7 @@ server <- function(input, output, session) {
                                                         name = input$GSEAGroupColMulti,
                                                         which = 'col'
             )
-          } else if (input$volcanoCompChoice3 == "One group against all other") {
+          } else if (input$volcanoCompChoice3 == "One group") {
             groupA <- input$comparisonA_one
             groupB <- paste0("Not_",groupA)
             meta[,paste0(metacol,"_Dichot")] <- NA
@@ -6773,6 +7025,8 @@ server <- function(input, output, session) {
             rownames(meta) <- meta[,1]
             dataset <- gsea_heat_data()
             meta <- meta[which(meta[,1] %in% colnames(dataset)),]
+            meta <- meta[match(colnames(dataset),meta[,1]),]
+            rownames(meta) <- meta[,1]
             meta_sub <- meta[,2, drop = F]
             meta_sub[,1] <- as.factor(meta_sub[,1])
             colAnn <- ComplexHeatmap::HeatmapAnnotation(df = meta_sub,
@@ -6803,7 +7057,7 @@ server <- function(input, output, session) {
         if (input$volcanoCompChoice3 == "Two groups") {
           groupA <- input$comparisonA
           groupB <- input$comparisonB
-        } else if (input$volcanoCompChoice3 == "One group against all other") {
+        } else if (input$volcanoCompChoice3 == "One group") {
           groupA <- input$comparisonA_one
           groupB <- paste0("Not_",groupA)
           meta[,paste0(metacol,"_Dichot")] <- NA
@@ -6836,8 +7090,8 @@ server <- function(input, output, session) {
         dataset
         
       })
-      #render heatmap
-      output$heatmap0 <- renderPlot({
+      
+      heatmap0_react <- reactive({
         
         #meta <- meta_react()
         #metacol <- metacol_reactVal()
@@ -6855,270 +7109,14 @@ server <- function(input, output, session) {
                                                       border = F))
         draw(p, padding = unit(c(100, 50, 2, 2), "mm")) # unit(c(bottom,left,right,top))
         
+      })
+      
+      #render heatmap
+      output$heatmap0 <- renderPlot({
         
-        #if (input$tables == 1) {
-        #  if (length(input$msigdbTable_rows_selected) > 0){
-        #    #if (ncol(meta) > 2) {
-        #    #  req(input$GSEAmetaCol)
-        #    #  metacol <- input$GSEAmetaCol
-        #    #}
-        #    #else if (ncol(meta) == 2) {
-        #    #  metacol <- colnames(meta)[2]
-        #    #}
-        #    groupA <- meta[which(meta[,metacol] == input$comparisonA),1]
-        #    groupB <- meta[which(meta[,metacol] == input$comparisonB),1]
-        #    res <- datasetInput()
-        #    gsea.df <- as.data.frame(res@result)
-        #    GS <- as.character(msigdb.gsea2[input$msigdbTable_rows_selected,3])
-        #    genes1 <- as.matrix(gsea.df[which(gsea.df$Description==GS),"core_enrichment"])
-        #    genes2 <- strsplit(genes1,"/")
-        #    genes3 <- as.data.frame(genes2, col.names = "genes")
-        #    gene_symbol <- genes3$genes
-        #    ## convert expression matrix to numeric
-        #    class(A) <- "numeric"
-        #    ## Transforming data
-        #    A <- A[,c(groupA,groupB)]
-        #    exp.mat1 = log2(A + 1) # log
-        #    exp.mat2 = apply(exp.mat1, 1, scale); # z score
-        #    exp.mat3 = apply(exp.mat2, 1, rev); # transpose
-        #    colnames(exp.mat3) = colnames(A) # set the column name
-        #    exp.mat4 = exp.mat3[rowSums(is.na(exp.mat3[,])) == 0,] # remove NaN rows
-        #    exp.mat5 = exp.mat4[rownames(exp.mat4) %in% gene_symbol,] # grab gene symbols
-        #    # reassign data
-        #    dataset <- exp.mat5
-        #    ## generate color for pheatmap
-        #    if (abs(min(dataset)) > abs(max(dataset))) {
-        #      dataset[dataset < -abs(max(dataset))] = -abs(max(dataset))
-        #    } else {
-        #      dataset[dataset > abs(min(dataset))] = abs(min(dataset))
-        #    }
-        #    meta2 <- meta[which(meta[,1] %in% c(groupA,groupB)),]
-        #
-        #    meta2 <- meta2[,c(colnames(meta2)[1],metacol)]
-        #    meta2[,2] <- as.factor(meta2[,2])
-        #    meta2 <- meta2[order(meta2[,2]),]
-        #    rownames(meta2) <- meta2[,1]
-        #    meta3 <- meta2[,-1,drop = F]
-        #    dataset <- dataset[,rownames(meta2)]
-        #
-        #    zscore_range = 10;
-        #    minimum = -zscore_range;
-        #    maximum = zscore_range;
-        #    bk = c(seq(minimum,minimum/2, length=100), seq(minimum/2,maximum/2,length=100),seq(maximum/2,maximum,length=100))
-        #    #Heatmap color
-        #    color_choice <- input$ColorPalette_gseaHeat
-        #    col_sets <- c("OrRd","PuBu","Greens","YlGnBu")
-        #    if (color_choice == "original") {
-        #      HeatMap_Colors <- c("dark blue","blue","white","red", "dark red")
-        #      hmcols <- colorRampPalette(HeatMap_Colors)(length(bk)-1)
-        #    }
-        #    else if (color_choice %in% col_sets) {
-        #      HeatMap_Colors <- brewer.pal(n = 5, color_choice)
-        #      hmcols <- colorRampPalette(HeatMap_Colors)(length(bk)-1)
-        #    }
-        #    else if (color_choice == "Inferno") {
-        #      hmcols <- inferno(500)
-        #    }
-        #    else if (color_choice == "Viridis") {
-        #      hmcols <- viridis(500)
-        #    }
-        #    else if (color_choice == "Plasma") {
-        #      hmcols <- plasma(500)
-        #    }
-        #    else if (color_choice == "OmniBlueRed") {
-        #      hmcols<- colorRampPalette(c("#1984C5", "#22A7F0", "#63BFF0", "#A7D5ED", "#E2E2E2", "#E1A692", "#DE6E56", "#E14B31", "#C23728"))(length(bk)-1)
-        #    }
-        #    else if (color_choice == "LightBlueBlackRed") {
-        #      hmcols<- colorRampPalette(c("#34C5FD","black","red"))(length(bk)-1)
-        #    }
-        #    else if (color_choice == "GreenBlackRed") {
-        #      hmcols<- colorRampPalette(c("green","black","red"))(length(bk)-1)
-        #    }
-        #    pheatmap::pheatmap(dataset,            #data
-        #                       cluster_cols = F,    #cluster columns - NO
-        #                       cluster_row = F,     #cluster rows - YES
-        #                       fontsize_col = input$heatmapFont1.c,   #column fontsize
-        #                       fontsize_row = input$heatmapFont1.r,
-        #                       show_rownames = T,
-        #                       show_colnames = T,
-        #                       color=hmcols,
-        #                       annotation_col = meta3)
-        #  }
-        #}
-        #else if (input$tables == 3) {
-        #  if (length(input$tab2table_rows_selected) > 0){
-        #    #if (ncol(meta) > 2) {
-        #    #  req(input$GSEAmetaCol)
-        #    #  metacol <- input$GSEAmetaCol
-        #    #}
-        #    #else if (ncol(meta) == 2) {
-        #    #  metacol <- colnames(meta)[2]
-        #    #}
-        #    groupA <- meta[which(meta[,metacol] == input$comparisonA),1]
-        #    groupB <- meta[which(meta[,metacol] == input$comparisonB),1]
-        #    res <- datasetInput()
-        #    gsea.df <- as.data.frame(res@result)
-        #    GS <- as.character(GeneSet2[input$tab2table_rows_selected,1])
-        #    genes1 <- as.matrix(gsea.df[which(gsea.df$Description==GS),"core_enrichment"])
-        #    genes2 <- strsplit(genes1,"/")
-        #    genes3 <- as.data.frame(genes2, col.names = "genes")
-        #    gene_symbol <- genes3$genes
-        #    ## convert expression matrix to numeric
-        #    class(A) <- "numeric"
-        #    ## Transforming data
-        #    A <- A[,c(groupA,groupB)]
-        #    exp.mat1 = log2(A + 1) # log
-        #    exp.mat2 = apply(exp.mat1, 1, scale); # z score
-        #    exp.mat3 = apply(exp.mat2, 1, rev); # transpose
-        #    colnames(exp.mat3) = colnames(A) # set the column name
-        #    exp.mat4 = exp.mat3[rowSums(is.na(exp.mat3[,])) == 0,] # remove NaN rows
-        #    exp.mat5 = exp.mat4[rownames(exp.mat4) %in% gene_symbol,] # grab gene symbols
-        #    # reassign data
-        #    dataset <- exp.mat5
-        #    ## generate color for pheatmap
-        #    if (abs(min(dataset)) > abs(max(dataset))) {
-        #      dataset[dataset < -abs(max(dataset))] = -abs(max(dataset))
-        #    } else {
-        #      dataset[dataset > abs(min(dataset))] = abs(min(dataset))
-        #    }
-        #    meta2 <- meta[which(meta[,1] %in% c(groupA,groupB)),]
-        #    meta2 <- meta2[,c(colnames(meta2)[1],metacol)]
-        #    meta2[,2] <- as.factor(meta2[,2])
-        #    meta2 <- meta2[order(meta2[,2]),]
-        #    rownames(meta2) <- meta2[,1]
-        #    meta3 <- meta2[,-1,drop = F]
-        #    dataset <- dataset[,rownames(meta2)]
-        #    zscore_range = 10;
-        #    minimum = -zscore_range;
-        #    maximum = zscore_range;
-        #    bk = c(seq(minimum,minimum/2, length=100), seq(minimum/2,maximum/2,length=100),seq(maximum/2,maximum,length=100))
-        #    #Heatmap color
-        #    color_choice <- input$ColorPalette_gseaHeat
-        #    col_sets <- c("OrRd","PuBu","Greens","YlGnBu")
-        #    if (color_choice == "original") {
-        #      HeatMap_Colors <- c("dark blue","blue","white","red", "dark red")
-        #      hmcols <- colorRampPalette(HeatMap_Colors)(length(bk)-1)
-        #    }
-        #    else if (color_choice %in% col_sets) {
-        #      HeatMap_Colors <- brewer.pal(n = 5, color_choice)
-        #      hmcols <- colorRampPalette(HeatMap_Colors)(length(bk)-1)
-        #    }
-        #    else if (color_choice == "Inferno") {
-        #      hmcols <- inferno(500)
-        #    }
-        #    else if (color_choice == "Viridis") {
-        #      hmcols <- viridis(500)
-        #    }
-        #    else if (color_choice == "Plasma") {
-        #      hmcols <- plasma(500)
-        #    }
-        #    else if (color_choice == "OmniBlueRed") {
-        #      hmcols<- colorRampPalette(c("#1984C5", "#22A7F0", "#63BFF0", "#A7D5ED", "#E2E2E2", "#E1A692", "#DE6E56", "#E14B31", "#C23728"))(length(bk)-1)
-        #    }
-        #    else if (color_choice == "LightBlueBlackRed") {
-        #      hmcols<- colorRampPalette(c("#34C5FD","black","red"))(length(bk)-1)
-        #    }
-        #    else if (color_choice == "GreenBlackRed") {
-        #      hmcols<- colorRampPalette(c("green","black","red"))(length(bk)-1)
-        #    }
-        #    pheatmap::pheatmap(dataset,            #data
-        #                       cluster_cols = F,    #cluster columns - NO
-        #                       cluster_row = F,     #cluster rows - YES
-        #                       fontsize_col = input$heatmapFont1.c,   #column fontsize
-        #                       fontsize_row = input$heatmapFont1.r,
-        #                       show_rownames = T,
-        #                       show_colnames = T,
-        #                       color=hmcols,
-        #                       annotation_col = meta3)
-        #  }
-        #}
-        #else if (input$tables == 5) {
-        #  if (length(input$GStable.u_rows_selected) > 0){
-        #    #if (ncol(meta) > 2) {
-        #    #  req(input$GSEAmetaCol)
-        #    #  metacol <- input$GSEAmetaCol
-        #    #}
-        #    #else if (ncol(meta) == 2) {
-        #    #  metacol <- colnames(meta)[2]
-        #    #}
-        #    groupA <- meta[which(meta[,metacol] == input$comparisonA),1]
-        #    groupB <- meta[which(meta[,metacol] == input$comparisonB),1]
-        #    res <- datasetInput()
-        #    gsea.df <- as.data.frame(res@result)
-        #    GS <- as.character(user_gs_mirror()[input$GStable.u_rows_selected,1])
-        #    genes1 <- as.matrix(gsea.df[which(gsea.df$Description==GS),"core_enrichment"])
-        #    genes2 <- strsplit(genes1,"/")
-        #    genes3 <- as.data.frame(genes2, col.names = "genes")
-        #    gene_symbol <- genes3$genes
-        #    ## convert expression matrix to numeric
-        #    class(A) <- "numeric"
-        #    ## Transforming data
-        #    A <- A[,c(groupA,groupB)]
-        #    exp.mat1 = log2(A + 1) # log
-        #    exp.mat2 = apply(exp.mat1, 1, scale); # z score
-        #    exp.mat3 = apply(exp.mat2, 1, rev); # transpose
-        #    colnames(exp.mat3) = colnames(A) # set the column name
-        #    exp.mat4 = exp.mat3[rowSums(is.na(exp.mat3[,])) == 0,] # remove NaN rows
-        #    exp.mat5 = exp.mat4[rownames(exp.mat4) %in% gene_symbol,] # grab gene symbols
-        #    # reassign data
-        #    dataset <- exp.mat5
-        #    ## generate color for pheatmap
-        #    if (abs(min(dataset)) > abs(max(dataset))) {
-        #      dataset[dataset < -abs(max(dataset))] = -abs(max(dataset))
-        #    } else {
-        #      dataset[dataset > abs(min(dataset))] = abs(min(dataset))
-        #    }
-        #    meta2 <- meta[which(meta[,1] %in% c(groupA,groupB)),]
-        #    meta2 <- meta2[,c(colnames(meta2)[1],metacol)]
-        #    meta2[,2] <- as.factor(meta2[,2])
-        #    meta2 <- meta2[order(meta2[,2]),]
-        #    rownames(meta2) <- meta2[,1]
-        #    meta3 <- meta2[,-1,drop = F]
-        #    dataset <- dataset[,rownames(meta2)]
-        #    zscore_range = 10;
-        #    minimum = -zscore_range;
-        #    maximum = zscore_range;
-        #    bk = c(seq(minimum,minimum/2, length=100), seq(minimum/2,maximum/2,length=100),seq(maximum/2,maximum,length=100))
-        #    #Heatmap color
-        #    color_choice <- input$ColorPalette_gseaHeat
-        #    col_sets <- c("OrRd","PuBu","Greens","YlGnBu")
-        #    if (color_choice == "original") {
-        #      HeatMap_Colors <- c("dark blue","blue","white","red", "dark red")
-        #      hmcols <- colorRampPalette(HeatMap_Colors)(length(bk)-1)
-        #    }
-        #    else if (color_choice %in% col_sets) {
-        #      HeatMap_Colors <- brewer.pal(n = 5, color_choice)
-        #      hmcols <- colorRampPalette(HeatMap_Colors)(length(bk)-1)
-        #    }
-        #    else if (color_choice == "Inferno") {
-        #      hmcols <- inferno(500)
-        #    }
-        #    else if (color_choice == "Viridis") {
-        #      hmcols <- viridis(500)
-        #    }
-        #    else if (color_choice == "Plasma") {
-        #      hmcols <- plasma(500)
-        #    }
-        #    else if (color_choice == "OmniBlueRed") {
-        #      hmcols<- colorRampPalette(c("#1984C5", "#22A7F0", "#63BFF0", "#A7D5ED", "#E2E2E2", "#E1A692", "#DE6E56", "#E14B31", "#C23728"))(length(bk)-1)
-        #    }
-        #    else if (color_choice == "LightBlueBlackRed") {
-        #      hmcols<- colorRampPalette(c("#34C5FD","black","red"))(length(bk)-1)
-        #    }
-        #    else if (color_choice == "GreenBlackRed") {
-        #      hmcols<- colorRampPalette(c("green","black","red"))(length(bk)-1)
-        #    }
-        #    pheatmap::pheatmap(dataset,            #data
-        #                       cluster_cols = F,    #cluster columns - NO
-        #                       cluster_row = F,     #cluster rows - YES
-        #                       fontsize_col = input$heatmapFont1.c,   #column fontsize
-        #                       fontsize_row = input$heatmapFont1.r,
-        #                       show_rownames = T,
-        #                       show_colnames = T,
-        #                       color=hmcols,
-        #                       annotation_col = meta3)
-        #  }
-        #}
+        p <- heatmap0_react()
+        p
+        
       })
       
       #render MVG heatmap - per sample - 1
@@ -7146,7 +7144,7 @@ server <- function(input, output, session) {
         
       })
       
-      # Render Average Expression heatmap - cutom
+      # Render Average Expression heatmap - custom
       output$avgheatmap1Cust <- renderPlot({
         
         heat <- AvgExprHeatmap_react()
@@ -7181,16 +7179,8 @@ server <- function(input, output, session) {
         #title_font <- input$VolMATitleSize
         axis_font <- input$VolMAAxisSize
         top2 <- topgenereact()
-        if (isTruthy(input$MAxAxis)) {
-          print(input$MAxAxis)
-          if (input$MAxAxis == "Normalized") {
-            expr <- expr_react()
-            AveExpr <- rowMeans(expr)
-            AveExpr2 <- AveExpr[order(match(names(AveExpr),rownames(top2)))]
-            top2$AveExpr <- unname(AveExpr2)
-          } else if (input$MAxAxis == "Log2+1") {
-            top2$AveExpr <- log2(top2$AveExpr+1)
-          }
+        if (input$volcanoCompChoice == "DESeq2") {
+          top2$AveExpr <- log2(top2$AveExpr+1)
         }
         #add color categories based on FC and pval
         top2['threshold'] <- "none"
@@ -7355,12 +7345,11 @@ server <- function(input, output, session) {
         removeSingles <- input$BPremoveSingles2
         BPlog <- input$BPlogOpt2
         if (FeatCat == "Matrix Features") {
-          #featdf <- mat[which(mat[,1] == Feature),]
-          featdf <- mat[Feature,]
-          #rownames(featdf) <- featdf[,1]
-          #featdf <- featdf[,-1]
-          featdf <- as.data.frame(t(featdf))
-          featdf[,NameCol] <- rownames(featdf)
+          feat <- unlist(mat[Feature,])
+          featdf <- data.frame(
+            NameCol = names(feat),
+            Feature = unname(feat))
+          colnames(featdf) <- c(NameCol,Feature)
           meta <- merge(meta,featdf)
         } #else if (FeatCat == "Immune Deconvolution Features") {
         #mat <- ImmDeconv_uncorr_react()
@@ -7618,8 +7607,6 @@ server <- function(input, output, session) {
         
         meta <- meta_react()
         mat <- expr_react()
-        print(head(mat,c(5,5)))
-        print(head(meta))
         req(input$BPgroupCriteria)
         groupCrit <- input$BPgroupCriteria
         FeatCat <- input$BPFeatureCategory
@@ -7856,14 +7843,16 @@ server <- function(input, output, session) {
         if (length(input$GeneListTableBarPlot_rows_selected) > 0){
           
           gene <- geneList[input$GeneListTableBarPlot_rows_selected, 1]
-          
-          expr_gene <- merge(as.data.frame(t(expr[gene,])), meta_temp, by=0)
+          expr_gene <- data.frame(row.names = names(expr[gene,]),
+                                  Gene = unname(unlist(expr[gene,])))
+          colnames(expr_gene)[1] <- gene
+          expr_gene <- merge(expr_gene, meta_temp, by=0)
           colnames(expr_gene)[1] <- "SampleName"
-          
+
           expr_gene2 <- merge(expr_gene,meta, all = T)
           plottitle <- paste(gene,"Average Gene Expression Across",metacol)
           genetitle <- paste(gene,"Average Expression")
-          
+
           if (logchoice == T) {
             expr_gene2[,gene] <- log2(expr_gene2[,gene] + 1)
             plottitle <- paste(gene,"Average Gene Expression (Log2) Across",metacol)
@@ -8041,16 +8030,33 @@ server <- function(input, output, session) {
         anno_font <- input$VolMAAnnoSize
         anno_face <- input$VolMAAnnoFont
         top2 <- topgenereact()
-        #add color categories based on FC and pval
-        top2['threshold'] <- "none"
-        top2[which(top2$logFC > abs(input$fc_cutoff) & top2$P.Value < input$p_cutoff), "threshold"] <- "up"
-        top2[which(top2$logFC < -abs(input$fc_cutoff) & top2$P.Value < input$p_cutoff), "threshold"] <- "down"
+        pvalChoice <- input$PorAdjPval
         upRed <- "lightcoral"
         dnBlue <- "cadetblue3"
         mdGray <- "gray70"
-        #select number of top hits based on input
-        top_hits_up <- top2[head(which(top2$logFC > abs(input$fc_cutoff) & top2$P.Value < input$p_cutoff), n = input$top_x),]
-        top_hits_dn <- top2[head(which(top2$logFC < -abs(input$fc_cutoff) & top2$P.Value < input$p_cutoff), n = input$top_x),]
+        #add color categories based on FC and pval
+        top2['threshold'] <- "none"
+        if (pvalChoice == "-log10(P.value)") {
+          top2[which(top2$logFC > abs(input$fc_cutoff) & top2$P.Value < input$p_cutoff), "threshold"] <- "up"
+          top2[which(top2$logFC < -abs(input$fc_cutoff) & top2$P.Value < input$p_cutoff), "threshold"] <- "down"
+          #select number of top hits based on input
+          top_hits_up <- top2[head(which(top2$logFC > abs(input$fc_cutoff) & top2$P.Value < input$p_cutoff), n = input$top_x),]
+          top_hits_dn <- top2[head(which(top2$logFC < -abs(input$fc_cutoff) & top2$P.Value < input$p_cutoff), n = input$top_x),]
+          #create plot
+          x <- ggplot(data = top2, aes(x = logFC, y = -log10(P.Value))) +
+            geom_point(size = 2, shape = 16) +
+            theme_light(base_size = 16)
+        } else if (pvalChoice == "-log10(Adjusted P.value)") {
+          top2[which(top2$logFC > abs(input$fc_cutoff) & top2$adj.P.Val < input$p_cutoff), "threshold"] <- "up"
+          top2[which(top2$logFC < -abs(input$fc_cutoff) & top2$adj.P.Val < input$p_cutoff), "threshold"] <- "down"
+          #select number of top hits based on input
+          top_hits_up <- top2[head(which(top2$logFC > abs(input$fc_cutoff) & top2$adj.P.Val < input$p_cutoff), n = input$top_x),]
+          top_hits_dn <- top2[head(which(top2$logFC < -abs(input$fc_cutoff) & top2$adj.P.Val < input$p_cutoff), n = input$top_x),]
+          #create plot
+          x <- ggplot(data = top2, aes(x = logFC, y = -log10(adj.P.Val))) +
+            geom_point(size = 2, shape = 16) +
+            theme_light(base_size = 16)
+        }
         #select genes to label based on user selection
         genesel.s <- NULL
         genesel.t <- NULL
@@ -8061,10 +8067,6 @@ server <- function(input, output, session) {
         genesel.text <- c(genesel.s,genesel.t,genesel.u)
         top2_selec <- top2 %>%
           filter(GeneName %in% genesel.text)
-        #create plot
-        x <- ggplot(data = top2, aes(x = logFC, y = -log10(P.Value))) +
-          geom_point(size = 2, shape = 16) +
-          theme_light(base_size = 16)
         #colors
         x <- x + aes(color = threshold) +
           scale_color_manual(values = c("up" = upRed,"down" = dnBlue, "none" = mdGray))
@@ -8111,27 +8113,45 @@ server <- function(input, output, session) {
           point.padding = unit(.3+4*0.1, "lines"),
           max.overlaps = Inf)
         #coloring selected points
-        x <- x + geom_point(data = top2_selec,
-                            aes(x = logFC, y = -log10(P.Value)),
-                            pch = 21,
-                            color = "black",
-                            size = 2)
-        x <- x + geom_point(data = top_hits_dn,
-                            aes(x = logFC, y = -log10(P.Value)),
-                            pch = 21,
-                            color = "black",
-                            size = 2)
-        x <- x + geom_point(data = top_hits_up,
-                            aes(x = logFC, y = -log10(P.Value)),
-                            pch = 21,
-                            color = "black",
-                            size = 2)
+        if (pvalChoice == "-log10(P.value)") {
+          x <- x + geom_point(data = top2_selec,
+                              aes(x = logFC, y = -log10(P.Value)),
+                              pch = 21,
+                              color = "black",
+                              size = 2)
+          x <- x + geom_point(data = top_hits_dn,
+                              aes(x = logFC, y = -log10(P.Value)),
+                              pch = 21,
+                              color = "black",
+                              size = 2)
+          x <- x + geom_point(data = top_hits_up,
+                              aes(x = logFC, y = -log10(P.Value)),
+                              pch = 21,
+                              color = "black",
+                              size = 2)
+        } else if (pvalChoice == "-log10(Adjusted P.value)") {
+          x <- x + geom_point(data = top2_selec,
+                              aes(x = logFC, y = -log10(adj.P.Val)),
+                              pch = 21,
+                              color = "black",
+                              size = 2)
+          x <- x + geom_point(data = top_hits_dn,
+                              aes(x = logFC, y = -log10(adj.P.Val)),
+                              pch = 21,
+                              color = "black",
+                              size = 2)
+          x <- x + geom_point(data = top_hits_up,
+                              aes(x = logFC, y = -log10(adj.P.Val)),
+                              pch = 21,
+                              color = "black",
+                              size = 2)
+        }
         #axis parameters
         x <- x + theme(legend.position="none")
         x <- x + theme(axis.text = element_text(size=tick_font),
                        axis.title = element_text(size = axis_font))
         #x <- x + theme(axis.title = element_text(size = axis_font))
-        x <- x + labs(x = "log2FC", y = "-log10(P.Value)")
+        x <- x + labs(x = "log2FC", y = pvalChoice)
         x
         
         
@@ -8143,9 +8163,7 @@ server <- function(input, output, session) {
         plot
       })
       
-      #render ssGSEA boxplot
-      output$boxplot2 <- renderPlot({
-        
+      boxplot2_react <- reactive({
         req(ssGSEAfunc())
         title_font <- input$gseaBoxTitleSize
         axis_font <- input$gseaBoxAxisSize
@@ -8186,7 +8204,8 @@ server <- function(input, output, session) {
             theme(axis.text.x = element_text(angle = 90, vjust = 0.25, hjust = 1),
                   axis.text = element_text(size = 12),
                   axis.title = element_text(size = axis_font),
-                  plot.title = element_text(size = title_font))
+                  plot.title = element_text(size = title_font),
+                  legend.position = "none")
         } else {
           p <- ggplot(ssgsea4, aes(factor(ssgsea4[,metacol]), ssgsea4[,2], fill = ssgsea4[,metacol])) +
             geom_boxplot(width = 0.5, lwd = 1, fill = "white") +
@@ -8199,154 +8218,26 @@ server <- function(input, output, session) {
             theme(axis.text.x = element_text(angle = 90, vjust = 0.25, hjust = 1),
                   axis.text = element_text(size = 12),
                   axis.title = element_text(size = axis_font),
-                  plot.title = element_text(size = title_font))
+                  plot.title = element_text(size = title_font),
+                  legend.position = "none")
         }
         p
         
-        #if tab 2 selected
-        #if (input$tables == 3) {
-        #  if (length(input$tab2table_rows_selected) > 0){
-        #    ssgsea <- ssGSEAfunc()
-        #    ssgsea2 <- as.data.frame(t(ssgsea))
-        #    samporder <- meta[,1]
-        #    ssgsea3 <- as.data.frame(ssgsea2[samporder,])
-        #    colnames(ssgsea3)[1] <- colnames(ssgsea2[1])
-        #    rownames(ssgsea3) <- samporder
-        #    ssgsea4 <- ssgsea3 %>%
-        #      mutate(type = case_when(
-        #        rownames(ssgsea3) == meta[,1] ~ meta[,metacol],
-        #      ))
-        #    ssgsea4 <- ssgsea4 %>%
-        #      relocate(type)
-        #    ssgsea4$type <- as.factor(ssgsea4$type)
-        #    colnames(ssgsea4)[which(colnames(ssgsea4) == "type")] <- metacol
-        #    if (input$boxplotcompare == "none") {
-        #      ggplot(ssgsea4, aes(factor(ssgsea4[,metacol]), ssgsea4[,2], fill = ssgsea4[,metacol])) +
-        #        geom_boxplot(width = 0.5, lwd = 1, fill = "white") +
-        #        geom_dotplot(binaxis = 'y', stackdir = "center", dotsize = input$boxplotDotss) +
-        #        labs(x = "Group", y = paste(colnames(ssgsea4)[2], " Score", sep = ""),
-        #             title = paste("ssGSEA Expression Signature: ", colnames(ssgsea4)[2],sep = ""),
-        #             fill = metacol) +
-        #        theme_bw() +
-        #        theme(axis.text.x = element_text(angle = 90, vjust = 0.25, hjust = 1),
-        #              axis.text = element_text(size = 12),
-        #              axis.title = element_text(size = axis_font),
-        #              plot.title = element_text(size = title_font))
-        #    }
-        #    else {
-        #      ggplot(ssgsea4, aes(factor(ssgsea4[,metacol]), ssgsea4[,2], fill = ssgsea4[,metacol])) +
-        #        geom_boxplot(width = 0.5, lwd = 1, fill = "white") +
-        #        geom_dotplot(binaxis = 'y', stackdir = "center", dotsize = input$boxplotDotss) +
-        #        labs(x = "Group", y = paste(colnames(ssgsea4)[2], " Score", sep = ""),
-        #             title = paste("ssGSEA Expression Signature: ", colnames(ssgsea4)[2],sep = ""),
-        #             fill = metacol) +
-        #        theme_bw() +
-        #        stat_compare_means(method = input$boxplotcompare) +
-        #        theme(axis.text.x = element_text(angle = 90, vjust = 0.25, hjust = 1),
-        #              axis.text = element_text(size = 12),
-        #              axis.title = element_text(size = axis_font),
-        #              plot.title = element_text(size = title_font))
-        #    }
-        #  }
-        #}
-        ##if MSigDB tab selected
-        #else if (input$tables == 1) {
-        #  if (length(input$msigdbTable_rows_selected) > 0){
-        #    ssgsea <- ssGSEAfunc()
-        #    ssgsea2 <- as.data.frame(t(ssgsea))
-        #    samporder <- meta[,1]
-        #    ssgsea3 <- as.data.frame(ssgsea2[samporder,])
-        #    colnames(ssgsea3)[1] <- colnames(ssgsea2[1])
-        #    rownames(ssgsea3) <- samporder
-        #    ssgsea4 <- ssgsea3 %>%
-        #      mutate(type = case_when(
-        #        rownames(ssgsea3) == meta[,1] ~ meta[,metacol],
-        #      ))
-        #    ssgsea4 <- ssgsea4 %>%
-        #      relocate(type)
-        #    ssgsea4$type <- as.factor(ssgsea4$type)
-        #    colnames(ssgsea4)[which(colnames(ssgsea4) == "type")] <- metacol
-        #    if (input$boxplotcompare == "none") {
-        #      ggplot(ssgsea4, aes(factor(ssgsea4[,metacol]), ssgsea4[,2], fill = ssgsea4[,metacol])) +
-        #        geom_boxplot(width = 0.5, lwd = 1, fill = "white") +
-        #        geom_dotplot(binaxis = 'y', stackdir = "center", dotsize = input$boxplotDotss) +
-        #        labs(x = "Group", y = paste(colnames(ssgsea4)[2], " Score", sep = ""),
-        #             title = paste("ssGSEA Expression Signature: ",colnames(ssgsea4)[2],sep = ""),
-        #             fill = metacol) +
-        #        theme_bw() +
-        #        theme(axis.text.x = element_text(angle = 90, vjust = 0.25, hjust = 1),
-        #              axis.text = element_text(size = 12),
-        #              axis.title = element_text(size = axis_font),
-        #              plot.title = element_text(size = title_font))
-        #    }
-        #    else {
-        #      ggplot(ssgsea4, aes(factor(ssgsea4[,metacol]), ssgsea4[,2], fill = ssgsea4[,metacol])) +
-        #        geom_boxplot(width = 0.5, lwd = 1, fill = "white") +
-        #        geom_dotplot(binaxis = 'y', stackdir = "center", dotsize = input$boxplotDotss) +
-        #        labs(x = "Group", y = paste(colnames(ssgsea4)[2], " Score", sep = ""),
-        #             title = paste("ssGSEA Expression Signature: ",colnames(ssgsea4)[2],sep = ""),
-        #             fill = metacol) +
-        #        theme_bw() +
-        #        stat_compare_means(method = input$boxplotcompare) +
-        #        theme(axis.text.x = element_text(angle = 90, vjust = 0.25, hjust = 1),
-        #              axis.text = element_text(size = 12),
-        #              axis.title = element_text(size = axis_font),
-        #              plot.title = element_text(size = title_font))
-        #    }
-        #  }
-        #}
-        ##if user generated GS table selected
-        #else if (input$tables == 5) {
-        #  if (length(input$GStable.u_rows_selected) > 0){
-        #    ssgsea <- ssGSEAfunc()
-        #    ssgsea2 <- as.data.frame(t(ssgsea))
-        #    samporder <- meta[,1]
-        #    ssgsea3 <- as.data.frame(ssgsea2[samporder,])
-        #    colnames(ssgsea3)[1] <- colnames(ssgsea2[1])
-        #    rownames(ssgsea3) <- samporder
-        #    ssgsea4 <- ssgsea3 %>%
-        #      mutate(type = case_when(
-        #        rownames(ssgsea3) == meta[,1] ~ meta[,metacol],
-        #      ))
-        #    ssgsea4 <- ssgsea4 %>%
-        #      relocate(type)
-        #    ssgsea4$type <- as.factor(ssgsea4$type)
-        #    colnames(ssgsea4)[which(colnames(ssgsea4) == "type")] <- metacol
-        #    if (input$boxplotcompare == "none") {
-        #      ggplot(ssgsea4, aes(factor(ssgsea4[,metacol]), ssgsea4[,2], fill = ssgsea4[,metacol])) +
-        #        geom_boxplot(width = 0.5, lwd = 1, fill = "white") +
-        #        geom_dotplot(binaxis = 'y', stackdir = "center", dotsize = input$boxplotDotss) +
-        #        labs(x = "Group", y = paste(colnames(ssgsea4)[2], " Score", sep = ""),
-        #             title = paste("ssGSEA Expression Signature: ",colnames(ssgsea4)[2],sep = ""),
-        #             fill = metacol) +
-        #        theme_bw() +
-        #        theme(axis.text.x = element_text(angle = 90, vjust = 0.25, hjust = 1),
-        #              axis.text = element_text(size = 12),
-        #              axis.title = element_text(size = axis_font),
-        #              plot.title = element_text(size = title_font))
-        #    }
-        #    else {
-        #      ggplot(ssgsea4, aes(factor(ssgsea4[,metacol]), ssgsea4[,2], fill = ssgsea4[,metacol])) +
-        #        geom_boxplot(width = 0.5, lwd = 1, fill = "white") +
-        #        geom_dotplot(binaxis = 'y', stackdir = "center", dotsize = input$boxplotDotss) +
-        #        labs(x = "Group", y = paste(colnames(ssgsea4)[2], " Score", sep = ""),
-        #             title = paste("ssGSEA Expression Signature: ",colnames(ssgsea4)[2],sep = ""),
-        #             fill = metacol) +
-        #        theme_bw() +
-        #        stat_compare_means(method = input$boxplotcompare) +
-        #        theme(axis.text.x = element_text(angle = 90, vjust = 0.25, hjust = 1),
-        #              axis.text = element_text(size = 12),
-        #              axis.title = element_text(size = axis_font),
-        #              plot.title = element_text(size = title_font))
-        #    }
-        #  }
-        #}
+        
+        
+      })
+      
+      #render ssGSEA boxplot
+      output$boxplot2 <- renderPlot({
+        
+        p <- boxplot2_react()
+        p
+        
+        
       })
       
       
-      
-      # Render Average Gene Expression comparison plot
-      output$AvggeneScatter2 <- renderPlot({
+      AvgGeneScatter2_react <- reactive({
         
         A_choice <- input$comparisonA2.avg
         B_choice <- input$comparisonB2.avg
@@ -8413,6 +8304,15 @@ server <- function(input, output, session) {
                             color = "black",
                             size = 2)
         
+        p
+        
+      })
+      
+      
+      # Render Average Gene Expression comparison plot
+      output$AvggeneScatter2 <- renderPlot({
+        
+        p <- AvgGeneScatter2_react()
         p
         
       })
@@ -8497,7 +8397,7 @@ server <- function(input, output, session) {
           
           heat <- ssgseaheatmap3_react()
           
-          ggsave(file,heat, width = 15, height = 20)
+          ggsave(file,heat, width = input$ssgseaheatmapWidth, height = input$ssgseaheatmapHeight)
         }
       )
       
@@ -8511,6 +8411,8 @@ server <- function(input, output, session) {
           ggsave(file,heat, width = 15, height = 20)
         }
       )
+      
+      
       
       
       output$dnldPlotSVG_heat1 <- downloadHandler(
@@ -8564,8 +8466,7 @@ server <- function(input, output, session) {
         content = function(file) {
           
           heat <- AvgExprHeatmap_react()
-          
-          ggsave(file,heat, width = 10, height = 20)
+          ggplot2::ggsave(file,heat, width = 10, height = 20, unit = "in")
           
         }
       )
@@ -8624,30 +8525,30 @@ server <- function(input, output, session) {
       
       output$dnldPlotSVG_exprBox <- downloadHandler(
         filename = function() {
-          paste(gsub(" ","",ProjectName_react()),"_Expression_Boxplot.svg", sep = '')
+          paste(gsub(" ","",ProjectName_react()),"_Boxplot.svg", sep = '')
         },
         content = function(file) {
-          if (length(input$GeneListTable2_rows_selected) > 0){
-            geneList <- geneList_raw()
-            gene <- geneList[input$GeneListTable2_rows_selected, 1]
-            min <- min(log2(expr[gene,] + 1.0))
-            max <- max(log2(expr[gene,] + 1.0))
-            meta_temp <- meta
-            rownames(meta_temp) <- meta[,1]
-            meta_temp <- meta_temp %>%
-              select(Group)
-            data = merge(t(expr[gene,]), meta_temp, by=0)
-            colnames(data) = c("SampleName", "GeneExpr", "Cluster")
-            x <- ggplot(data, aes(x=Cluster, y=log2(GeneExpr + 1.0))) +
-              geom_boxplot(outlier.colour="red", outlier.shape=8, outlier.size=1) +
-              geom_dotplot(binaxis='y', stackdir='center', dotsize=input$boxplotDot2) +
-              stat_compare_means(label = "p.signif") + ylim(min * 0.9, max * 1.3) +
-              theme_bw() +
-              labs(title= paste(gene, "Expression (log2)")) +
-              theme(axis.text.x = element_text(angle = 90, vjust = 0.25, hjust = 1),
-                    text = element_text(size = input$boxplot.font2))
-            ggsave(file,x, width = 10, height = 8)
-          }
+          p <- CohortBPPlot_react()
+          ggsave(file,p, width = 10, height = 8)
+        }
+      )
+      
+      output$dnldDataExplor_Box_plot_df <- downloadHandler(
+        filename = function() {
+          paste(gsub(" ","",ProjectName_react()),"_Boxplot_Data.txt", sep = '')
+        },
+        content = function(file) {
+          df <- CohortBPPlot_df_react()
+          write.table(df,file,sep = '\t', row.names = F)
+        }
+      )
+      output$dnldDataExplor_Box_plot_df2 <- downloadHandler(
+        filename = function() {
+          paste(gsub(" ","",ProjectName_react()),"_Boxplot_Data.txt", sep = '')
+        },
+        content = function(file) {
+          df <- CohortBPPlot_df_react2()
+          write.table(df,file,sep = '\t', row.names = F)
         }
       )
       
@@ -8755,30 +8656,11 @@ server <- function(input, output, session) {
       
       output$dnldPlotSVG_exprBox2 <- downloadHandler(
         filename = function() {
-          paste(gsub(" ","",ProjectName_react()),"_ExpressionBoxplot.svg", sep = '')
+          paste(gsub(" ","",ProjectName_react()),"_Boxplot.svg", sep = '')
         },
         content = function(file) {
-          if (length(input$GeneListTable_rows_selected) > 0){
-            geneList <- geneList_raw()
-            gene <- geneList[input$GeneListTable_rows_selected, 1]
-            min <- min(log2(expr[gene,] + 1.0))
-            max <- max(log2(expr[gene,] + 1.0))
-            meta_temp <- meta
-            rownames(meta_temp) <- meta[,1]
-            meta_temp <- meta_temp %>%
-              select(Group)
-            data = merge(t(expr[gene,]), meta_temp, by=0)
-            colnames(data) = c("SampleName", "GeneExpr", "Cluster")
-            x <- ggplot(data, aes(x=Cluster, y=log2(GeneExpr + 1.0))) +
-              geom_boxplot(outlier.colour="red", outlier.shape=8, outlier.size=1) +
-              geom_dotplot(binaxis='y', stackdir='center', dotsize=input$boxplotDot) +
-              stat_compare_means(label = "p.signif") + ylim(min * 0.9, max * 1.3) +
-              theme_bw() +
-              labs(title= paste(gene, "Expression (log2)")) +
-              theme(axis.text.x = element_text(angle = 90, vjust = 0.25, hjust = 1),
-                    text = element_text(size = input$boxplot.font))
-            ggsave(file,x, width = 10, height = 8)
-          }
+          p <- CohortBPPlot_react2()
+          ggsave(file,p, width = 10, height = 8)
         }
       )
       
@@ -8787,95 +8669,7 @@ server <- function(input, output, session) {
           paste(gsub(" ","",ProjectName_react()),"_AvgExpression_ScatterPlot.svg", sep = '')
         },
         content = function(file) {
-          A_choice <- input$comparisonA2.avg
-          B_choice <- input$comparisonB2.avg
-          log_choice <- input$AvgExpLogFC
-          
-          #select genes to label based on user selection
-          genesel.s <- NULL
-          genesel.t <- NULL
-          genesel.u <- NULL
-          genesel.s <- unlist(strsplit(input$gsSelection2, " "))
-          genesel.t <- unlist(strsplit(input$gsSelection2, "\t"))
-          genesel.u <- input$scatterGeneSelec
-          genesel.text <- c(genesel.s,genesel.t,genesel.u)
-          
-          if (ncol(meta) > 2){
-            metacol <- input$AvgExprScatterMetaCol
-          }
-          else if (ncol(meta) == 2){
-            metacol <- colnames(meta)[2]
-          }
-          
-          # Get A and B sample names
-          A <- meta[which(meta[,metacol] == A_choice),1]
-          B <- meta[which(meta[,metacol] == B_choice),1]
-          
-          # Make A and B expression Matrices
-          mat_A <- expr[,A]
-          mat_B <- expr[,B]
-          
-          logFC_text <- ""
-          
-          # Log if user designates
-          if (log_choice == TRUE) {
-            mat_A <- log2(mat_A + 1)
-            mat_B <- log2(mat_B + 1)
-            logFC_text <- " (log2 +1)"
-          }
-          
-          # Get avg expression of each gene
-          mat_A$AvgExpression_GroupA <- rowMeans(mat_A)
-          mat_B$AvgExpression_GroupB <- rowMeans(mat_B)
-          
-          # Add Gene Names as column
-          mat_A$GeneSymbol <- rownames(mat_A)
-          mat_B$GeneSymbol <- rownames(mat_B)
-          
-          # Merge average columns
-          AvgExpr_Table <- merge(mat_A[,c("AvgExpression_GroupA","GeneSymbol")],
-                                 mat_B[,c("AvgExpression_GroupB","GeneSymbol")],
-                                 by = "GeneSymbol",
-                                 all = T)
-          
-          # Add group for above or below abline
-          AvgExpr_Table <- AvgExpr_Table %>%
-            mutate(ColorCol = case_when(
-              AvgExpr_Table$AvgExpression_GroupB > AvgExpr_Table$AvgExpression_GroupA ~ paste(B_choice," Expr > ",A_choice,' Expr', sep = ''),
-              AvgExpr_Table$AvgExpression_GroupA > AvgExpr_Table$AvgExpression_GroupB ~ paste(A_choice," Expr > ",B_choice,' Expr', sep = '')
-            ))
-          
-          AvgExpr_Table_selec <- AvgExpr_Table %>%
-            filter(GeneSymbol %in% genesel.text)
-          
-          # plot
-          p <- ggplot(AvgExpr_Table, aes(x = AvgExpression_GroupA, y = AvgExpression_GroupB,
-                                         color = ColorCol)) +
-            geom_point() +
-            theme_minimal() +
-            theme(legend.position="none") +
-            xlab(paste("Average Expression: ",A_choice,logFC_text,sep = ""))+
-            ylab(paste("Average Expression: ",B_choice,logFC_text,sep = "")) +
-            labs(title = paste("Average Expression",logFC_text,": ",A_choice," vs. ",B_choice,sep = "")) +
-            scale_color_manual(values = c("cadetblue3","lightcoral"))
-          
-          p <- p + geom_text_repel(
-            data =  AvgExpr_Table_selec,
-            aes(label = GeneSymbol),
-            size = 6,
-            color="gray20",
-            nudge_x = 0.2,
-            nudge_y=0.2,
-            box.padding = unit(0.9, "lines"),
-            point.padding = unit(.3+4*0.1, "lines"),
-            max.overlaps = 50)
-          
-          #coloring selected points
-          p <- p + geom_point(data = AvgExpr_Table_selec,
-                              aes(x = AvgExpression_GroupA, y = AvgExpression_GroupB),
-                              pch = 21,
-                              color = "black",
-                              size = 2)
+          p <- AvgGeneScatter2_react()
           
           ggsave(file,p, width = 10, height = 8)
         }
@@ -8959,402 +8753,39 @@ server <- function(input, output, session) {
       
       output$dnldPlotSVG_gsea <- downloadHandler(
         filename = function() {
-          paste(gsub(" ","",ProjectName_react()),"_GSEA_EnrichmentPlot.svg", sep = '')
+          gmt <- gmt_react()
+          GS <- paste(unique(gmt[,1]), collapse = "_")
+          paste(gsub(" ","",ProjectName_react()),"_",GS,"_GSEA_EnrichmentPlot.svg", sep = '')
         },
         content = function(file) {
-          if (input$tables == 1){
-            if (length(input$msigdbTable_rows_selected) > 0){
-              res <- datasetInput()
-              gsea.df <- as.data.frame(res@result)
-              geneset <- as.character(msigdb.gsea2()[input$msigdbTable_rows_selected,3])
-              title <- geneset
-              x <- gseaplot2(res,
-                             geneset,
-                             title,
-                             pvalue_table = F)
-            }
-          }
-          else if (input$tables == 3){
-            if (length(input$tab2table_rows_selected) > 0){
-              res <- datasetInput()
-              gsea.df <- as.data.frame(res@result)
-              geneset <- as.character(GeneSet2()[input$tab2table_rows_selected,1])
-              title <- geneset
-              x <- gseaplot2(res,
-                             geneset,
-                             title,
-                             pvalue_table = F)
-            }
-          }
-          else if (input$tables == 5){
-            if (length(input$GStable.u_rows_selected) > 0){
-              res <- datasetInput()
-              gsea.df <- as.data.frame(res@result)
-              geneset <- as.character(user_gs_mirror()[input$GStable.u_rows_selected,1])
-              title <- geneset
-              x <- gseaplot2(res,
-                             geneset,
-                             title,
-                             pvalue_table = F)
-            }
-          }
+          x <- enrichplot0_react()
           ggsave(file,x, width = 10, height = 8)
         }
       )
       
       output$dnldPlotSVG_gseaHeat <- downloadHandler(
         filename = function() {
-          paste(gsub(" ","",ProjectName_react()),"_GSEA_Heatmap.svg", sep = '')
+          gmt <- gmt_react()
+          GS <- paste(unique(gmt[,1]), collapse = "_")
+          paste(gsub(" ","",ProjectName_react()),"_",GS,"_GSEA_Heatmap.svg", sep = '')
         },
         content = function(file) {
-          meta <- meta_react()
-          metacol <- metacol_reactVal()
-          if (length(colnames(meta)) == 2) {
-            metacol <- colnames(meta)[2]
-          }
-          A <- A_raw()
-          if (input$tables == 1) {
-            if (length(input$msigdbTable_rows_selected) > 0){
-              groupA <- meta[which(meta[,metacol] == input$comparisonA),1]
-              groupB <- meta[which(meta[,metacol] == input$comparisonB),1]
-              res <- datasetInput()
-              gsea.df <- as.data.frame(res@result)
-              GS <- as.character(msigdb.gsea2()[input$msigdbTable_rows_selected,3])
-              genes1 <- as.matrix(gsea.df[which(gsea.df$Description==GS),"core_enrichment"])
-              genes2 <- strsplit(genes1,"/")
-              genes3 <- as.data.frame(genes2, col.names = "genes")
-              gene_symbol <- genes3$genes
-              ## convert expression matrix to numeric
-              class(A) <- "numeric"
-              ## Transforming data
-              A <- A[,c(groupA,groupB)]
-              exp.mat1 = log2(A + 1) # log
-              exp.mat2 = apply(exp.mat1, 1, scale); # z score
-              exp.mat3 = apply(exp.mat2, 1, rev); # transpose
-              colnames(exp.mat3) = colnames(A) # set the column name
-              exp.mat4 = exp.mat3[rowSums(is.na(exp.mat3[,])) == 0,] # remove NaN rows
-              exp.mat5 = exp.mat4[rownames(exp.mat4) %in% gene_symbol,] # grab gene symbols
-              # reassign data
-              dataset <- exp.mat5
-              ## generate color for pheatmap
-              if (abs(min(dataset)) > abs(max(dataset))) {
-                dataset[dataset < -abs(max(dataset))] = -abs(max(dataset))
-              } else {
-                dataset[dataset > abs(min(dataset))] = abs(min(dataset))
-              }
-              meta2 <- meta[which(meta[,1] %in% c(groupA,groupB)),]
-              meta2 <- meta2[order(meta2[,2]),]
-              type <- meta2[,2]
-              meta3 <- as.data.frame(type)
-              rownames(meta3) <- meta2[,1]
-              zscore_range = 10;
-              minimum = -zscore_range;
-              maximum = zscore_range;
-              bk = c(seq(minimum,minimum/2, length=100), seq(minimum/2,maximum/2,length=100),seq(maximum/2,maximum,length=100))
-              #hmcols<- colorRampPalette(c("dark blue","blue","white","red", "dark red"))(length(bk)-1)
-              #Heatmap color
-              color_choice <- input$ColorPalette_gseaHeat
-              col_sets <- c("OrRd","PuBu","Greens","YlGnBu","Spectral")
-              if (color_choice == "original") {
-                HeatMap_Colors <- c("dark blue","blue","white","red", "dark red")
-                hmcols <- colorRampPalette(HeatMap_Colors)(length(bk)-1)
-              }
-              else if (color_choice %in% col_sets) {
-                HeatMap_Colors <- brewer.pal(n = 5, color_choice)
-                hmcols <- colorRampPalette(HeatMap_Colors)(length(bk)-1)
-              }
-              else if (color_choice == "Inferno") {
-                hmcols <- inferno(500)
-              }
-              else if (color_choice == "Viridis") {
-                hmcols <- viridis(500)
-              }
-              else if (color_choice == "Plasma") {
-                hmcols <- plasma(500)
-              }
-              pdf(NULL)
-              x <- pheatmap::pheatmap(dataset,            #data
-                                      cluster_cols = F,    #cluster columns - NO
-                                      cluster_row = F,     #cluster rows - YES
-                                      fontsize_col = input$heatmapFont1.c,   #column fontsize
-                                      fontsize_row = input$heatmapFont1.r,
-                                      show_rownames = T,
-                                      show_colnames = T,
-                                      color=hmcols,
-                                      annotation_col = meta3)
-            }
-          }
-          else if (input$tables == 3) {
-            if (length(input$tab2table_rows_selected) > 0){
-              groupA <- meta[which(meta[,metacol] == input$comparisonA),1]
-              groupB <- meta[which(meta[,metacol] == input$comparisonB),1]
-              res <- datasetInput()
-              gsea.df <- as.data.frame(res@result)
-              GS <- as.character(GeneSet2()[input$tab2table_rows_selected,1])
-              genes1 <- as.matrix(gsea.df[which(gsea.df$Description==GS),"core_enrichment"])
-              genes2 <- strsplit(genes1,"/")
-              genes3 <- as.data.frame(genes2, col.names = "genes")
-              gene_symbol <- genes3$genes
-              ## convert expression matrix to numeric
-              class(A) <- "numeric"
-              ## Transforming data
-              A <- A[,c(groupA,groupB)]
-              exp.mat1 = log2(A + 1) # log
-              exp.mat2 = apply(exp.mat1, 1, scale); # z score
-              exp.mat3 = apply(exp.mat2, 1, rev); # transpose
-              colnames(exp.mat3) = colnames(A) # set the column name
-              exp.mat4 = exp.mat3[rowSums(is.na(exp.mat3[,])) == 0,] # remove NaN rows
-              exp.mat5 = exp.mat4[rownames(exp.mat4) %in% gene_symbol,] # grab gene symbols
-              # reassign data
-              dataset <- exp.mat5
-              ## generate color for pheatmap
-              if (abs(min(dataset)) > abs(max(dataset))) {
-                dataset[dataset < -abs(max(dataset))] = -abs(max(dataset))
-              } else {
-                dataset[dataset > abs(min(dataset))] = abs(min(dataset))
-              }
-              meta2 <- meta[which(meta[,1] %in% c(groupA,groupB)),]
-              meta2 <- meta2[order(meta2[,2]),]
-              type <- meta2[,2]
-              meta3 <- as.data.frame(type)
-              rownames(meta3) <- meta2[,1]
-              zscore_range = 10;
-              minimum = -zscore_range;
-              maximum = zscore_range;
-              bk = c(seq(minimum,minimum/2, length=100), seq(minimum/2,maximum/2,length=100),seq(maximum/2,maximum,length=100))
-              #hmcols<- colorRampPalette(c("dark blue","blue","white","red", "dark red"))(length(bk)-1)
-              #Heatmap color
-              color_choice <- input$ColorPalette_gseaHeat
-              col_sets <- c("OrRd","PuBu","Greens","YlGnBu","Spectral")
-              if (color_choice == "original") {
-                HeatMap_Colors <- c("dark blue","blue","white","red", "dark red")
-                hmcols <- colorRampPalette(HeatMap_Colors)(length(bk)-1)
-              }
-              else if (color_choice %in% col_sets) {
-                HeatMap_Colors <- brewer.pal(n = 5, color_choice)
-                hmcols <- colorRampPalette(HeatMap_Colors)(length(bk)-1)
-              }
-              else if (color_choice == "Inferno") {
-                hmcols <- inferno(500)
-              }
-              else if (color_choice == "Viridis") {
-                hmcols <- viridis(500)
-              }
-              else if (color_choice == "Plasma") {
-                hmcols <- plasma(500)
-              }
-              pdf(NULL)
-              x <- pheatmap::pheatmap(dataset,            #data
-                                      cluster_cols = F,    #cluster columns - NO
-                                      cluster_row = F,     #cluster rows - YES
-                                      fontsize_col = input$heatmapFont1.c,   #column fontsize
-                                      fontsize_row = input$heatmapFont1.r,
-                                      show_rownames = T,
-                                      show_colnames = T,
-                                      color=hmcols,
-                                      annotation_col = meta3)
-            }
-          }
-          else if (input$tables == 5) {
-            if (length(input$GStable.u_rows_selected) > 0){
-              groupA <- meta[which(meta[,metacol] == input$comparisonA),1]
-              groupB <- meta[which(meta[,metacol] == input$comparisonB),1]
-              res <- datasetInput()
-              gsea.df <- as.data.frame(res@result)
-              GS <- as.character(user_gs_mirror()[input$GStable.u_rows_selected,1])
-              genes1 <- as.matrix(gsea.df[which(gsea.df$Description==GS),"core_enrichment"])
-              genes2 <- strsplit(genes1,"/")
-              genes3 <- as.data.frame(genes2, col.names = "genes")
-              gene_symbol <- genes3$genes
-              ## convert expression matrix to numeric
-              class(A) <- "numeric"
-              ## Transforming data
-              A <- A[,c(groupA,groupB)]
-              exp.mat1 = log2(A + 1) # log
-              exp.mat2 = apply(exp.mat1, 1, scale); # z score
-              exp.mat3 = apply(exp.mat2, 1, rev); # transpose
-              colnames(exp.mat3) = colnames(A) # set the column name
-              exp.mat4 = exp.mat3[rowSums(is.na(exp.mat3[,])) == 0,] # remove NaN rows
-              exp.mat5 = exp.mat4[rownames(exp.mat4) %in% gene_symbol,] # grab gene symbols
-              # reassign data
-              dataset <- exp.mat5
-              ## generate color for pheatmap
-              if (abs(min(dataset)) > abs(max(dataset))) {
-                dataset[dataset < -abs(max(dataset))] = -abs(max(dataset))
-              } else {
-                dataset[dataset > abs(min(dataset))] = abs(min(dataset))
-              }
-              meta2 <- meta[which(meta[,1] %in% c(groupA,groupB)),]
-              meta2 <- meta2[order(meta2[,2]),]
-              type <- meta2[,2]
-              meta3 <- as.data.frame(type)
-              rownames(meta3) <- meta2[,1]
-              zscore_range = 10;
-              minimum = -zscore_range;
-              maximum = zscore_range;
-              bk = c(seq(minimum,minimum/2, length=100), seq(minimum/2,maximum/2,length=100),seq(maximum/2,maximum,length=100))
-              #hmcols<- colorRampPalette(c("dark blue","blue","white","red", "dark red"))(length(bk)-1)
-              #Heatmap color
-              color_choice <- input$ColorPalette_gseaHeat
-              col_sets <- c("OrRd","PuBu","Greens","YlGnBu","Spectral")
-              if (color_choice == "original") {
-                HeatMap_Colors <- c("dark blue","blue","white","red", "dark red")
-                hmcols <- colorRampPalette(HeatMap_Colors)(length(bk)-1)
-              }
-              else if (color_choice %in% col_sets) {
-                HeatMap_Colors <- brewer.pal(n = 5, color_choice)
-                hmcols <- colorRampPalette(HeatMap_Colors)(length(bk)-1)
-              }
-              else if (color_choice == "Inferno") {
-                hmcols <- inferno(500)
-              }
-              else if (color_choice == "Viridis") {
-                hmcols <- viridis(500)
-              }
-              else if (color_choice == "Plasma") {
-                hmcols <- plasma(500)
-              }
-              pdf(NULL)
-              x <- pheatmap::pheatmap(dataset,            #data
-                                      cluster_cols = F,    #cluster columns - NO
-                                      cluster_row = F,     #cluster rows - YES
-                                      fontsize_col = input$heatmapFont1.c,   #column fontsize
-                                      fontsize_row = input$heatmapFont1.r,
-                                      show_rownames = T,
-                                      show_colnames = T,
-                                      color=hmcols,
-                                      annotation_col = meta3)
-            }
-          }
-          ggsave(file,x, width = 10, height = 20)
+          
+          svg(filename = file, height = input$GSEAheatmapHeight1, width = input$GSEAheatmapWidth1)
+          ComplexHeatmap::draw(heatmap0_react())
+          dev.off()
         }
       )
       
+      
       output$dnldPlotSVG_gseaBox <- downloadHandler(
         filename = function() {
-          paste(gsub(" ","",ProjectName_react()),"_ssGSEA_Boxplot.svg", sep = '')
+          gs <- gs_react()
+          GS <- names(gs)
+          paste(gsub(" ","",ProjectName_react()),"_",GS,"_ssGSEA_Boxplot.svg", sep = '')
         },
         content = function(file) {
-          meta <- meta_react()
-          metacol <- metacol_reactVal()
-          if (length(colnames(meta)) == 2) {
-            metacol <- colnames(meta)[2]
-          }
-          expr <- expr_react()
-          #if tab 2 selected
-          if (input$tables == 3) {
-            if (length(input$tab2table_rows_selected) > 0){
-              ssgsea <- ssGSEAfunc()
-              ssgsea2 <- as.data.frame(t(ssgsea))
-              samporder <- meta[,1]
-              ssgsea3 <- as.data.frame(ssgsea2[samporder,])
-              colnames(ssgsea3)[1] <- colnames(ssgsea2[1])
-              rownames(ssgsea3) <- samporder
-              ssgsea4 <- ssgsea3 %>%
-                mutate(type = case_when(
-                  rownames(ssgsea3) == meta[,1] ~ meta[,metacol],
-                ))
-              ssgsea4 <- ssgsea4 %>%
-                relocate(type)
-              if (input$boxplotcompare == "none") {
-                x <- ggplot(ssgsea4, aes(factor(type), ssgsea4[,2], fill = type)) +
-                  geom_boxplot(width = 0.5, lwd = 1, fill = "white") +
-                  geom_dotplot(binaxis = 'y', stackdir = "center", dotsize = input$boxplotDotss) +
-                  labs(x = "Group", y = paste(colnames(ssgsea4)[2], " Score", sep = ""),
-                       title = paste("ssGSEA Expression Signature: ", colnames(ssgsea4)[2],sep = "")) +
-                  theme_bw() +
-                  theme(axis.text.x = element_text(angle = 90, vjust = 0.25, hjust = 1),
-                        text = element_text(size = input$boxplotFontss))
-              }
-              else {
-                x <- ggplot(ssgsea4, aes(factor(type), ssgsea4[,2], fill = type)) +
-                  geom_boxplot(width = 0.5, lwd = 1, fill = "white") +
-                  geom_dotplot(binaxis = 'y', stackdir = "center", dotsize = input$boxplotDotss) +
-                  labs(x = "Group", y = paste(colnames(ssgsea4)[2], " Score", sep = ""),
-                       title = paste("ssGSEA Expression Signature: ", colnames(ssgsea4)[2],sep = "")) +
-                  theme_bw() +
-                  stat_compare_means(method = input$boxplotcompare) +
-                  theme(axis.text.x = element_text(angle = 90, vjust = 0.25, hjust = 1),
-                        text = element_text(size = input$boxplotFontss))
-              }
-            }
-          }
-          #if MSigDB tab selected
-          else if (input$tables == 1) {
-            if (length(input$msigdbTable_rows_selected) > 0){
-              ssgsea <- ssGSEAfunc()
-              ssgsea2 <- as.data.frame(t(ssgsea))
-              samporder <- meta[,1]
-              ssgsea3 <- as.data.frame(ssgsea2[samporder,])
-              colnames(ssgsea3)[1] <- colnames(ssgsea2[1])
-              rownames(ssgsea3) <- samporder
-              ssgsea4 <- ssgsea3 %>%
-                mutate(type = case_when(
-                  rownames(ssgsea3) == meta[,1] ~ meta[,metacol],
-                ))
-              ssgsea4 <- ssgsea4 %>%
-                relocate(type)
-              if (input$boxplotcompare == "none") {
-                x <- ggplot(ssgsea4, aes(factor(type), ssgsea4[,2], fill = type)) +
-                  geom_boxplot(width = 0.5, lwd = 1, fill = "white") +
-                  geom_dotplot(binaxis = 'y', stackdir = "center", dotsize = input$boxplotDotss) +
-                  labs(x = "Group", y = paste(colnames(ssgsea4)[2], " Score", sep = ""),
-                       title = paste("ssGSEA Expression Signature: ",colnames(ssgsea4)[2],sep = "")) +
-                  theme_bw() +
-                  theme(axis.text.x = element_text(angle = 90, vjust = 0.25, hjust = 1),
-                        text = element_text(size = input$boxplotFontss))
-              }
-              else {
-                x <- ggplot(ssgsea4, aes(factor(type), ssgsea4[,2], fill = type)) +
-                  geom_boxplot(width = 0.5, lwd = 1, fill = "white") +
-                  geom_dotplot(binaxis = 'y', stackdir = "center", dotsize = input$boxplotDotss) +
-                  labs(x = "Group", y = paste(colnames(ssgsea4)[2], " Score", sep = ""),
-                       title = paste("ssGSEA Expression Signature: ",colnames(ssgsea4)[2],sep = "")) +
-                  theme_bw() +
-                  stat_compare_means(method = input$boxplotcompare) +
-                  theme(axis.text.x = element_text(angle = 90, vjust = 0.25, hjust = 1),
-                        text = element_text(size = input$boxplotFontss))
-              }
-            }
-          }
-          #if user generated GS table selected
-          else if (input$tables == 5) {
-            if (length(input$GStable.u_rows_selected) > 0){
-              ssgsea <- ssGSEAfunc()
-              ssgsea2 <- as.data.frame(t(ssgsea))
-              samporder <- meta[,1]
-              ssgsea3 <- as.data.frame(ssgsea2[samporder,])
-              colnames(ssgsea3)[1] <- colnames(ssgsea2[1])
-              rownames(ssgsea3) <- samporder
-              ssgsea4 <- ssgsea3 %>%
-                mutate(type = case_when(
-                  rownames(ssgsea3) == meta[,1] ~ meta[,metacol],
-                ))
-              ssgsea4 <- ssgsea4 %>%
-                relocate(type)
-              if (input$boxplotcompare == "none") {
-                x <- ggplot(ssgsea4, aes(factor(type), ssgsea4[,2], fill = type)) +
-                  geom_boxplot(width = 0.5, lwd = 1, fill = "white") +
-                  geom_dotplot(binaxis = 'y', stackdir = "center", dotsize = input$boxplotDotss) +
-                  labs(x = "Group", y = paste(colnames(ssgsea4)[2], " Score", sep = ""),
-                       title = paste("ssGSEA Expression Signature: ",colnames(ssgsea4)[2],sep = "")) +
-                  theme_bw() +
-                  theme(axis.text.x = element_text(angle = 90, vjust = 0.25, hjust = 1),
-                        text = element_text(size = input$boxplotFontss))
-              }
-              else {
-                x <- ggplot(ssgsea4, aes(factor(type), ssgsea4[,2], fill = type)) +
-                  geom_boxplot(width = 0.5, lwd = 1, fill = "white") +
-                  geom_dotplot(binaxis = 'y', stackdir = "center", dotsize = input$boxplotDotss) +
-                  labs(x = "Group", y = paste(colnames(ssgsea4)[2], " Score", sep = ""),
-                       title = paste("ssGSEA Expression Signature: ",colnames(ssgsea4)[2],sep = "")) +
-                  theme_bw() +
-                  stat_compare_means(method = input$boxplotcompare) +
-                  theme(axis.text.x = element_text(angle = 90, vjust = 0.25, hjust = 1),
-                        text = element_text(size = input$boxplotFontss))
-              }
-            }
-          }
+          x <- boxplot2_react()
           ggsave(file,x, width = 10, height = 8)
         }
       )
@@ -9402,7 +8833,6 @@ server <- function(input, output, session) {
         content = function(file) {
           
           heat <- AvgExprHeatmap_react()
-          
           ggsave(file,heat, width = 10, height = 20)
           
         }
@@ -9462,30 +8892,11 @@ server <- function(input, output, session) {
       
       output$dnldPlotPDF_exprBox <- downloadHandler(
         filename = function() {
-          paste(gsub(" ","",ProjectName_react()),"_Expression_Boxplot.pdf", sep = '')
+          paste(gsub(" ","",ProjectName_react()),"_Boxplot.pdf", sep = '')
         },
         content = function(file) {
-          if (length(input$GeneListTable2_rows_selected) > 0){
-            geneList <- geneList_raw()
-            gene <- geneList[input$GeneListTable2_rows_selected, 1]
-            min <- min(log2(expr[gene,] + 1.0))
-            max <- max(log2(expr[gene,] + 1.0))
-            meta_temp <- meta
-            rownames(meta_temp) <- meta[,1]
-            meta_temp <- meta_temp %>%
-              select(Group)
-            data = merge(t(expr[gene,]), meta_temp, by=0)
-            colnames(data) = c("SampleName", "GeneExpr", "Cluster")
-            x <- ggplot(data, aes(x=Cluster, y=log2(GeneExpr + 1.0))) +
-              geom_boxplot(outlier.colour="red", outlier.shape=8, outlier.size=1) +
-              geom_dotplot(binaxis='y', stackdir='center', dotsize=input$boxplotDot2) +
-              stat_compare_means(label = "p.signif") + ylim(min * 0.9, max * 1.3) +
-              theme_bw() +
-              labs(title= paste(gene, "Expression (log2)")) +
-              theme(axis.text.x = element_text(angle = 90, vjust = 0.25, hjust = 1),
-                    text = element_text(size = input$boxplot.font2))
-            ggsave(file,x, width = 10, height = 8)
-          }
+          p <- CohortBPPlot_react()
+          ggsave(file,p, width = 10, height = 8)
         }
       )
       
@@ -9593,30 +9004,11 @@ server <- function(input, output, session) {
       
       output$dnldPlotPDF_exprBox2 <- downloadHandler(
         filename = function() {
-          paste(gsub(" ","",ProjectName_react()),"_ExpressionBoxplot.pdf", sep = '')
+          paste(gsub(" ","",ProjectName_react()),"_Boxplot.pdf", sep = '')
         },
         content = function(file) {
-          if (length(input$GeneListTable_rows_selected) > 0){
-            geneList <- geneList_raw()
-            gene <- geneList[input$GeneListTable_rows_selected, 1]
-            min <- min(log2(expr[gene,] + 1.0))
-            max <- max(log2(expr[gene,] + 1.0))
-            meta_temp <- meta
-            rownames(meta_temp) <- meta[,1]
-            meta_temp <- meta_temp %>%
-              select(Group)
-            data = merge(t(expr[gene,]), meta_temp, by=0)
-            colnames(data) = c("SampleName", "GeneExpr", "Cluster")
-            x <- ggplot(data, aes(x=Cluster, y=log2(GeneExpr + 1.0))) +
-              geom_boxplot(outlier.colour="red", outlier.shape=8, outlier.size=1) +
-              geom_dotplot(binaxis='y', stackdir='center', dotsize=input$boxplotDot) +
-              stat_compare_means(label = "p.signif") + ylim(min * 0.9, max * 1.3) +
-              theme_bw() +
-              labs(title= paste(gene, "Expression (log2)")) +
-              theme(axis.text.x = element_text(angle = 90, vjust = 0.25, hjust = 1),
-                    text = element_text(size = input$boxplot.font))
-            ggsave(file,x, width = 10, height = 8)
-          }
+          p <- CohortBPPlot_react2()
+          ggsave(file,p, width = 10, height = 8)
         }
       )
       
@@ -9625,95 +9017,7 @@ server <- function(input, output, session) {
           paste(gsub(" ","",ProjectName_react()),"_AvgExpression_ScatterPlot.pdf", sep = '')
         },
         content = function(file) {
-          A_choice <- input$comparisonA2.avg
-          B_choice <- input$comparisonB2.avg
-          log_choice <- input$AvgExpLogFC
-          
-          #select genes to label based on user selection
-          genesel.s <- NULL
-          genesel.t <- NULL
-          genesel.u <- NULL
-          genesel.s <- unlist(strsplit(input$gsSelection2, " "))
-          genesel.t <- unlist(strsplit(input$gsSelection2, "\t"))
-          genesel.u <- input$scatterGeneSelec
-          genesel.text <- c(genesel.s,genesel.t,genesel.u)
-          
-          if (ncol(meta) > 2){
-            metacol <- input$AvgExprScatterMetaCol
-          }
-          else if (ncol(meta) == 2){
-            metacol <- colnames(meta)[2]
-          }
-          
-          # Get A and B sample names
-          A <- meta[which(meta[,metacol] == A_choice),1]
-          B <- meta[which(meta[,metacol] == B_choice),1]
-          
-          # Make A and B expression Matrices
-          mat_A <- expr[,A]
-          mat_B <- expr[,B]
-          
-          logFC_text <- ""
-          
-          # Log if user designates
-          if (log_choice == TRUE) {
-            mat_A <- log2(mat_A + 1)
-            mat_B <- log2(mat_B + 1)
-            logFC_text <- " (log2 +1)"
-          }
-          
-          # Get avg expression of each gene
-          mat_A$AvgExpression_GroupA <- rowMeans(mat_A)
-          mat_B$AvgExpression_GroupB <- rowMeans(mat_B)
-          
-          # Add Gene Names as column
-          mat_A$GeneSymbol <- rownames(mat_A)
-          mat_B$GeneSymbol <- rownames(mat_B)
-          
-          # Merge average columns
-          AvgExpr_Table <- merge(mat_A[,c("AvgExpression_GroupA","GeneSymbol")],
-                                 mat_B[,c("AvgExpression_GroupB","GeneSymbol")],
-                                 by = "GeneSymbol",
-                                 all = T)
-          
-          # Add group for above or below abline
-          AvgExpr_Table <- AvgExpr_Table %>%
-            mutate(ColorCol = case_when(
-              AvgExpr_Table$AvgExpression_GroupB > AvgExpr_Table$AvgExpression_GroupA ~ paste(B_choice," Expr > ",A_choice,' Expr', sep = ''),
-              AvgExpr_Table$AvgExpression_GroupA > AvgExpr_Table$AvgExpression_GroupB ~ paste(A_choice," Expr > ",B_choice,' Expr', sep = '')
-            ))
-          
-          AvgExpr_Table_selec <- AvgExpr_Table %>%
-            filter(GeneSymbol %in% genesel.text)
-          
-          # plot
-          p <- ggplot(AvgExpr_Table, aes(x = AvgExpression_GroupA, y = AvgExpression_GroupB,
-                                         color = ColorCol)) +
-            geom_point() +
-            theme_minimal() +
-            theme(legend.position="none") +
-            xlab(paste("Average Expression: ",A_choice,logFC_text,sep = ""))+
-            ylab(paste("Average Expression: ",B_choice,logFC_text,sep = "")) +
-            labs(title = paste("Average Expression",logFC_text,": ",A_choice," vs. ",B_choice,sep = "")) +
-            scale_color_manual(values = c("cadetblue3","lightcoral"))
-          
-          p <- p + geom_text_repel(
-            data =  AvgExpr_Table_selec,
-            aes(label = GeneSymbol),
-            size = 6,
-            color="gray20",
-            nudge_x = 0.2,
-            nudge_y=0.2,
-            box.padding = unit(0.9, "lines"),
-            point.padding = unit(.3+4*0.1, "lines"),
-            max.overlaps = 50)
-          
-          #coloring selected points
-          p <- p + geom_point(data = AvgExpr_Table_selec,
-                              aes(x = AvgExpression_GroupA, y = AvgExpression_GroupB),
-                              pch = 21,
-                              color = "black",
-                              size = 2)
+          p <- AvgGeneScatter2_react()
           
           ggsave(file,p, width = 10, height = 8)
         }
@@ -9800,42 +9104,7 @@ server <- function(input, output, session) {
           paste(gsub(" ","",ProjectName_react()),"_GSEA_EnrichmentPlot.pdf", sep = '')
         },
         content = function(file) {
-          if (input$tables == 1){
-            if (length(input$msigdbTable_rows_selected) > 0){
-              res <- datasetInput()
-              gsea.df <- as.data.frame(res@result)
-              geneset <- as.character(msigdb.gsea2()[input$msigdbTable_rows_selected,3])
-              title <- geneset
-              x <- gseaplot2(res,
-                             geneset,
-                             title,
-                             pvalue_table = F)
-            }
-          }
-          else if (input$tables == 3){
-            if (length(input$tab2table_rows_selected) > 0){
-              res <- datasetInput()
-              gsea.df <- as.data.frame(res@result)
-              geneset <- as.character(GeneSet2()[input$tab2table_rows_selected,1])
-              title <- geneset
-              x <- gseaplot2(res,
-                             geneset,
-                             title,
-                             pvalue_table = F)
-            }
-          }
-          else if (input$tables == 5){
-            if (length(input$GStable.u_rows_selected) > 0){
-              res <- datasetInput()
-              gsea.df <- as.data.frame(res@result)
-              geneset <- as.character(user_gs_mirror()[input$GStable.u_rows_selected,1])
-              title <- geneset
-              x <- gseaplot2(res,
-                             geneset,
-                             title,
-                             pvalue_table = F)
-            }
-          }
+          x <- enrichplot0_react()
           ggsave(file,x, width = 10, height = 8)
         }
       )
@@ -9910,7 +9179,6 @@ server <- function(input, output, session) {
               else if (color_choice == "Plasma") {
                 hmcols <- plasma(500)
               }
-              pdf(NULL)
               x <- pheatmap(dataset,            #data
                             cluster_cols = F,    #cluster columns - NO
                             cluster_row = F,     #cluster rows - YES
@@ -9981,7 +9249,6 @@ server <- function(input, output, session) {
               else if (color_choice == "Plasma") {
                 hmcols <- plasma(500)
               }
-              pdf(NULL)
               x <- pheatmap(dataset,            #data
                             cluster_cols = F,    #cluster columns - NO
                             cluster_row = F,     #cluster rows - YES
@@ -10052,7 +9319,6 @@ server <- function(input, output, session) {
               else if (color_choice == "Plasma") {
                 hmcols <- plasma(500)
               }
-              pdf(NULL)
               x <- pheatmap(dataset,            #data
                             cluster_cols = F,    #cluster columns - NO
                             cluster_row = F,     #cluster rows - YES
@@ -10070,132 +9336,16 @@ server <- function(input, output, session) {
       
       output$dnldPlotPDF_gseaBox <- downloadHandler(
         filename = function() {
-          paste(gsub(" ","",ProjectName_react()),"_ssGSEA_Boxplot.pdf", sep = '')
+          gs <- gs_react()
+          GS <- names(gs)
+          paste(gsub(" ","",ProjectName_react()),"_",GS,"_ssGSEA_Boxplot.pdf", sep = '')
         },
         content = function(file) {
-          meta <- meta_react()
-          metacol <- metacol_reactVal()
-          if (length(colnames(meta)) == 2) {
-            metacol <- colnames(meta)[2]
-          }
-          expr <- expr_react()
-          #if tab 2 selected
-          if (input$tables == 3) {
-            if (length(input$tab2table_rows_selected) > 0){
-              ssgsea <- ssGSEAfunc()
-              ssgsea2 <- as.data.frame(t(ssgsea))
-              samporder <- meta[,1]
-              ssgsea3 <- as.data.frame(ssgsea2[samporder,])
-              colnames(ssgsea3)[1] <- colnames(ssgsea2[1])
-              rownames(ssgsea3) <- samporder
-              ssgsea4 <- ssgsea3 %>%
-                mutate(type = case_when(
-                  rownames(ssgsea3) == meta[,1] ~ meta[,metacol],
-                ))
-              ssgsea4 <- ssgsea4 %>%
-                relocate(type)
-              if (input$boxplotcompare == "none") {
-                x <- ggplot(ssgsea4, aes(factor(type), ssgsea4[,2], fill = type)) +
-                  geom_boxplot(width = 0.5, lwd = 1, fill = "white") +
-                  geom_dotplot(binaxis = 'y', stackdir = "center", dotsize = input$boxplotDotss) +
-                  labs(x = "Group", y = paste(colnames(ssgsea4)[2], " Score", sep = ""),
-                       title = paste("ssGSEA Expression Signature: ", colnames(ssgsea4)[2],sep = "")) +
-                  theme_bw() +
-                  theme(axis.text.x = element_text(angle = 90, vjust = 0.25, hjust = 1),
-                        text = element_text(size = input$boxplotFontss))
-              }
-              else {
-                x <- ggplot(ssgsea4, aes(factor(type), ssgsea4[,2], fill = type)) +
-                  geom_boxplot(width = 0.5, lwd = 1, fill = "white") +
-                  geom_dotplot(binaxis = 'y', stackdir = "center", dotsize = input$boxplotDotss) +
-                  labs(x = "Group", y = paste(colnames(ssgsea4)[2], " Score", sep = ""),
-                       title = paste("ssGSEA Expression Signature: ", colnames(ssgsea4)[2],sep = "")) +
-                  theme_bw() +
-                  stat_compare_means(method = input$boxplotcompare) +
-                  theme(axis.text.x = element_text(angle = 90, vjust = 0.25, hjust = 1),
-                        text = element_text(size = input$boxplotFontss))
-              }
-            }
-          }
-          #if MSigDB tab selected
-          else if (input$tables == 1) {
-            if (length(input$msigdbTable_rows_selected) > 0){
-              ssgsea <- ssGSEAfunc()
-              ssgsea2 <- as.data.frame(t(ssgsea))
-              samporder <- meta[,1]
-              ssgsea3 <- as.data.frame(ssgsea2[samporder,])
-              colnames(ssgsea3)[1] <- colnames(ssgsea2[1])
-              rownames(ssgsea3) <- samporder
-              ssgsea4 <- ssgsea3 %>%
-                mutate(type = case_when(
-                  rownames(ssgsea3) == meta[,1] ~ meta[,metacol],
-                ))
-              ssgsea4 <- ssgsea4 %>%
-                relocate(type)
-              if (input$boxplotcompare == "none") {
-                x <- ggplot(ssgsea4, aes(factor(type), ssgsea4[,2], fill = type)) +
-                  geom_boxplot(width = 0.5, lwd = 1, fill = "white") +
-                  geom_dotplot(binaxis = 'y', stackdir = "center", dotsize = input$boxplotDotss) +
-                  labs(x = "Group", y = paste(colnames(ssgsea4)[2], " Score", sep = ""),
-                       title = paste("ssGSEA Expression Signature: ",colnames(ssgsea4)[2],sep = "")) +
-                  theme_bw() +
-                  theme(axis.text.x = element_text(angle = 90, vjust = 0.25, hjust = 1),
-                        text = element_text(size = input$boxplotFontss))
-              }
-              else {
-                x <- ggplot(ssgsea4, aes(factor(type), ssgsea4[,2], fill = type)) +
-                  geom_boxplot(width = 0.5, lwd = 1, fill = "white") +
-                  geom_dotplot(binaxis = 'y', stackdir = "center", dotsize = input$boxplotDotss) +
-                  labs(x = "Group", y = paste(colnames(ssgsea4)[2], " Score", sep = ""),
-                       title = paste("ssGSEA Expression Signature: ",colnames(ssgsea4)[2],sep = "")) +
-                  theme_bw() +
-                  stat_compare_means(method = input$boxplotcompare) +
-                  theme(axis.text.x = element_text(angle = 90, vjust = 0.25, hjust = 1),
-                        text = element_text(size = input$boxplotFontss))
-              }
-            }
-          }
-          #if user generated GS table selected
-          else if (input$tables == 5) {
-            if (length(input$GStable.u_rows_selected) > 0){
-              ssgsea <- ssGSEAfunc()
-              ssgsea2 <- as.data.frame(t(ssgsea))
-              samporder <- meta[,1]
-              ssgsea3 <- as.data.frame(ssgsea2[samporder,])
-              colnames(ssgsea3)[1] <- colnames(ssgsea2[1])
-              rownames(ssgsea3) <- samporder
-              ssgsea4 <- ssgsea3 %>%
-                mutate(type = case_when(
-                  rownames(ssgsea3) == meta[,1] ~ meta[,metacol],
-                ))
-              ssgsea4 <- ssgsea4 %>%
-                relocate(type)
-              if (input$boxplotcompare == "none") {
-                x <- ggplot(ssgsea4, aes(factor(type), ssgsea4[,2], fill = type)) +
-                  geom_boxplot(width = 0.5, lwd = 1, fill = "white") +
-                  geom_dotplot(binaxis = 'y', stackdir = "center", dotsize = input$boxplotDotss) +
-                  labs(x = "Group", y = paste(colnames(ssgsea4)[2], " Score", sep = ""),
-                       title = paste("ssGSEA Expression Signature: ",colnames(ssgsea4)[2],sep = "")) +
-                  theme_bw() +
-                  theme(axis.text.x = element_text(angle = 90, vjust = 0.25, hjust = 1),
-                        text = element_text(size = input$boxplotFontss))
-              }
-              else {
-                x <- ggplot(ssgsea4, aes(factor(type), ssgsea4[,2], fill = type)) +
-                  geom_boxplot(width = 0.5, lwd = 1, fill = "white") +
-                  geom_dotplot(binaxis = 'y', stackdir = "center", dotsize = input$boxplotDotss) +
-                  labs(x = "Group", y = paste(colnames(ssgsea4)[2], " Score", sep = ""),
-                       title = paste("ssGSEA Expression Signature: ",colnames(ssgsea4)[2],sep = "")) +
-                  theme_bw() +
-                  stat_compare_means(method = input$boxplotcompare) +
-                  theme(axis.text.x = element_text(angle = 90, vjust = 0.25, hjust = 1),
-                        text = element_text(size = input$boxplotFontss))
-              }
-            }
-          }
+          x <- boxplot2_react()
           ggsave(file,x, width = 10, height = 8)
         }
       )
+      
       
       output$downloadClusters <- downloadHandler(
         filename = function() {
@@ -10203,9 +9353,11 @@ server <- function(input, output, session) {
         },
         content = function(file) {
           top_probes <- input$NumFeatures
+          expr <- expr_react()
+          exp <- expr
           col_labels <- colnames(expr)
-          isexpr <- rowSums(expr[,col_labels] > 1) >= length(col_labels)
-          exp <- expr[isexpr,]
+          #isexpr <- rowSums(expr[,col_labels] > 1) >= length(col_labels)
+          #exp <- expr[isexpr,]
           mad <- NULL
           var <- NULL
           cv <- NULL
@@ -10240,7 +9392,7 @@ server <- function(input, output, session) {
           dataset <- log2(dataset + 1)
           zdataset <- apply(dataset, 1, scale)
           zdataset <- apply(zdataset, 1, rev)
-          colnames(zdataset) <- names(dataset)
+          colnames(zdataset) <- colnames(dataset)
           dataset <- as.matrix(zdataset)
           dataset[is.na(dataset)] <- 0
           dataset = dataset[apply(dataset[,-1], 1, function(x) !all(x==0)),]
@@ -10317,46 +9469,8 @@ server <- function(input, output, session) {
           paste("AvgExpr_",A_choice,"_vs_",B_choice,".tsv",sep = "")
         },
         content = function(file) {
-          A_choice <- input$comparisonA2.avg
-          B_choice <- input$comparisonB2.avg
-          log_choice <- input$AvgExpLogFC
-          
-          if (ncol(meta) > 2){
-            metacol <- input$AvgExprScatterMetaCol
-          }
-          else if (ncol(meta) == 2){
-            metacol <- colnames(meta)[2]
-          }
-          
-          # Get A and B sample names
-          A <- meta[which(meta[,metacol] == A_choice),1]
-          B <- meta[which(meta[,metacol] == B_choice),1]
-          
-          # Make A and B expression Matrices
-          mat_A <- expr[,A]
-          mat_B <- expr[,B]
-          
-          # Get avg expression of each gene
-          mat_A$AvgExpression_GroupA <- rowMeans(mat_A)
-          mat_B$AvgExpression_GroupB <- rowMeans(mat_B)
-          
-          # Add Gene Names as column
-          mat_A$GeneSymbol <- rownames(mat_A)
-          mat_B$GeneSymbol <- rownames(mat_B)
-          
-          # Merge average columns
-          AvgExpr_Table <- merge(mat_A[,c("AvgExpression_GroupA","GeneSymbol")],
-                                 mat_B[,c("AvgExpression_GroupB","GeneSymbol")],
-                                 by = "GeneSymbol",
-                                 all = T)
-          
-          A_choice_lab <- gsub(" ","",A_choice)
-          B_choice_lab <- gsub(" ","",B_choice)
-          
-          colnames(AvgExpr_Table)[2] <- paste("Average_Expression_", A_choice_lab, sep = "")
-          colnames(AvgExpr_Table)[3] <- paste("Average_Expression_", B_choice_lab, sep = "")
-          
-          write_tsv(AvgExpr_Table, file)
+          AvgExpr_Table <- AvgGeneScatterTable_react()
+          write.table(AvgExpr_Table,file, sep = '\t', row.names = F)
         }
       )
       
@@ -10365,16 +9479,16 @@ server <- function(input, output, session) {
         filename = function() {
           GS <- gs_react()
           paste('ssGSEAscore_',names(GS),'.tsv',sep = '')
-          if (input$tables == 1) {
-            paste('ssGSEAscore_',names(gs()[(msigdb.gsea2()[input$msigdbTable_rows_selected,3])]),'.tsv',sep = '')
-          }
-          else if (input$tables == 3) {
-            paste('ssGSEAscore_',names(gs2()[(GeneSet2()[input$tab2table_rows_selected,1])]),'.tsv',sep = '')
-          }
-          else if (input$tables == 5) {
-            paste('ssGSEAscore_',user_gs_mirror()[input$GStable.u_rows_selected,1],'.tsv',sep = '')
-            #paste('ssGSEAscore_',names(RDataListGen()[(GStable.ubg()[input$GStable.u_rows_selected,1])]),'.tsv',sep = '')
-          }
+          #if (input$tables == 1) {
+          #  paste('ssGSEAscore_',names(gs()[(msigdb.gsea2()[input$msigdbTable_rows_selected,3])]),'.tsv',sep = '')
+          #}
+          #else if (input$tables == 3) {
+          #  paste('ssGSEAscore_',names(gs2()[(GeneSet2()[input$tab2table_rows_selected,1])]),'.tsv',sep = '')
+          #}
+          #else if (input$tables == 5) {
+          #  paste('ssGSEAscore_',user_gs_mirror()[input$GStable.u_rows_selected,1],'.tsv',sep = '')
+          #  #paste('ssGSEAscore_',names(RDataListGen()[(GStable.ubg()[input$GStable.u_rows_selected,1])]),'.tsv',sep = '')
+          #}
         },
         content = function(file) {
           meta <- meta_react()
@@ -10425,46 +9539,23 @@ server <- function(input, output, session) {
           paste(input$DEGfileName,".gmt",sep = "")
         },
         content = function(file) {
-          meta <- meta_react()
-          metacol <- metacol_reactVal()
-          if (length(colnames(meta)) == 2) {
-            metacol <- colnames(meta)[2]
-          }
-          expr <- expr_react()
-          #if (ncol(meta) > 2) {
-          #  metacol <- input$DEGtableMetaCol
-          #}
-          #else if (ncol(meta) == 2) {
-          #  metacol <- colnames(meta)[2]
-          #}
-          A <- meta[which(meta[,metacol] == input$comparisonA2.DEG),1]
-          B <- meta[which(meta[,metacol] == input$comparisonB2.DEG),1]
-          mat <- expr[,c(A,B)]
-          mat <- log2(mat + 1.0)
-          groupAOther <- factor(c(rep("A", length(A)), rep("B", length(B))))
-          designA <- model.matrix(~0 + groupAOther)
-          fit <- lmFit(mat, design = designA)
-          contrast.matrix <- makeContrasts(groupAOtherA - groupAOtherB, levels = designA)
-          fit2 <- contrasts.fit(fit, contrast.matrix)
-          fit2 <- eBayes(fit2)
-          options(digits = 4)
-          top1 <- topTable(fit2, coef = 1, n = 300000, sort = "p", p.value = 1.0, adjust.method = "BH")
+          top1 <- DEGtable1_react()
           if (input$UpDnChoice == "UpAndDown_Regulated"){
-            genes <- rownames(top1)[which(abs(top1$logFC) > abs(input$fc_cutoff2) & top1$adj.P.Val < input$p_cutoff2)]
+            genes <- rownames(top1)[which(abs(top1$logFC) > abs(input$fc_cutoff2) & top1$P.Value < input$p_cutoff2)]
             genes.h <- t(as.data.frame(head(genes, n=input$top_x2)))
             genes.h.gmt <- data.frame(paste(input$top_x2,input$UpDnChoice,"DEgenes", sep = ""),
                                       paste(input$UpDnChoice,"DEgenes",sep = ""),
                                       genes.h)
           }
           else if (input$UpDnChoice == "Up_Regulated"){
-            genes <- rownames(top1)[which(top1$logFC > input$fc_cutoff2 & top1$adj.P.Val < input$p_cutoff2)]
+            genes <- rownames(top1)[which(top1$logFC > input$fc_cutoff2 & top1$P.Value < input$p_cutoff2)]
             genes.h <- t(as.data.frame(head(genes, n=input$top_x2)))
             genes.h.gmt <- data.frame(paste(input$top_x2,input$UpDnChoice,"DEgenes", sep = ""),
                                       paste(input$UpDnChoice,"DEgenes",sep = ""),
                                       genes.h)
           }
           else if (input$UpDnChoice == "Down_Regulated"){
-            genes <- rownames(top1)[which(top1$logFC < -abs(input$fc_cutoff2) & top1$adj.P.Val < input$p_cutoff2)]
+            genes <- rownames(top1)[which(top1$logFC < -abs(input$fc_cutoff2) & top1$P.Value < input$p_cutoff2)]
             genes.h <- t(as.data.frame(head(genes, n=input$top_x2)))
             genes.h.gmt <- data.frame(paste(input$top_x2,input$UpDnChoice,"DEgenes", sep = ""),
                                       paste(input$UpDnChoice,"DEgenes",sep = ""),
@@ -10588,9 +9679,11 @@ server <- function(input, output, session) {
         },
         content = function(file){
           top_probes <- input$NumFeatures
+          expr <- expr_react()
+          exp <- expr
           col_labels <- colnames(expr)
-          isexpr <- rowSums(expr[,col_labels] > 1) >= length(col_labels)
-          exp <- expr[isexpr,]
+          #isexpr <- rowSums(expr[,col_labels] > 1) >= length(col_labels)
+          #exp <- expr[isexpr,]
           mad <- NULL
           var <- NULL
           cv <- NULL
@@ -10639,9 +9732,11 @@ server <- function(input, output, session) {
         },
         content = function(file){
           top_probes <- input$NumFeatures
+          expr <- expr_react()
+          exp <- expr
           col_labels <- colnames(expr)
-          isexpr <- rowSums(expr[,col_labels] > 1) >= length(col_labels)
-          exp <- expr[isexpr,]
+          #isexpr <- rowSums(expr[,col_labels] > 1) >= length(col_labels)
+          #exp <- expr[isexpr,]
           mad <- NULL
           var <- NULL
           cv <- NULL
@@ -10694,100 +9789,29 @@ server <- function(input, output, session) {
       #download button for leading edge genes
       output$LEGdownload <- downloadHandler(
         filename = function() {
-          if (input$tables == 1){
-            if (length(input$msigdbTable_rows_selected) > 0){
-              GS <- as.character(msigdb.gsea2()[input$msigdbTable_rows_selected,3])
-            }
-          }
-          else if (input$tables == 3){
-            if (length(input$tab2table_rows_selected) > 0){
-              GS <- as.character(GeneSet2()[input$tab2table_rows_selected,1])
-            }
-          }
-          else if (input$tables == 5){
-            if (length(input$GStable.u_rows_selected) > 0){
-              GS <- as.character(user_gs_mirror()[input$GStable.u_rows_selected,1])
-            }
-          }
+          gmt <- gmt_react()
+          GS <- unique(gmt[,1])
           paste(GS,"_leading_edge_genes", ".tsv", sep = "")
         },
         content = function(file){
-          req(datasetInput())
-          if (input$tables == 1){
-            if (length(input$msigdbTable_rows_selected) > 0){
-              res <- datasetInput()
-              gsea.df <- as.data.frame(res@result)
-              GS <- as.character(msigdb.gsea2()[input$msigdbTable_rows_selected,3])
-              ## Subset core enriched genes
-              genes1 <- as.matrix(gsea.df[which(gsea.df$Description==GS),"core_enrichment"])
-              genes2 <- sort(strsplit(genes1,"/")[[1]])
-              GeneSymbol <- as.data.frame(genes2, col.names = "GeneSymbol")
-              colnames(GeneSymbol)[1] <- "Gene Symbol"
-            }
-          }
-          else if (input$tables == 3){
-            if (length(input$tab2table_rows_selected) > 0){
-              res <- datasetInput()
-              gsea.df <- as.data.frame(res@result)
-              GS <- as.character(GeneSet2()[input$tab2table_rows_selected,1])
-              ## Subset core enriched genes
-              genes1 <- as.matrix(gsea.df[which(gsea.df$Description==GS),"core_enrichment"])
-              genes2 <- sort(strsplit(genes1,"/")[[1]])
-              GeneSymbol <- as.data.frame(genes2, col.names = "GeneSymbol")
-              colnames(GeneSymbol)[1] <- "Gene Symbol"
-            }
-          }
-          else if (input$tables == 5){
-            if (length(input$GStable.u_rows_selected) > 0){
-              res <- datasetInput()
-              gsea.df <- as.data.frame(res@result)
-              GS <- as.character(user_gs_mirror()[input$GStable.u_rows_selected,1])
-              ## Subset core enriched genes
-              genes1 <- as.matrix(gsea.df[which(gsea.df$Description==GS),"core_enrichment"])
-              genes2 <- sort(strsplit(genes1,"/")[[1]])
-              GeneSymbol <- as.data.frame(genes2, col.names = "GeneSymbol")
-              colnames(GeneSymbol)[1] <- "Gene Symbol"
-            }
-          }
-          write_delim(GeneSymbol, file, delim = '\t')
+          GeneSymbol <- LeadingEdgeGenes_react()
+          write.table(GeneSymbol, file, sep = '\t', row.names = F)
         })
       
       #render DEG table download button
       output$DEGtableDownload <- downloadHandler(
         filename = function() {
-          paste("DEG_Table_",Sys.Date(), ".tsv", sep = "")
+          paste("DEG_Table_",Sys.Date(), ".txt", sep = "")
         },
         content = function(file){
-          meta <- meta_react()
-          metacol <- metacol_reactVal()
-          if (length(colnames(meta)) == 2) {
-            metacol <- colnames(meta)[2]
-          }
-          expr <- expr_react()
-          #if (ncol(meta) > 2) {
-          #  metacol <- input$DEGtableMetaCol
-          #}
-          #else if (ncol(meta) == 2) {
-          #  metacol <- colnames(meta)[2]
-          #}
-          A <- meta[which(meta[,metacol] == input$comparisonA2.DEG),1]
-          B <- meta[which(meta[,metacol] == input$comparisonB2.DEG),1]
-          mat <- expr[,c(A,B)]
-          mat <- log2(mat + 1.0)
-          groupAOther <- factor(c(rep("A", length(A)), rep("B", length(B))))
-          designA <- model.matrix(~0 + groupAOther)
-          fit <- lmFit(mat, design = designA)
-          contrast.matrix <- makeContrasts(groupAOtherA - groupAOtherB, levels = designA)
-          fit2 <- contrasts.fit(fit, contrast.matrix)
-          fit2 <- eBayes(fit2)
-          options(digits = 4)
-          top1 <- topTable(fit2, coef = 1, n = 300000, sort = "p", p.value = 1.0, adjust.method = "BH")
-          top1$Gene <- rownames(top1)
-          top1 <- top1 %>%
-            relocate(Gene)
-          write_delim(top1, file, delim = '\t')
+          top1 <- DEGtable1_react()
+          top1 <- cbind(rownames(top1),top1)
+          colnames(top1)[1] <- "Gene"
+          write.table(top1,file,sep = '\t', row.names = F)
         }
       )
+      
+      
       
       #download button for Enrich Sig Table
       output$enrich_sig_download <- downloadHandler(
@@ -10917,6 +9941,7 @@ server <- function(input, output, session) {
         }
       )
       
+
       
       ####----Text----####
       
@@ -10938,7 +9963,7 @@ server <- function(input, output, session) {
             if (input$volcanoCompChoice3 == "Two groups") {
               groupA <- input$comparisonA
               groupB <- input$comparisonB
-            } else if (input$volcanoCompChoice3 == "One group against all other") {
+            } else if (input$volcanoCompChoice3 == "One group") {
               groupA <- input$comparisonA_one
               groupB <- paste0("Not_",groupA)
             }
@@ -10957,10 +9982,10 @@ server <- function(input, output, session) {
           #Pval = gsea.df$pvalue[which(gsea.df[,'ID']==GS)]
           #NES.o <- paste0("NES: ", NES)
           #Pval.o <- paste0("Pvalue: ", Pval)
-          #if (input$volcanoCompChoice3 == "Two groups") {
+          #if (input$volcanoCompChoice3 == "Limma: Two groups") {
           #  groupA <- input$comparisonA
           #  groupB <- input$comparisonB
-          #} else if (input$volcanoCompChoice3 == "One group against all other") {
+          #} else if (input$volcanoCompChoice3 == "Limma: One group") {
           #  groupA <- input$comparisonA_one
           #  groupB <- paste0("Not_",groupA)
           #}
@@ -11075,48 +10100,54 @@ server <- function(input, output, session) {
         }
         covars <- input$DEGCovarSelect
         
-        print(meta)
-        print(c(colnames(meta)[1],metacol,covars))
+        #print(meta)
+        #print(c(colnames(meta)[1],metacol,covars))
         
         metaSub <- meta[,grepl(paste(c(colnames(meta)[1],metacol,covars),collapse = "|"),colnames(meta)), drop = F]
         metaSub_noNA <- metaSub[complete.cases(metaSub),]
         
 
         if (all(c(colnames(meta)[1],metacol) %in% colnames(metaSub_noNA))) {
-          if (input$volcanoCompChoice == "Two groups") {
+          if (input$volcanoCompChoice == "Limma: Two groups") {
             groupA <- input$comparisonA2
             groupB <- input$comparisonB2
             A <- metaSub_noNA[which(metaSub_noNA[,metacol] == groupA),1]
             B <- metaSub_noNA[which(metaSub_noNA[,metacol] == groupB),1]
             form <- paste0("~0 + ",paste(c(metacol,covars),collapse = " + "))
-          } else if (input$volcanoCompChoice == "One group against all other") {
+          } else if (input$volcanoCompChoice == "Limma: One group") {
             groupA <- input$comparisonA2_one
-            groupB <- paste0("Not_",groupA)
+            groupB <- paste0(unique(metaSub_noNA[which(metaSub_noNA[,metacol] != groupA),metacol]), collapse = " - ")
+            #groupB <- paste0("Not_",groupA)
             metaSub_noNA[,paste0(metacol,"_Dichot")] <- NA
             metaSub_noNA[which(metaSub_noNA[,metacol] == groupA),paste0(metacol,"_Dichot")] <- groupA
-            metaSub_noNA[which(metaSub_noNA[,metacol] != groupA),paste0(metacol,"_Dichot")] <- paste0("Not_",groupA)
+            #metaSub_noNA[which(metaSub_noNA[,metacol] != groupA),paste0(metacol,"_Dichot")] <- paste0("Not_",groupA)
+            metaSub_noNA[which(metaSub_noNA[,metacol] != groupA),paste0(metacol,"_Dichot")] <- groupB
             A <- metaSub_noNA[which(metaSub_noNA[,paste0(metacol,"_Dichot")] == groupA),1]
-            B <- metaSub_noNA[which(metaSub_noNA[,paste0(metacol,"_Dichot")] == paste0("Not_",groupA)),1]
+            #B <- metaSub_noNA[which(metaSub_noNA[,paste0(metacol,"_Dichot")] == paste0("Not_",groupA)),1]
+            B <- metaSub_noNA[which(metaSub_noNA[,paste0(metacol,"_Dichot")] == groupB),1]
             metacol2 <- paste0(metacol,"_Dichot")
             metaSub_noNA <- metaSub_noNA[which(metaSub_noNA[,metacol2] %in% c(groupA,groupB)),c(colnames(metaSub_noNA)[1],metacol2,covars)]
             metaSub_noNA <- metaSub_noNA[complete.cases(metaSub_noNA),]
             form <- paste0("~0 + ",paste(c(metacol,covars),collapse = " + "))
           } else if (input$volcanoCompChoice == "DESeq2") {
-            metacol <- input$DEGGroupCol
-            metaSub <- meta[,c(colnames(meta)[1],metacol,covars)]
+            metacol <- metacol_reactVal()
+            metaSub <- meta[,c(colnames(meta)[1],metacol,covars),drop = F]
             metaSub_noNA <- metaSub[complete.cases(metaSub),]
             groupB <- input$DESeqDesignColRef_vol
-            groupA <- paste0("Not_",groupB)
+            groupA <- paste0(unique(metaSub_noNA[which(metaSub_noNA[,metacol] != groupB),metacol]), collapse = " - ")
+            #groupA <- paste0("Not_",groupB)
             metaSub_noNA[,paste0(metacol,"_Dichot")] <- NA
             metaSub_noNA[which(metaSub_noNA[,metacol] == groupB),paste0(metacol,"_Dichot")] <- groupB
-            metaSub_noNA[which(metaSub_noNA[,metacol] != groupB),paste0(metacol,"_Dichot")] <- paste0("Not_",groupB)
+            #metaSub_noNA[which(metaSub_noNA[,metacol] != groupB),paste0(metacol,"_Dichot")] <- paste0("Not_",groupB)
+            metaSub_noNA[which(metaSub_noNA[,metacol] != groupB),paste0(metacol,"_Dichot")] <- groupA
             A <- metaSub_noNA[which(metaSub_noNA[,paste0(metacol,"_Dichot")] == groupB),1]
-            B <- metaSub_noNA[which(metaSub_noNA[,paste0(metacol,"_Dichot")] == paste0("Not_",groupB)),1]
+            #B <- metaSub_noNA[which(metaSub_noNA[,paste0(metacol,"_Dichot")] == paste0("Not_",groupB)),1]
+            B <- metaSub_noNA[which(metaSub_noNA[,paste0(metacol,"_Dichot")] == groupA),1]
             metacol2 <- paste0(metacol,"_Dichot")
             metaSub_noNA <- metaSub_noNA[which(metaSub_noNA[,metacol2] %in% c(groupA,groupB)),c(colnames(metaSub_noNA)[1],metacol2,covars)]
             metaSub_noNA <- metaSub_noNA[complete.cases(metaSub_noNA),]
             if (length(covars) > 0) {
-              form <- paste0("~ ",metacol," + ",paste(covars,collapse = " + "))
+              form <- paste0("~ ",paste(covars,collapse = " + "), " + ", metacol)
             } else {
               form <- paste0("~ ",metacol)
             }
@@ -11151,40 +10182,46 @@ server <- function(input, output, session) {
         metaSub <- meta[,c(colnames(meta)[1],metacol,covars)]
         metaSub_noNA <- metaSub[complete.cases(metaSub),]
         
-        if (input$volcanoCompChoice == "Two groups") {
+        if (input$volcanoCompChoice == "Limma: Two groups") {
           groupA <- input$comparisonA2
           groupB <- input$comparisonB2
           A <- metaSub_noNA[which(metaSub_noNA[,metacol] == groupA),1]
           B <- metaSub_noNA[which(metaSub_noNA[,metacol] == groupB),1]
           form <- paste0("~0 + ",paste(c(metacol,covars),collapse = " + "))
-        } else if (input$volcanoCompChoice == "One group against all other") {
+        } else if (input$volcanoCompChoice == "Limma: One group") {
           groupA <- input$comparisonA2_one
-          groupB <- paste0("Not_",groupA)
+          groupB <- paste0(unique(metaSub_noNA[which(metaSub_noNA[,metacol] != groupA),metacol]), collapse = " - ")
+          #groupB <- paste0("Not_",groupA)
           metaSub_noNA[,paste0(metacol,"_Dichot")] <- NA
           metaSub_noNA[which(metaSub_noNA[,metacol] == groupA),paste0(metacol,"_Dichot")] <- groupA
-          metaSub_noNA[which(metaSub_noNA[,metacol] != groupA),paste0(metacol,"_Dichot")] <- paste0("Not_",groupA)
+          #metaSub_noNA[which(metaSub_noNA[,metacol] != groupA),paste0(metacol,"_Dichot")] <- paste0("Not_",groupA)
+          metaSub_noNA[which(metaSub_noNA[,metacol] != groupA),paste0(metacol,"_Dichot")] <- groupB
           A <- metaSub_noNA[which(metaSub_noNA[,paste0(metacol,"_Dichot")] == groupA),1]
-          B <- metaSub_noNA[which(metaSub_noNA[,paste0(metacol,"_Dichot")] == paste0("Not_",groupA)),1]
+          #B <- metaSub_noNA[which(metaSub_noNA[,paste0(metacol,"_Dichot")] == paste0("Not_",groupA)),1]
+          B <- metaSub_noNA[which(metaSub_noNA[,paste0(metacol,"_Dichot")] == groupB),1]
           metacol2 <- paste0(metacol,"_Dichot")
           metaSub_noNA <- metaSub_noNA[which(metaSub_noNA[,metacol2] %in% c(groupA,groupB)),c(colnames(metaSub_noNA)[1],metacol2,covars)]
           metaSub_noNA <- metaSub_noNA[complete.cases(metaSub_noNA),]
           form <- paste0("~0 + ",paste(c(metacol,covars),collapse = " + "))
         } else if (input$volcanoCompChoice == "DESeq2") {
-          metacol <- input$DEGGroupCol
-          metaSub <- meta[,c(colnames(meta)[1],metacol,covars)]
+          metacol <- metacol_reactVal()
+          metaSub <- meta[,c(colnames(meta)[1],metacol,covars), drop = F]
           metaSub_noNA <- metaSub[complete.cases(metaSub),]
           groupB <- input$DESeqDesignColRef_vol
-          groupA <- paste0("Not_",groupB)
+          groupA <- paste0(unique(metaSub_noNA[which(metaSub_noNA[,metacol] != groupB),metacol]), collapse = " - ")
+          #groupA <- paste0("Not_",groupB)
           metaSub_noNA[,paste0(metacol,"_Dichot")] <- NA
           metaSub_noNA[which(metaSub_noNA[,metacol] == groupB),paste0(metacol,"_Dichot")] <- groupB
-          metaSub_noNA[which(metaSub_noNA[,metacol] != groupB),paste0(metacol,"_Dichot")] <- paste0("Not_",groupB)
+          #metaSub_noNA[which(metaSub_noNA[,metacol] != groupB),paste0(metacol,"_Dichot")] <- paste0("Not_",groupB)
+          metaSub_noNA[which(metaSub_noNA[,metacol] != groupB),paste0(metacol,"_Dichot")] <- groupA
           A <- metaSub_noNA[which(metaSub_noNA[,paste0(metacol,"_Dichot")] == groupB),1]
-          B <- metaSub_noNA[which(metaSub_noNA[,paste0(metacol,"_Dichot")] == paste0("Not_",groupB)),1]
+          #B <- metaSub_noNA[which(metaSub_noNA[,paste0(metacol,"_Dichot")] == paste0("Not_",groupB)),1]
+          B <- metaSub_noNA[which(metaSub_noNA[,paste0(metacol,"_Dichot")] == groupA),1]
           metacol2 <- paste0(metacol,"_Dichot")
           metaSub_noNA <- metaSub_noNA[which(metaSub_noNA[,metacol2] %in% c(groupA,groupB)),c(colnames(metaSub_noNA)[1],metacol2,covars)]
           metaSub_noNA <- metaSub_noNA[complete.cases(metaSub_noNA),]
           if (length(covars) > 0) {
-            form <- paste0("~ ",metacol," + ",paste(covars,collapse = " + "))
+            form <- paste0("~ ",paste(covars,collapse = " + "), " + ",metacol)
           } else {
             form <- paste0("~ ",metacol)
           }
@@ -11226,40 +10263,46 @@ server <- function(input, output, session) {
         metaSub <- meta[,c(colnames(meta)[1],metacol,covars)]
         metaSub_noNA <- metaSub[complete.cases(metaSub),]
         
-        if (input$volcanoCompChoice2 == "Two groups") {
+        if (input$volcanoCompChoice2 == "Limma: Two groups") {
           groupA <- input$comparisonA2.DEG
           groupB <- input$comparisonB2.DEG
           A <- metaSub_noNA[which(metaSub_noNA[,metacol] == groupA),1]
           B <- metaSub_noNA[which(metaSub_noNA[,metacol] == groupB),1]
           form <- paste0("~0 + ",paste(c(metacol,covars),collapse = " + "))
-        } else if (input$volcanoCompChoice2 == "One group against all other") {
+        } else if (input$volcanoCompChoice2 == "Limma: One group") {
           groupA <- input$comparisonA2.DEG_one
-          groupB <- paste0("Not_",groupA)
+          groupB <- paste0(unique(metaSub_noNA[which(metaSub_noNA[,metacol] != groupA),metacol]), collapse = " - ")
+          #groupB <- paste0("Not_",groupA)
           metaSub_noNA[,paste0(metacol,"_Dichot")] <- NA
           metaSub_noNA[which(metaSub_noNA[,metacol] == groupA),paste0(metacol,"_Dichot")] <- groupA
-          metaSub_noNA[which(metaSub_noNA[,metacol] != groupA),paste0(metacol,"_Dichot")] <- paste0("Not_",groupA)
+          #metaSub_noNA[which(metaSub_noNA[,metacol] != groupA),paste0(metacol,"_Dichot")] <- paste0("Not_",groupA)
+          metaSub_noNA[which(metaSub_noNA[,metacol] != groupA),paste0(metacol,"_Dichot")] <- groupB
           A <- metaSub_noNA[which(metaSub_noNA[,paste0(metacol,"_Dichot")] == groupA),1]
-          B <- metaSub_noNA[which(metaSub_noNA[,paste0(metacol,"_Dichot")] == paste0("Not_",groupA)),1]
+          #B <- metaSub_noNA[which(metaSub_noNA[,paste0(metacol,"_Dichot")] == paste0("Not_",groupA)),1]
+          B <- metaSub_noNA[which(metaSub_noNA[,paste0(metacol,"_Dichot")] == groupB),1]
           metacol2 <- paste0(metacol,"_Dichot")
           metaSub_noNA <- metaSub_noNA[which(metaSub_noNA[,metacol2] %in% c(groupA,groupB)),c(colnames(metaSub_noNA)[1],metacol2,covars)]
           metaSub_noNA <- metaSub_noNA[complete.cases(metaSub_noNA),]
           form <- paste0("~0 + ",paste(c(metacol,covars),collapse = " + "))
-        } else if (input$volcanoCompChoice == "DESeq2") {
-          metacol <- input$DEGGroupCol
-          metaSub <- meta[,c(colnames(meta)[1],metacol,covars)]
+        } else if (input$volcanoCompChoice2 == "DESeq2") {
+          metacol <- metacol_reactVal()
+          metaSub <- meta[,c(colnames(meta)[1],metacol,covars), drop = F]
           metaSub_noNA <- metaSub[complete.cases(metaSub),]
-          groupB <- input$DESeqDesignColRef_vol
-          groupA <- paste0("Not_",groupB)
+          groupB <- input$DESeqDesignColRef_tab
+          groupA <- paste0(unique(metaSub_noNA[which(metaSub_noNA[,metacol] != groupB),metacol]), collapse = " - ")
+          #groupA <- paste0("Not_",groupB)
           metaSub_noNA[,paste0(metacol,"_Dichot")] <- NA
           metaSub_noNA[which(metaSub_noNA[,metacol] == groupB),paste0(metacol,"_Dichot")] <- groupB
-          metaSub_noNA[which(metaSub_noNA[,metacol] != groupB),paste0(metacol,"_Dichot")] <- paste0("Not_",groupB)
+          #metaSub_noNA[which(metaSub_noNA[,metacol] != groupB),paste0(metacol,"_Dichot")] <- paste0("Not_",groupB)
+          metaSub_noNA[which(metaSub_noNA[,metacol] != groupB),paste0(metacol,"_Dichot")] <- groupA
           A <- metaSub_noNA[which(metaSub_noNA[,paste0(metacol,"_Dichot")] == groupB),1]
-          B <- metaSub_noNA[which(metaSub_noNA[,paste0(metacol,"_Dichot")] == paste0("Not_",groupB)),1]
+          #B <- metaSub_noNA[which(metaSub_noNA[,paste0(metacol,"_Dichot")] == paste0("Not_",groupB)),1]
+          B <- metaSub_noNA[which(metaSub_noNA[,paste0(metacol,"_Dichot")] == groupA),1]
           metacol2 <- paste0(metacol,"_Dichot")
           metaSub_noNA <- metaSub_noNA[which(metaSub_noNA[,metacol2] %in% c(groupA,groupB)),c(colnames(metaSub_noNA)[1],metacol2,covars)]
           metaSub_noNA <- metaSub_noNA[complete.cases(metaSub_noNA),]
           if (length(covars) > 0) {
-            form <- paste0("~ ",metacol," + ",paste(covars,collapse = " + "))
+            form <- paste0("~ ",paste(covars,collapse = " + ")," + ",metacol)
           } else {
             form <- paste0("~ ",metacol)
           }
