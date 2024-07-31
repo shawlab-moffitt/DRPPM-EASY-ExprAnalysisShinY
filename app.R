@@ -2141,6 +2141,7 @@ server <- function(input, output, session) {
                 meta <- as.data.frame(read_delim(url(MetaData_file_react()), delim = '\t', col_names = T))
               } else if (tools::file_ext(MetaData_file_react()) %in% c("zip","gz","ZIP","GZ")) {
                 meta <- as.data.frame(read_delim(getZip(MetaData_file_react()), delim = '\t', col_names = T))
+                #meta <- as.data.frame(read_delim(getZip(MetaData_file_react()), delim = '\t', col_names = T))
               } else if (tools::file_ext(MetaData_file_react()) %in% c("csv","CSV")) {
                 meta <- as.data.frame(read_delim(url(MetaData_file_react()), delim = ',', col_names = T))
               } else if (tools::file_ext(MetaData_file_react()) %in% c("RData","rdata")) {
@@ -2990,7 +2991,7 @@ server <- function(input, output, session) {
             gs.u <- input$userGeneSet
             ext <- tools::file_ext(gs.u$datapath)
             geneset <- userGeneSet_loaded()
-            if (isTruthy(geneset_name)) {
+            if (isTruthy(geneset)) {
               if (ext == "RData") {
                 term <- rep(names(geneset), times = sapply(geneset, length))
                 gene <- unlist(geneset)
@@ -4423,17 +4424,44 @@ server <- function(input, output, session) {
       
       GeneratedMSigDBEST <- eventReactive(input$GenerateEST,{
         #if (input$GenerateEST == TRUE) {
-          meta <- meta_react()
-          metacol <- metacol_reactVal()
-          if (length(colnames(meta)) == 2) {
-            metacol <- colnames(meta)[2]
-          }
+        #req(input$comparisonA)
+        #req(input$comparisonB)
+        req(geneset_gmt())
+        req(meta_react())
+        meta <- meta_react()
+        metacol <- metacol_reactVal()
+        if (length(colnames(meta)) == 2) {
+          metacol <- colnames(meta)[2]
+        }
+        
+        if (input$volcanoCompChoice3 == "Two groups") {
+          Acomp <- input$comparisonA
+          Bcomp <- input$comparisonB
+          groupA <- meta[which(meta[,metacol] == input$comparisonA),1]
+          groupB <- meta[which(meta[,metacol] == input$comparisonB),1]
+        } else if (input$volcanoCompChoice3 == "One group") {
+          Acomp <- input$comparisonA_one
+          Bcomp <- paste0("Not_",Acomp)
+          meta[,paste0(metacol,"_Dichot")] <- NA
+          meta[which(meta[,metacol] == Acomp),paste0(metacol,"_Dichot")] <- Acomp
+          meta[which(meta[,metacol] != Acomp),paste0(metacol,"_Dichot")] <- paste0("Not_",Acomp)
+          metacol <- paste0(metacol,"_Dichot")
+          groupA <- meta[which(meta[,metacol] == Acomp),1]
+          groupB <- meta[which(meta[,metacol] == Bcomp),1]
+        }
+        
+        
+        
+        
+          #meta <- meta_react()
+          #metacol <- metacol_reactVal()
+          #if (length(colnames(meta)) == 2) {
+          #  metacol <- colnames(meta)[2]
+          #}
           A <- A_raw()
           gmt <- geneset_gmt()
           #withProgress(message = "Processing", value = 0, {
           #  incProgress(0.25, detail = "Calculating Signal-to-Noise")
-            groupA <- meta[which(meta[,metacol] == input$comparisonA),1]
-            groupB <- meta[which(meta[,metacol] == input$comparisonB),1]
             ##----Signal-to-Noise Calculation----##
             A <- A + 0.00000001
             P = as.matrix(as.numeric(colnames(A) %in% groupA))
