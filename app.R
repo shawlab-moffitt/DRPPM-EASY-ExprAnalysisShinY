@@ -1,4 +1,4 @@
-type_id <- paste0("v2.0.20240703")
+type_id <- paste0("v2.0.20240731")
 
 # User Data Input --------------------------------------------------------------
 # Project Name
@@ -1679,6 +1679,9 @@ GSEA_tab <- tabPanel("GSEA Analysis",
                                                  fluidRow(
                                                    downloadButton("dnldPlotSVG_ssgseaHeat","Download as SVG")
                                                  ),
+                                                 p(),
+                                                 withSpinner(DT::dataTableOutput("ssgseaheatmap_df"), type = 6),
+                                                 downloadButton("dnldssgseaheatmap_df","Download Table"),
                                                  value = 1
                                         ),
                                         tabPanel("ssGSEA Raw Difference Heatmap",
@@ -1687,6 +1690,9 @@ GSEA_tab <- tabPanel("GSEA Analysis",
                                                  fluidRow(
                                                    downloadButton("dnldPlotSVG_ssgseaHeat2","Download as SVG")
                                                  ),
+                                                 p(),
+                                                 withSpinner(DT::dataTableOutput("ssgseaheatmap2_df"), type = 6),
+                                                 downloadButton("dnldssgseaheatmap2_df","Download Table"),
                                                  value = 2
                                         ),
                                         tabPanel("Average Raw Difference ssGSEA Heatmap",
@@ -1696,6 +1702,9 @@ GSEA_tab <- tabPanel("GSEA Analysis",
                                                    downloadButton("dnldPlotSVG_ssgseaHeat3","Download as SVG"),
                                                    downloadButton("dnldPlotPDF_ssgseaHeat3","Download as PDF")
                                                  ),
+                                                 p(),
+                                                 withSpinner(DT::dataTableOutput("ssgseaheatmap3_df"), type = 6),
+                                                 downloadButton("dnldssgseaheatmap3_df","Download Table"),
                                                  value = 3
                                         )
                                       ),
@@ -2506,6 +2515,7 @@ server <- function(input, output, session) {
           #ensure expression samples and meta are exact
           expr <- expr[,sampsames]
           meta <- meta[which(meta[,1] %in% sampsames),]
+          
           expr_input(expr)
           meta_input(meta)
           
@@ -3624,15 +3634,28 @@ server <- function(input, output, session) {
         
       })
       
+      #observe({
+      #  
+      #  req(meta_react())
+      #  meta <- meta_react()
+      #  updateSelectizeInput(session = session, inputId = "userheatsamp2",
+      #                       choices = meta[,1],selected = meta[,1], server = T)
+      #  updateSelectizeInput(session = session, inputId = "userheatsampSS",
+      #                       choices = meta[,1],selected = meta[,1], server = T)
+      #  
+      #})
+      
       observe({
         
         req(meta_react())
+        req(input$GroupColMulti)
         meta <- meta_react()
-        updateSelectizeInput(session = session, inputId = "userheatsamp2",
-                             choices = meta[,1],selected = meta[,1], server = T)
-        updateSelectizeInput(session = session, inputId = "userheatsampSS",
-                             choices = meta[,1],selected = meta[,1], server = T)
+        metacol <- input$GroupColMulti[1]
+        meta2 <- meta[,c(colnames(meta)[1],metacol)]
+        meta2[,2] <- as.factor(meta2[,2])
+        meta2 <- meta2[order(meta2[,2]),]
         
+        updateSelectizeInput(session,"userheatsamp2",choices = meta2[,1], selected = meta2[,1])
       })
       
       
@@ -5032,7 +5055,6 @@ server <- function(input, output, session) {
             cv <- head(cv, n = (top_probes +1))
             out <- cbind(names(cv), cv[names(cv)], exp[names(cv),])
             colnames(out) <- c("Gene", "CV", colnames(exp))
-            print(head(out))
             dataset <- exp[names(cv),]
           }
           incProgress(0.25, detail = "Calculating Z-Score")
@@ -5452,6 +5474,62 @@ server <- function(input, output, session) {
       #meta_factored <- apply(meta,2,function(x) factor(x))
       #meta_factored <- as.data.frame(lapply(meta, factor))
       
+      observe({
+        
+        req(meta_react())
+        req(input$ssGSEAGroupColMulti)
+        meta <- meta_react()
+        metacol <- input$ssGSEAGroupColMulti[1]
+        meta2 <- meta[,c(colnames(meta)[1],metacol)]
+        meta2[,2] <- as.factor(meta2[,2])
+        meta2 <- meta2[order(meta2[,2]),]
+        
+        updateSelectizeInput(session,"userheatsampSS",choices = meta2[,1], selected = meta2[,1])
+      })
+      
+      ssgseaheatmap_df_react <- reactive({
+        
+        meta <- meta_react()
+        dataset <- ssgsea_heat_data()
+        if (isTruthy(input$ssGSEAGroupColMulti)) {
+          meta <- meta[which(meta[,1] %in% colnames(dataset)),]
+          meta_sub <- meta[,c(colnames(meta)[1],input$ssGSEAGroupColMulti), drop = F]
+          dataset_t <- as.data.frame(t(dataset))
+          dataset_t <- cbind(SampleName = rownames(dataset_t),dataset_t)
+          heatdf <- merge(meta_sub,dataset_t, all.y = T, by.x = colnames(meta_sub)[1], by.y = "SampleName")
+          heatdf <- heatdf[match(dataset_t[,1],heatdf[,1]),]
+          heatdf
+        } else {
+          if (ncol(meta) == 2) {
+            meta <- meta[which(meta[,1] %in% colnames(dataset)),]
+            meta_sub <- meta
+            dataset_t <- as.data.frame(t(dataset))
+            dataset_t <- cbind(SampleName = rownames(dataset_t),dataset_t)
+            heatdf <- merge(meta_sub,dataset_t, all.y = T, by.x = colnames(meta_sub)[1], by.y = "SampleName")
+            heatdf <- heatdf[match(dataset_t[,1],heatdf[,1]),]
+            heatdf
+          } else {
+            heatdf <- as.data.frame(t(dataset))
+            heatdf <- cbind(SampleName = rownames(heatdf),heatdf)
+            heatdf
+          }
+        }
+        
+      })
+      
+      output$ssgseaheatmap_df <- DT::renderDataTable({
+        
+        df <- ssgseaheatmap_df_react()
+        dataset <- ssgsea_heat_data()
+        DT::datatable(df, 
+                      options = list(lengthMenu = c(5,10,20,50,100,1000),
+                                     pageLength = 10,
+                                     scrollX = TRUE),
+                      rownames = FALSE)%>%
+          formatRound(columns = rownames(dataset), digits = 4)
+        
+      })
+      
       ssgsea_heat_anno <- reactive({
         
         if (isTruthy(input$ssGSEAGroupColMulti)) {
@@ -5493,60 +5571,30 @@ server <- function(input, output, session) {
         
       })
       
+      
       ssgsea_heat_data <- reactive({
         
-        #row_names_choice <- input$ShowRowNames1SSheat
-        #col_names_choice <- input$ShowColNamesSSheat
-        #row_font <- input$heatmapFont1.r
-        #col_font <- input$heatmapFont1.c
+        req(meta_react())
+        req(metacol_reactVal())
+        req(input$ssGSEAtype)
+        req(input$userheatsampSS)
+        
         meta <- meta_react()
-        #metacol <- metacol_reactVal()
+        metacol <- metacol_reactVal()
+        if (length(colnames(meta)) == 2) {
+          metacol <- colnames(meta)[2]
+        }
         A <- A_raw()
-        #if (is.null(input$ClusterMethodSSheat) == TRUE) {
-        #  clust_method <- 'complete'
-        #}
-        #else if (is.null(input$ClusterMethodSSheat) == FALSE) {
-        #  clust_method <- input$ClusterMethodSSheat
-        #}
-        #color_choice <- input$ColorPalette_gseaHeat
-        #clust_cols_opt <- input$clustcolsSSheat
-        #clust_rows_opt <- input$clustrowsSSheat
         scoreMethod <- input$ssGSEAtype
         
-        #if (is.null(input$ssgseaHeatGS) == TRUE) {
-        #  #geneset_names <- gs_names_start
-        #  geneset_names <- ssGSEA_Heat_GS()
-        #}
-        #else if (is.null(input$ssgseaHeatGS) == FALSE) {
-        #  geneset_names <- input$ssgseaHeatGS
-        #}
         samples_chosen <- input$userheatsampSS
         
         #A <- A[,samples_chosen]
         A <- A[,which(colnames(A) %in% samples_chosen)]
         meta <- meta[which(meta[,1] %in% samples_chosen),]
-        #GS <- gs_react()
-        #GS <- GS[geneset_names]
         GS <- gs_react_heat()
         geneset_names <- names(GS)
         
-        #if (input$tables == 1) {
-        #  GS <- gs()[geneset_names]
-        #}
-        #if (input$tables == 3) {
-        #  GS <- gs2()[geneset_names]
-        #}
-        #if (input$tables == 5) {
-        #  gmt <- GStable.ubg()
-        #  colnames(gmt) <- c("term","gene")
-        #  #gs_name <- user_gs_mirror()[input$GStable.u_rows_selected,1]
-        #  gmt_sub <- gmt[which(gmt$term %in% geneset_names),]
-        #  GS <- list()
-        #  for (i in unique(gmt_sub[,1])){
-        #    GS[[i]] <- gmt_sub[gmt_sub[,1] == i,]$gene
-        #  }
-        #  #GS <- RDataListGen()[geneset_names]
-        #}
         
         if (as.numeric(tools::file_path_sans_ext(packageVersion("GSVA"))) >= 1.5) {
           if (scoreMethod == "ssgsea") {
@@ -5559,15 +5607,10 @@ server <- function(input, output, session) {
             ssGSEA_param <- GSVA::zscoreParam(A,GS)
           }
           ssgsea <- GSVA::gsva(ssGSEA_param)
-          #ssGSEA <- as.data.frame(t(ssGSEA))
-          #ssGSEA[,SampleNameCol] <- rownames(ssGSEA)
         } else {
           ssgsea <- gsva(A,GS,method = scoreMethod, verbose = FALSE)
-          #ssGSEA <- as.data.frame(t(ssGSEA))
-          #ssGSEA[,SampleNameCol] <- rownames(ssGSEA)
         }
         
-        #ssgsea <- gsva(A, GS, method = scoreMethod, verbose = F)
         ssgsea2 = t(ssgsea)
         ssgsea3 = apply(ssgsea2, 2, scale);
         ssgsea4 = apply(ssgsea3, 1, rev)
@@ -5576,16 +5619,22 @@ server <- function(input, output, session) {
         neworder_gs <- rownames(ssgsea4)
         final_gs <- intersect(geneset_names,neworder_gs)
         
-        ssgsea4 <- ssgsea4[final_gs,]
-        ssgsea4
-        #meta2 <- meta[,c(colnames(meta)[1],metacol)]
-        #meta2[,2] <- as.factor(meta2[,2])
-        #meta2 <- meta2[order(meta2[,2]),]
-        #rownames(meta2) <- meta2[,1]
-        #meta2 <- meta2[,-1,drop = F]
-        #ssgsea4 <- ssgsea4[,rownames(meta2)]
+        ssgsea5 <- ssgsea4[final_gs,]
+        
+        meta2 <- meta[,c(colnames(meta)[1],metacol)]
+        meta2[,2] <- as.factor(meta2[,2])
+        meta2 <- meta2[order(meta2[,2]),]
+        rownames(meta2) <- meta2[,1]
+        meta2 <- meta2[,-1,drop = F]
+        ssgsea5 <- ssgsea5[,rownames(meta2)]
+        #ssgsea5 <- ssgsea5[,match(colnames(ssgsea5),samples_chosen)]
+        ssgsea5 <- ssgsea5[,samples_chosen]
+        ssgsea5
+        
+        
         
       })
+      
       
       ssgseaheatmap_react <- reactive({
         
@@ -5612,122 +5661,50 @@ server <- function(input, output, session) {
                                                       row_names_gp = gpar(fontsize = row_font), column_names_gp = gpar(fontsize = col_font),
                                                       heatmap_legend_param = list(title = "ssGSEA Score"),
                                                       border = F))
-        draw(p, padding = unit(c(50, 50, 2, 2), "mm")) # unit(c(bottom,left,right,top))
+        draw(p, padding = unit(c(25, 50, 2, 2), "mm")) # unit(c(bottom,left,right,top))
         
-        #meta <- meta_react()
-        #metacol <- metacol_reactVal()
-        #A <- expr_mat_react()
-        ##if (ncol(meta) > 2) {
-        ##  metacol <- input$GSEAmetaCol
-        ##}
-        ##else if (ncol(meta) == 2) {
-        ##  metacol <- colnames(meta)[2]
-        ##}
-        #if (is.null(input$ClusterMethodSSheat) == TRUE) {
-        #  clust_method <- 'complete'
-        #}
-        #else if (is.null(input$ClusterMethodSSheat) == FALSE) {
-        #  clust_method <- input$ClusterMethodSSheat
-        #}
-        #color_choice <- input$ColorPalette_gseaHeat
-        #clust_cols_opt <- input$clustcolsSSheat
-        #clust_rows_opt <- input$clustrowsSSheat
-        #scoreMethod <- input$ssGSEAtype
-        #
-        #if (is.null(input$ssgseaHeatGS) == TRUE) {
-        #  #geneset_names <- gs_names_start
-        #  geneset_names <- ssGSEA_Heat_GS()
-        #}
-        #else if (is.null(input$ssgseaHeatGS) == FALSE) {
-        #  geneset_names <- input$ssgseaHeatGS
-        #}
-        #samples_chosen <- input$userheatsampSS
-        #
-        #A <- A[,samples_chosen]
-        #meta <- meta[which(meta[,1] %in% samples_chosen),]
-        #
-        #if (input$tables == 1) {
-        #  GS <- gs[geneset_names]
-        #}
-        #if (input$tables == 3) {
-        #  GS <- gs2()[geneset_names]
-        #}
-        #if (input$tables == 5) {
-        #  GS <- RDataListGen()[geneset_names]
-        #}
-        #ssgsea <- gsva(A, GS, method = scoreMethod, verbose = F)
-        #ssgsea2 = t(ssgsea)
-        #ssgsea3 = apply(ssgsea2, 2, scale);
-        #ssgsea4 = apply(ssgsea3, 1, rev)
-        #colnames(ssgsea4) = rownames(ssgsea2)
-        #
-        #neworder_gs <- rownames(ssgsea4)
-        #final_gs <- intersect(geneset_names,neworder_gs)
-        #
-        #ssgsea4 <- ssgsea4[final_gs,]
-        #
-        #minimum = min(ssgsea4)
-        #maximum = max(ssgsea4)
-        #if (abs(min(ssgsea4)) > abs(max(ssgsea4))) {
-        #  ssgsea4[ssgsea4 < -abs(max(ssgsea4))] = -abs(max(ssgsea4))
-        #} else {
-        #  ssgsea4[ssgsea4 > abs(min(ssgsea4))] = abs(min(ssgsea4))
-        #}
-        #bk = c(seq(minimum,minimum/2, length=100), seq(minimum/2,maximum/2,length=100),seq(maximum/2,maximum,length=100))
-        ##Heatmap color
-        #col_sets <- c("OrRd","PuBu","Greens","YlGnBu")
-        #if (color_choice == "original") {
-        #  HeatMap_Colors <- c("dark blue","blue","white","red", "dark red")
-        #  hmcols <- colorRampPalette(HeatMap_Colors)(length(bk)-1)
-        #}
-        #else if (color_choice %in% col_sets) {
-        #  HeatMap_Colors <- brewer.pal(n = 5, color_choice)
-        #  hmcols <- colorRampPalette(HeatMap_Colors)(length(bk)-1)
-        #}
-        #else if (color_choice == "Inferno") {
-        #  hmcols <- inferno(500)
-        #}
-        #else if (color_choice == "Viridis") {
-        #  hmcols <- viridis(500)
-        #}
-        #else if (color_choice == "Plasma") {
-        #  hmcols <- plasma(500)
-        #}
-        #else if (color_choice == "OmniBlueRed") {
-        #  hmcols<- colorRampPalette(c("#1984C5", "#22A7F0", "#63BFF0", "#A7D5ED", "#E2E2E2", "#E1A692", "#DE6E56", "#E14B31", "#C23728"))(length(bk)-1)
-        #}
-        #else if (color_choice == "LightBlueBlackRed") {
-        #  hmcols<- colorRampPalette(c("#34C5FD","black","red"))(length(bk)-1)
-        #}
-        #else if (color_choice == "GreenBlackRed") {
-        #  hmcols<- colorRampPalette(c("green","black","red"))(length(bk)-1)
-        #}
-        #
-        #meta2 <- meta[,c(colnames(meta)[1],metacol)]
-        #meta2[,2] <- as.factor(meta2[,2])
-        #meta2 <- meta2[order(meta2[,2]),]
-        #rownames(meta2) <- meta2[,1]
-        #meta2 <- meta2[,-1,drop = F]
-        #ssgsea4 <- ssgsea4[,rownames(meta2)]
-        #
-        ##meta <- meta[order(meta[,2]),]
-        ##type <- meta[,2]
-        ##meta2 <- as.data.frame(type)
-        ##rownames(meta2) <- meta[,1]
-        #
-        #hm <- pheatmap::pheatmap(ssgsea4,
-        #                         cluster_col = clust_cols_opt,
-        #                         cluster_row = clust_rows_opt,
-        #                         fontsize_row = row_font,
-        #                         fontsize_col = col_font,
-        #                         show_rownames = row_names_choice,
-        #                         show_colnames = col_names_choice,
-        #                         annotation_col = meta2,
-        #                         clustering_method = clust_method,
-        #                         color = hmcols)
-        #
-        #hm
+      })
+      
+      ssgseaheatmap2_df_react <- reactive({
         
+        meta <- meta_react()
+        dataset <- ssgsea_heat2_data()
+        if (isTruthy(input$ssGSEAGroupColMulti)) {
+          meta <- meta[which(meta[,1] %in% colnames(dataset)),]
+          meta_sub <- meta[,c(colnames(meta)[1],input$ssGSEAGroupColMulti), drop = F]
+          dataset_t <- as.data.frame(t(dataset))
+          dataset_t <- cbind(SampleName = rownames(dataset_t),dataset_t)
+          heatdf <- merge(meta_sub,dataset_t, all.y = T, by.x = colnames(meta_sub)[1], by.y = "SampleName")
+          heatdf <- heatdf[match(dataset_t[,1],heatdf[,1]),]
+          heatdf
+        } else {
+          if (ncol(meta) == 2) {
+            meta <- meta[which(meta[,1] %in% colnames(dataset)),]
+            meta_sub <- meta
+            dataset_t <- as.data.frame(t(dataset))
+            dataset_t <- cbind(SampleName = rownames(dataset_t),dataset_t)
+            heatdf <- merge(meta_sub,dataset_t, all.y = T, by.x = colnames(meta_sub)[1], by.y = "SampleName")
+            heatdf <- heatdf[match(dataset_t[,1],heatdf[,1]),]
+            heatdf
+          } else {
+            heatdf <- as.data.frame(t(dataset))
+            heatdf <- cbind(SampleName = rownames(heatdf),heatdf)
+            heatdf
+          }
+        }
+        
+      })
+      
+      output$ssgseaheatmap2_df <- DT::renderDataTable({
+        
+        df <- ssgseaheatmap2_df_react()
+        dataset <- ssgsea_heat2_data()
+        DT::datatable(df, 
+                      options = list(lengthMenu = c(5,10,20,50,100,1000),
+                                     pageLength = 10,
+                                     scrollX = TRUE),
+                      rownames = FALSE)%>%
+          formatRound(columns = rownames(dataset), digits = 4)
         
       })
       
@@ -5741,38 +5718,13 @@ server <- function(input, output, session) {
         A <- A_raw()
         scoreMethod <- input$ssGSEAtype
         
-        #if (is.null(input$ssgseaHeatGS) == TRUE) {
-        #  geneset_names <- ssGSEA_Heat_GS()
-        #}
-        #else if (is.null(input$ssgseaHeatGS) == FALSE) {
-        #  geneset_names <- input$ssgseaHeatGS
-        #}
         samples_chosen <- input$userheatsampSS
         
         #A <- A[,samples_chosen]
         A <- A[,which(colnames(A) %in% samples_chosen)]
         meta <- meta[which(meta[,1] %in% samples_chosen),]
-        #GS <- gs_react()
         GS <- gs_react_heat()
         geneset_names <- names(GS)
-        #if (input$tables == 1) {
-        #  GS <- gs()[geneset_names]
-        #}
-        #if (input$tables == 3) {
-        #  GS <- gs2()[geneset_names]
-        #}
-        #if (input$tables == 5) {
-        #  gmt <- GStable.ubg()
-        #  colnames(gmt) <- c("term","gene")
-        #  #gs_name <- user_gs_mirror()[input$GStable.u_rows_selected,1]
-        #  gmt_sub <- gmt[which(gmt$term %in% geneset_names),]
-        #  GS <- list()
-        #  for (i in unique(gmt_sub[,1])){
-        #    GS[[i]] <- gmt_sub[gmt_sub[,1] == i,]$gene
-        #  }
-        #  #GS <- RDataListGen()[geneset_names]
-        #}
-        
         if (as.numeric(tools::file_path_sans_ext(packageVersion("GSVA"))) >= 1.5) {
           if (scoreMethod == "ssgsea") {
             ssGSEA_param <- GSVA::ssgseaParam(A,GS)
@@ -5784,16 +5736,10 @@ server <- function(input, output, session) {
             ssGSEA_param <- GSVA::zscoreParam(A,GS)
           }
           ssgsea <- GSVA::gsva(ssGSEA_param)
-          #ssGSEA <- as.data.frame(t(ssGSEA))
-          #ssGSEA[,SampleNameCol] <- rownames(ssGSEA)
         } else {
           ssgsea <- gsva(A,GS,method = scoreMethod, verbose = FALSE, ssgsea.norm = F)
-          #ssGSEA <- as.data.frame(t(ssGSEA))
-          #ssGSEA[,SampleNameCol] <- rownames(ssGSEA)
         }
         
-        
-        #ssgsea <- gsva(A, GS, method = scoreMethod, verbose = F, ssgsea.norm = F)
         
         SD=apply(ssgsea,1, sd, na.rm = TRUE) #get SD
         
@@ -5814,11 +5760,9 @@ server <- function(input, output, session) {
         rownames(meta2) <- meta2[,1]
         meta2 <- meta2[,-1,drop = F]
         ssgsea5 <- ssgsea5[,rownames(meta2)]
+        #ssgsea5 <- ssgsea5[,match(colnames(ssgsea5),samples_chosen)]
+        ssgsea5 <- ssgsea5[,samples_chosen]
         ssgsea5
-        #meta <- meta[order(meta[,2]),]
-        #type <- meta[,2]
-        #meta2 <- as.data.frame(type)
-        #rownames(meta2) <- meta[,1]
         
       })
       
@@ -5887,7 +5831,7 @@ server <- function(input, output, session) {
                                                       row_names_gp = gpar(fontsize = row_font), column_names_gp = gpar(fontsize = col_font),
                                                       heatmap_legend_param = list(title = "ssGSEA Score"),
                                                       border = F))
-        draw(p, padding = unit(c(50, 50, 2, 2), "mm")) # unit(c(bottom,left,right,top))
+        draw(p, padding = unit(c(25, 50, 2, 2), "mm")) # unit(c(bottom,left,right,top))
         
         
         #meta <- meta_react()
@@ -6012,7 +5956,40 @@ server <- function(input, output, session) {
         
       })
       
-      ssgseaheatmap3_react <- reactive({
+      ssgseaheatmap3_df_react <- reactive({
+        
+        
+        meta <- meta_react()
+        metacol <- metacol_reactVal()
+        if (length(colnames(meta)) == 2) {
+          metacol <- colnames(meta)[2]
+        }
+        AvgssGSEADF <- ssgseaheatmap3_react_df()
+        anno_meta <- data.frame(GroupName = colnames(AvgssGSEADF))
+        anno_meta[,metacol] <- gsub("Avg_ssGSEA_","",anno_meta[,1])
+        
+        dataset_t <- as.data.frame(t(AvgssGSEADF))
+        dataset_t <- cbind(GroupName = rownames(dataset_t),dataset_t)
+        heatdf <- merge(anno_meta,dataset_t, all.y = T, by = "GroupName", sort = F)
+        heatdf <- heatdf[match(dataset_t[,1],heatdf[,1]),]
+        heatdf
+        
+      })
+      
+      output$ssgseaheatmap3_df <- DT::renderDataTable({
+        
+        df <- ssgseaheatmap3_df_react()
+        dataset <- ssgseaheatmap3_react_df()
+        DT::datatable(df, 
+                      options = list(lengthMenu = c(5,10,20,50,100,1000),
+                                     pageLength = 10,
+                                     scrollX = TRUE),
+                      rownames = FALSE)%>%
+          formatRound(columns = rownames(dataset), digits = 4)
+        
+      })
+      
+      ssgseaheatmap3_react_df <- reactive({
         
         row_names_choice <- input$ShowRowNames1SSheat
         col_names_choice <- input$ShowColNamesSSheat
@@ -6024,12 +6001,6 @@ server <- function(input, output, session) {
           metacol <- colnames(meta)[2]
         }
         A <- A_raw()
-        #if (ncol(meta) > 2) {
-        #  metacol <- input$GSEAmetaCol
-        #}
-        #else if (ncol(meta) == 2) {
-        #  metacol <- colnames(meta)[2]
-        #}
         if (is.null(input$ClusterMethodSSheat) == TRUE) {
           clust_method <- 'complete'
         }
@@ -6041,13 +6012,6 @@ server <- function(input, output, session) {
         clust_rows_opt <- input$clustrowsSSheat
         scoreMethod <- input$ssGSEAtype
         
-        #if (is.null(input$ssgseaHeatGS) == TRUE) {
-        #  #geneset_names <- gs_names_start
-        #  geneset_names <- ssGSEA_Heat_GS()
-        #}
-        #else if (is.null(input$ssgseaHeatGS) == FALSE) {
-        #  geneset_names <- input$ssgseaHeatGS
-        #}
         samples_chosen <- input$userheatsampSS
         
         #A <- A[,samples_chosen]
@@ -6056,24 +6020,6 @@ server <- function(input, output, session) {
         #GS <- gs_react()
         GS <- gs_react_heat()
         geneset_names <- names(GS)
-        
-        #if (input$tables == 1) {
-        #  GS <- gs()[geneset_names]
-        #}
-        #if (input$tables == 3) {
-        #  GS <- gs2()[geneset_names]
-        #}
-        #if (input$tables == 5) {
-        #  gmt <- GStable.ubg()
-        #  colnames(gmt) <- c("term","gene")
-        #  #gs_name <- user_gs_mirror()[input$GStable.u_rows_selected,1]
-        #  gmt_sub <- gmt[which(gmt$term %in% geneset_names),]
-        #  GS <- list()
-        #  for (i in unique(gmt_sub[,1])){
-        #    GS[[i]] <- gmt_sub[gmt_sub[,1] == i,]$gene
-        #  }
-        #  #GS <- RDataListGen()[geneset_names]
-        #}
         
         
         if (as.numeric(tools::file_path_sans_ext(packageVersion("GSVA"))) >= 1.5) {
@@ -6087,15 +6033,10 @@ server <- function(input, output, session) {
             ssGSEA_param <- GSVA::zscoreParam(A,GS)
           }
           ssgsea <- GSVA::gsva(ssGSEA_param)
-          #ssGSEA <- as.data.frame(t(ssGSEA))
-          #ssGSEA[,SampleNameCol] <- rownames(ssGSEA)
         } else {
           ssgsea <- gsva(A,GS,method = scoreMethod, verbose = FALSE, ssgsea.norm = F)
-          #ssGSEA <- as.data.frame(t(ssGSEA))
-          #ssGSEA[,SampleNameCol] <- rownames(ssGSEA)
         }
         
-        #ssgsea <- gsva(A, GS, method = scoreMethod, verbose = F, ssgsea.norm = F)
         
         SD=apply(ssgsea,1, sd, na.rm = TRUE) #get SD
         
@@ -6135,6 +6076,100 @@ server <- function(input, output, session) {
         } else {
           AvgssGSEADF[AvgssGSEADF > abs(minimum)] = abs(minimum)
         }
+        AvgssGSEADF
+        
+      })
+      
+      ssgseaheatmap3_react <- reactive({
+        
+        row_names_choice <- input$ShowRowNames1SSheat
+        col_names_choice <- input$ShowColNamesSSheat
+        row_font <- input$heatmapFont1.r
+        col_font <- input$heatmapFont1.c
+        meta <- meta_react()
+        metacol <- metacol_reactVal()
+        if (length(colnames(meta)) == 2) {
+          metacol <- colnames(meta)[2]
+        }
+        A <- A_raw()
+        if (is.null(input$ClusterMethodSSheat) == TRUE) {
+          clust_method <- 'complete'
+        }
+        else if (is.null(input$ClusterMethodSSheat) == FALSE) {
+          clust_method <- input$ClusterMethodSSheat
+        }
+        color_choice <- input$ColorPalette_gseaHeat
+        clust_cols_opt <- input$clustcolsSSheat
+        clust_rows_opt <- input$clustrowsSSheat
+        scoreMethod <- input$ssGSEAtype
+        
+        #samples_chosen <- input$userheatsampSS
+        #
+        ##A <- A[,samples_chosen]
+        #A <- A[,which(colnames(A) %in% samples_chosen)]
+        #meta <- meta[which(meta[,1] %in% samples_chosen),]
+        ##GS <- gs_react()
+        #GS <- gs_react_heat()
+        #geneset_names <- names(GS)
+        #
+        #
+        #if (as.numeric(tools::file_path_sans_ext(packageVersion("GSVA"))) >= 1.5) {
+        #  if (scoreMethod == "ssgsea") {
+        #    ssGSEA_param <- GSVA::ssgseaParam(A,GS)
+        #  } else if (scoreMethod == "gsva") {
+        #    ssGSEA_param <- GSVA::gsvaParam(A,GS)
+        #  } else if (scoreMethod == "plage") {
+        #    ssGSEA_param <- GSVA::plageParam(A,GS)
+        #  } else if (scoreMethod == "zscore") {
+        #    ssGSEA_param <- GSVA::zscoreParam(A,GS)
+        #  }
+        #  ssgsea <- GSVA::gsva(ssGSEA_param)
+        #} else {
+        #  ssgsea <- gsva(A,GS,method = scoreMethod, verbose = FALSE, ssgsea.norm = F)
+        #}
+        #
+#
+        #SD=apply(ssgsea,1, sd, na.rm = TRUE) #get SD
+        #
+        #ssgsea2 = t(ssgsea)
+        #ssgsea3 = apply(ssgsea2, 2, scale);
+        #ssgsea4 = apply(ssgsea3, 1, rev)
+        #colnames(ssgsea4) = rownames(ssgsea2)
+        #
+        #ssgsea5 = ssgsea4 * SD #multiply zscore matrix by SD
+        #
+        #group_choices <- unique(meta[,metacol])
+        #AvgssGSEADF <- data.frame(rownames(ssgsea5))
+        #
+        #
+        #for (i in group_choices) {
+        #  samples <- meta[which(meta[,metacol] == i),1]
+        #  if (length(samples) <= 1) {
+        #    AvgssGSEADF[,paste("Avg_ssGSEA_",i, sep = "")] <- ssgsea5[,samples]
+        #  }
+        #  else if (length(samples) > 1) {
+        #    AvgssGSEADF[,paste("Avg_ssGSEA_",i, sep = "")] <- rowMeans(ssgsea5[,samples])
+        #  }
+        #}
+        #
+        #rownames(AvgssGSEADF) <- AvgssGSEADF[,1]
+        #AvgssGSEADF <- AvgssGSEADF[,-1]
+        #
+        #neworder_gs <- rownames(AvgssGSEADF)
+        #final_gs <- intersect(geneset_names,neworder_gs)
+        #
+        #AvgssGSEADF <- AvgssGSEADF[final_gs,]
+        #
+        AvgssGSEADF <- ssgseaheatmap3_react_df()
+        minimum = min(AvgssGSEADF, na.rm = T)
+        maximum = max(AvgssGSEADF, na.rm = T)
+        #if (abs(minimum) > abs(maximum)) {
+        #  AvgssGSEADF[AvgssGSEADF < -abs(maximum)] = -abs(maximum)
+        #} else {
+        #  AvgssGSEADF[AvgssGSEADF > abs(minimum)] = abs(minimum)
+        #}
+        
+        
         bk = c(seq(minimum,minimum/2, length=100), seq(minimum/2,maximum/2,length=100),seq(maximum/2,maximum,length=100))
         #Heatmap color
         col_sets <- c("OrRd","PuBu","Greens","YlGnBu")
@@ -8347,6 +8382,34 @@ server <- function(input, output, session) {
       
       
       ####----Download Handlers----####
+      
+      output$dnldssgseaheatmap_df <- downloadHandler(
+        filename = function() {
+          paste(gsub(" ","",ProjectName_react()),"_ssGSEA_zScore_Heatmap_Table.txt", sep = '')
+        },
+        content = function(file) {
+          df <- ssgseaheatmap_df_react()
+          write.table(df,file, sep = '\t', row.names = F)
+        }
+      )
+      output$dnldssgseaheatmap2_df <- downloadHandler(
+        filename = function() {
+          paste(gsub(" ","",ProjectName_react()),"_ssGSEA_RawDifference_Heatmap_Table.txt", sep = '')
+        },
+        content = function(file) {
+          df <- ssgseaheatmap2_df_react()
+          write.table(df,file, sep = '\t', row.names = F)
+        }
+      )
+      output$dnldssgseaheatmap3_df <- downloadHandler(
+        filename = function() {
+          paste(gsub(" ","",ProjectName_react()),"_ssGSEA_AvgRawDifference_Heatmap_Table.txt", sep = '')
+        },
+        content = function(file) {
+          df <- ssgseaheatmap3_df_react()
+          write.table(df,file, sep = '\t', row.names = F)
+        }
+      )
       
       output$dnldPlotSVG_exprBar <- downloadHandler(
         filename = function() {
