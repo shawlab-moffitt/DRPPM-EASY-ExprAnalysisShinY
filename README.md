@@ -2,7 +2,9 @@
 
 # Introduction
 
-With the rapid generation of high throughput datasets, the need for quick and reproducible data analysis tools has become paramount. Thus we developed DRPPM-EASY, an **E**xpression **A**nalysis App hosted in R **S**hin**Y**. The application minimizing the need for extensive computational experience, providing an easy plug-and-play process to allow the user explore their expression data on a web-based platform. The application provides many of the typical exploratory analyses and visualization, such as unsupervised hierarchical clustering, Gene Set Enrichment (GSEA), and differential gene expression. Results can be downloaded as a comprehensive table or gmt gene set for further downstream analysis.
+With the rapid generation of high throughput datasets, the need for quick and reproducible data analysis tools has become paramount. Thus we developed DRPPM-EASY, an **E**xpression **A**nalysis App hosted in R **S**hin**Y**. The application minimizes the need for extensive computational experience, providing an easy plug-and-play process to allow the user to explore their expression data on a web-based platform. The application provides many of the typical exploratory analyses and visualization, such as unsupervised hierarchical clustering, Gene Set Enrichment (GSEA), and differential gene expression. Results can be downloaded as a comprehensive table or gmt gene set for further downstream analysis.
+
+The user can access the easy app through https://shawlab-moffitt.shinyapps.io/drppm_easy_url_app/
 
 The ability to analyze omics data (such as genomic and proteomic data) is of significant interest. Thus we also generated DRPPM-EASY-Integration to facilitate the integration between multiple expression data set. [DRPPM-EASY-Integration](https://github.com/shawlab-moffitt/DRPPM-EASY-Integration) allows users to compare expression data between two matrices. The user can use the platform to identify key features being shared or differentated between the two data sets. We have implemented a pipeline to perform reciprocal GSEA and gene set comparison, to examine the "connectivity" between two data matrices.
 
