@@ -1,4 +1,4 @@
-type_id <- paste0("v2.0.20240731")
+type_id <- paste0("v2.0.20241121")
 
 # User Data Input --------------------------------------------------------------
 # Project Name
@@ -1327,6 +1327,10 @@ DGE_tab <- tabPanel("Differential Expression Analysis",
                                            selectizeInput("DEGCovarSelectTab","Select Covariates:", choices = NULL, selected = 1, multiple = T),
                                            h4("Download DEG Table as GMT File"),
                                            textInput("DEGfileName", "File Name for Download:",value = "DEGgeneSet"),
+                                           textInput("DEGGeneSetName1", "Upregulated Gene Set Name:",value = NULL),
+                                           conditionalPanel(condition = "input.UpDnChoice == 'UpAndDown_Regulated'",
+                                                            textInput("DEGGeneSetName2", "Downregulated Gene Set Name:",value = NULL)
+                                                            ),
                                            fluidRow(
                                              column(6,
                                                     numericInput("fc_cutoff2", "LogFC Threshold",
@@ -3616,6 +3620,7 @@ server <- function(input, output, session) {
         req(meta_input())
         meta <- meta_input()
         if (ncol(meta) > 2) {
+          req(input$SubsetCol)
           SubCol <- input$SubsetCol
           SubCrit <- input$SubsetCrit
           if (SubCol != "Select All Samples") {
@@ -4280,6 +4285,7 @@ server <- function(input, output, session) {
       #})
       
       observe({
+        req(input$PorAdjPval)
         if (input$PorAdjPval == "-log10(P.value)") {
           updateNumericInput(session,"p_cutoff", label = "P.Value Threshold:",
                              min = 0, max = 10, step = 0.1, value = 0.05)
@@ -7389,7 +7395,7 @@ server <- function(input, output, session) {
       })
       
       shiny::observe({
-        
+        req(BP_Feature_Choices2())
         updateSelectizeInput(session = session, inputId = "BPFeatSelection2",
                              choices = BP_Feature_Choices2(),
                              server = T)
@@ -9624,6 +9630,35 @@ server <- function(input, output, session) {
         }
       )
       
+      observe({
+        req(input$volcanoCompChoice2)
+        req(input$top_x2)
+        req(metacol_reactVal())
+        req(input$UpDnChoice)
+        
+        if (input$volcanoCompChoice2 == "Limma: Two groups") {
+          feature_labs <- paste0("_",input$comparisonA2.DEG,"_",input$comparisonB2.DEG)
+        } else if (input$volcanoCompChoice2 == "Limma: One group") {
+          feature_labs <- paste0("_",input$comparisonA2.DEG_one)
+        } else if (input$volcanoCompChoice2 == "DESeq2") {
+          feature_labs <- paste0("_",input$DESeqDesignColRef_tab)
+        }
+        
+        if (input$UpDnChoice == "UpAndDown_Regulated") {
+          GeneSetName_Up <- paste0("DEgenes_Top",input$top_x2,"_UpReg_",metacol_reactVal(),feature_labs)
+          GeneSetName_Dn <- paste0("DEgenes_Top",input$top_x2,"_DownReg_",metacol_reactVal(),feature_labs)
+          updateTextInput(session,"DEGGeneSetName1", label = "Upregulated Gene Set Name:",value = GeneSetName_Up)
+          updateTextInput(session,"DEGGeneSetName2", label = "Downregulated Gene Set Name:",value = GeneSetName_Dn)
+        } else if (input$UpDnChoice == "Up_Regulated") {
+          GeneSetName_Up <- paste0("DEgenes_Top",input$top_x2,"_UpReg_",metacol_reactVal(),feature_labs)
+          updateTextInput(session,"DEGGeneSetName1", label = "Upregulated Gene Set Name:",value = GeneSetName_Up)
+        } else if (input$UpDnChoice == "Down_Regulated") {
+          GeneSetName_Dn <- paste0("DEgenes_Top",input$top_x2,"_DownReg_",metacol_reactVal(),feature_labs)
+          updateTextInput(session,"DEGGeneSetName1", label = "Downregulated Gene Set Name:",value = GeneSetName_Dn)
+        }
+        
+      })
+      
       #render download button for DEG GMT
       output$DEGgmtDownload <- downloadHandler(
         filename = function() {
@@ -9631,28 +9666,52 @@ server <- function(input, output, session) {
         },
         content = function(file) {
           top1 <- DEGtable1_react()
+          
+          if (input$UpDnChoice == "UpAndDown_Regulated") {
+            GeneSetName_Up <- input$DEGGeneSetName1
+            GeneSetName_Dn <- input$DEGGeneSetName2
+          } else if (input$UpDnChoice == "Up_Regulated") {
+            GeneSetName_Up <- input$DEGGeneSetName1
+          } else if (input$UpDnChoice == "Down_Regulated") {
+            GeneSetName_Dn <- input$DEGGeneSetName1
+          }
+          
+          description <- paste0("FCCutoff_",abs(input$fc_cutoff2),"_PvalCutoff_",input$p_cutoff2)
+          
           if (input$UpDnChoice == "UpAndDown_Regulated"){
-            genes <- rownames(top1)[which(abs(top1$logFC) > abs(input$fc_cutoff2) & top1$P.Value < input$p_cutoff2)]
-            genes.h <- t(as.data.frame(head(genes, n=input$top_x2)))
-            genes.h.gmt <- data.frame(paste(input$top_x2,input$UpDnChoice,"DEgenes", sep = ""),
-                                      paste(input$UpDnChoice,"DEgenes",sep = ""),
-                                      genes.h)
+            GeneSetName_Up <- ifelse(is.null(GeneSetName_Up),paste0("DEgenes_Top",input$top_x2,"_UpReg"),GeneSetName_Up)
+            GeneSetName_Dn <- ifelse(is.null(GeneSetName_Dn),paste0("DEgenes_Top",input$top_x2,"_DownReg"),GeneSetName_Dn)
+            genes_up <- rownames(top1)[which(top1$logFC > abs(input$fc_cutoff2) & top1$P.Value < input$p_cutoff2)]
+            genes_dn <- rownames(top1)[which(top1$logFC > -abs(input$fc_cutoff2) & top1$P.Value < input$p_cutoff2)]
+            genes_up_h <- t(as.data.frame(head(genes_up, n=input$top_x2)))
+            genes_dn_h <- t(as.data.frame(head(genes_dn, n=input$top_x2)))
+            genes_up_h_gmt <- data.frame(name = GeneSetName_Up,
+                                         description = description,
+                                         genes_up_h)
+            genes_dn_h_gmt <- data.frame(name = GeneSetName_Up,
+                                         description = description,
+                                         genes_dn_h)
+            genes_h_gmt <- rbindlist(list(genes_up_h_gmt,genes_dn_h_gmt), fill = T)
           }
           else if (input$UpDnChoice == "Up_Regulated"){
-            genes <- rownames(top1)[which(top1$logFC > input$fc_cutoff2 & top1$P.Value < input$p_cutoff2)]
-            genes.h <- t(as.data.frame(head(genes, n=input$top_x2)))
-            genes.h.gmt <- data.frame(paste(input$top_x2,input$UpDnChoice,"DEgenes", sep = ""),
-                                      paste(input$UpDnChoice,"DEgenes",sep = ""),
-                                      genes.h)
+            GeneSetName_Up <- ifelse(is.null(GeneSetName_Up),paste0("DEgenes_Top",input$top_x2,"_UpReg"),GeneSetName_Up)
+            genes_up <- rownames(top1)[which(top1$logFC > abs(input$fc_cutoff2) & top1$P.Value < input$p_cutoff2)]
+            genes_up_h <- t(as.data.frame(head(genes_up, n=input$top_x2)))
+            genes_up_h_gmt <- data.frame(GeneSetName_Up,
+                                         description,
+                                         genes_up_h)
+            genes_h_gmt <- genes_up_h_gmt
           }
           else if (input$UpDnChoice == "Down_Regulated"){
-            genes <- rownames(top1)[which(top1$logFC < -abs(input$fc_cutoff2) & top1$P.Value < input$p_cutoff2)]
-            genes.h <- t(as.data.frame(head(genes, n=input$top_x2)))
-            genes.h.gmt <- data.frame(paste(input$top_x2,input$UpDnChoice,"DEgenes", sep = ""),
-                                      paste(input$UpDnChoice,"DEgenes",sep = ""),
-                                      genes.h)
+            GeneSetName_Dn <- ifelse(is.null(GeneSetName_Dn),paste0("DEgenes_Top",input$top_x2,"_DownReg"),GeneSetName_Dn)
+            genes_dn <- rownames(top1)[which(top1$logF < -abs(input$fc_cutoff2) & top1$P.Value < input$p_cutoff2)]
+            genes_dn_h <- t(as.data.frame(head(genes_dn, n=input$top_x2)))
+            genes_dn_h_gmt <- data.frame(GeneSetName_Dn,
+                                         description,
+                                         genes_dn_h)
+            genes_h_gmt <- genes_dn_h_gmt
           }
-          write_delim(genes.h.gmt, file, delim = '\t', col_names = F)
+          write_delim(genes_h_gmt, file, delim = '\t', col_names = F)
         }
       )
       
@@ -9924,111 +9983,118 @@ server <- function(input, output, session) {
           paste("Enrich_Sig_Table_",groupA,"vs",groupB,".tsv", sep = "")
         },
         content = function(file) {
-          meta <- meta_react()
-          metacol <- metacol_reactVal()
-          if (length(colnames(meta)) == 2) {
-            metacol <- colnames(meta)[2]
-          }
-          expr <- expr_react()
-          if (input$tables == 3) {
-            groupA <- meta[which(meta[,metacol] == input$comparisonA),1]
-            groupB <- meta[which(meta[,metacol] == input$comparisonB),1]
-            ##----Signal-to-Noise Calculation----##
-            A <- A + 0.00000001
-            P = as.matrix(as.numeric(colnames(A) %in% groupA))
-            n1 <- sum(P[,1])
-            M1 <- A %*% P
-            M1 <- M1/n1
-            A2 <- A*A
-            S1 <- A2 %*% P
-            S1 <- S1/n1 - M1*M1
-            S1 <- sqrt(abs((n1/(n1-1)) * S1))
-            P = as.matrix(as.numeric(colnames(A) %in% groupB))
-            n2 <- sum(P[,1])
-            M2 <- A %*% P
-            M2 <- M2/n2
-            A2 <- A*A
-            S2 <- A2 %*% P
-            S2 <- S2/n2 - M2*M2
-            S2 <- sqrt(abs((n2/(n2-1)) * S2))
-            rm(A2)
-            # small sigma "fix" as used in GeneCluster
-            S2 <- ifelse(0.2*abs(M2) < S2, S2, 0.2*abs(M2))
-            S2 <- ifelse(S2 == 0, 0.2, S2)
-            S1 <- ifelse(0.2*abs(M1) < S1, S1, 0.2*abs(M1))
-            S1 <- ifelse(S1 == 0, 0.2, S1)
-            M1 <- M1 - M2
-            rm(M2)
-            S1 <- S1 + S2
-            rm(S2)
-            s2n.matrix <- M1/S1
-            ##----Reformatting----##
-            s2n.df <- as.data.frame(s2n.matrix)
-            s2n.df$GeneID <- rownames(s2n.df)
-            rownames(s2n.df) <- NULL
-            data <- dplyr::select(s2n.df, GeneID, V1)
-            data.gsea <- data$V1
-            names(data.gsea) <- as.character(data$GeneID)
-            s2n.matrix.s <- sort(data.gsea, decreasing = T)
-            ##----GSEA----##
-            gmt.i <- tab2()
-            gsea.res <- GSEA(s2n.matrix.s, TERM2GENE = gmt.i, verbose = F, pvalueCutoff = input$userPval)
-            gsea.df <- as.data.frame(gsea.res@result)
-            write_delim(gsea.df, file, delim = '\t')
-          }
-          else if (input$tables == 5) {
-            groupA <- meta[which(meta[,metacol] == input$comparisonA),1]
-            groupB <- meta[which(meta[,metacol] == input$comparisonB),1]
-            ##----Signal-to-Noise Calculation----##
-            A <- A + 0.00000001
-            P = as.matrix(as.numeric(colnames(A) %in% groupA))
-            n1 <- sum(P[,1])
-            M1 <- A %*% P
-            M1 <- M1/n1
-            A2 <- A*A
-            S1 <- A2 %*% P
-            S1 <- S1/n1 - M1*M1
-            S1 <- sqrt(abs((n1/(n1-1)) * S1))
-            P = as.matrix(as.numeric(colnames(A) %in% groupB))
-            n2 <- sum(P[,1])
-            M2 <- A %*% P
-            M2 <- M2/n2
-            A2 <- A*A
-            S2 <- A2 %*% P
-            S2 <- S2/n2 - M2*M2
-            S2 <- sqrt(abs((n2/(n2-1)) * S2))
-            rm(A2)
-            # small sigma "fix" as used in GeneCluster
-            S2 <- ifelse(0.2*abs(M2) < S2, S2, 0.2*abs(M2))
-            S2 <- ifelse(S2 == 0, 0.2, S2)
-            S1 <- ifelse(0.2*abs(M1) < S1, S1, 0.2*abs(M1))
-            S1 <- ifelse(S1 == 0, 0.2, S1)
-            M1 <- M1 - M2
-            rm(M2)
-            S1 <- S1 + S2
-            rm(S2)
-            s2n.matrix <- M1/S1
-            ##----Reformatting----##
-            s2n.df <- as.data.frame(s2n.matrix)
-            s2n.df$GeneID <- rownames(s2n.df)
-            rownames(s2n.df) <- NULL
-            data <- dplyr::select(s2n.df, GeneID, V1)
-            data.gsea <- data$V1
-            names(data.gsea) <- as.character(data$GeneID)
-            s2n.matrix.s <- sort(data.gsea, decreasing = T)
-            ##----GSEA----##
-            gmt.i <- GStable.ubg()
-            gsea.res <- GSEA(s2n.matrix.s, TERM2GENE = gmt.i, verbose = F, pvalueCutoff = input$userPval)
-            gsea.df <- as.data.frame(gsea.res@result)
-            write_delim(gsea.df, file, delim = '\t')
-          }
-          else if (input$tables == 1){
-            if (input$GenerateEST == TRUE) {
-              gsea.df <- GeneratedMSigDBEST()
-              gsea.df <- as.data.frame(gsea.df)
-              write_delim(gsea.df, file, delim = '\t')
-            }
-          }
+          
+          req(GeneratedMSigDBEST())
+          gsea.df <- GeneratedMSigDBEST()
+          gsea.df <- as_tibble(gsea.df)
+          gsea.df <- gsea.df[,-2]
+          write.table(gsea.df, file, sep = '\t', row.names = F)
+          
+          #meta <- meta_react()
+          #metacol <- metacol_reactVal()
+          #if (length(colnames(meta)) == 2) {
+          #  metacol <- colnames(meta)[2]
+          #}
+          #expr <- expr_react()
+          #if (input$tables == 3) {
+          #  groupA <- meta[which(meta[,metacol] == input$comparisonA),1]
+          #  groupB <- meta[which(meta[,metacol] == input$comparisonB),1]
+          #  ##----Signal-to-Noise Calculation----##
+          #  A <- A + 0.00000001
+          #  P = as.matrix(as.numeric(colnames(A) %in% groupA))
+          #  n1 <- sum(P[,1])
+          #  M1 <- A %*% P
+          #  M1 <- M1/n1
+          #  A2 <- A*A
+          #  S1 <- A2 %*% P
+          #  S1 <- S1/n1 - M1*M1
+          #  S1 <- sqrt(abs((n1/(n1-1)) * S1))
+          #  P = as.matrix(as.numeric(colnames(A) %in% groupB))
+          #  n2 <- sum(P[,1])
+          #  M2 <- A %*% P
+          #  M2 <- M2/n2
+          #  A2 <- A*A
+          #  S2 <- A2 %*% P
+          #  S2 <- S2/n2 - M2*M2
+          #  S2 <- sqrt(abs((n2/(n2-1)) * S2))
+          #  rm(A2)
+          #  # small sigma "fix" as used in GeneCluster
+          #  S2 <- ifelse(0.2*abs(M2) < S2, S2, 0.2*abs(M2))
+          #  S2 <- ifelse(S2 == 0, 0.2, S2)
+          #  S1 <- ifelse(0.2*abs(M1) < S1, S1, 0.2*abs(M1))
+          #  S1 <- ifelse(S1 == 0, 0.2, S1)
+          #  M1 <- M1 - M2
+          #  rm(M2)
+          #  S1 <- S1 + S2
+          #  rm(S2)
+          #  s2n.matrix <- M1/S1
+          #  ##----Reformatting----##
+          #  s2n.df <- as.data.frame(s2n.matrix)
+          #  s2n.df$GeneID <- rownames(s2n.df)
+          #  rownames(s2n.df) <- NULL
+          #  data <- dplyr::select(s2n.df, GeneID, V1)
+          #  data.gsea <- data$V1
+          #  names(data.gsea) <- as.character(data$GeneID)
+          #  s2n.matrix.s <- sort(data.gsea, decreasing = T)
+          #  ##----GSEA----##
+          #  gmt.i <- tab2()
+          #  gsea.res <- GSEA(s2n.matrix.s, TERM2GENE = gmt.i, verbose = F, pvalueCutoff = input$userPval)
+          #  gsea.df <- as.data.frame(gsea.res@result)
+          #  write_delim(gsea.df, file, delim = '\t')
+          #}
+          #else if (input$tables == 5) {
+          #  groupA <- meta[which(meta[,metacol] == input$comparisonA),1]
+          #  groupB <- meta[which(meta[,metacol] == input$comparisonB),1]
+          #  ##----Signal-to-Noise Calculation----##
+          #  A <- A + 0.00000001
+          #  P = as.matrix(as.numeric(colnames(A) %in% groupA))
+          #  n1 <- sum(P[,1])
+          #  M1 <- A %*% P
+          #  M1 <- M1/n1
+          #  A2 <- A*A
+          #  S1 <- A2 %*% P
+          #  S1 <- S1/n1 - M1*M1
+          #  S1 <- sqrt(abs((n1/(n1-1)) * S1))
+          #  P = as.matrix(as.numeric(colnames(A) %in% groupB))
+          #  n2 <- sum(P[,1])
+          #  M2 <- A %*% P
+          #  M2 <- M2/n2
+          #  A2 <- A*A
+          #  S2 <- A2 %*% P
+          #  S2 <- S2/n2 - M2*M2
+          #  S2 <- sqrt(abs((n2/(n2-1)) * S2))
+          #  rm(A2)
+          #  # small sigma "fix" as used in GeneCluster
+          #  S2 <- ifelse(0.2*abs(M2) < S2, S2, 0.2*abs(M2))
+          #  S2 <- ifelse(S2 == 0, 0.2, S2)
+          #  S1 <- ifelse(0.2*abs(M1) < S1, S1, 0.2*abs(M1))
+          #  S1 <- ifelse(S1 == 0, 0.2, S1)
+          #  M1 <- M1 - M2
+          #  rm(M2)
+          #  S1 <- S1 + S2
+          #  rm(S2)
+          #  s2n.matrix <- M1/S1
+          #  ##----Reformatting----##
+          #  s2n.df <- as.data.frame(s2n.matrix)
+          #  s2n.df$GeneID <- rownames(s2n.df)
+          #  rownames(s2n.df) <- NULL
+          #  data <- dplyr::select(s2n.df, GeneID, V1)
+          #  data.gsea <- data$V1
+          #  names(data.gsea) <- as.character(data$GeneID)
+          #  s2n.matrix.s <- sort(data.gsea, decreasing = T)
+          #  ##----GSEA----##
+          #  gmt.i <- GStable.ubg()
+          #  gsea.res <- GSEA(s2n.matrix.s, TERM2GENE = gmt.i, verbose = F, pvalueCutoff = input$userPval)
+          #  gsea.df <- as.data.frame(gsea.res@result)
+          #  write_delim(gsea.df, file, delim = '\t')
+          #}
+          #else if (input$tables == 1){
+          #  if (input$GenerateEST == TRUE) {
+          #    gsea.df <- GeneratedMSigDBEST()
+          #    gsea.df <- as.data.frame(gsea.df)
+          #    write_delim(gsea.df, file, delim = '\t')
+          #  }
+          #}
         }
       )
       
