@@ -1,4 +1,4 @@
-type_id <- paste0("v2.0.20241121")
+type_id <- paste0("v2.0.20241122")
 
 # User Data Input --------------------------------------------------------------
 # Project Name
@@ -1344,7 +1344,8 @@ DGE_tab <- tabPanel("Differential Expression Analysis",
                                            selectInput("UpDnChoice","Up-regulated or Down-regulated:",
                                                        choices = c("UpAndDown_Regulated","Up_Regulated","Down_Regulated")),
                                            numericInput("top_x2", "Number of Top Hits:", value = 100),
-                                           downloadButton("DEGgmtDownload", "Download DEG .gmt")
+                                           downloadButton("DEGgmtDownload", "DEG Geneset .gmt"),
+                                           downloadButton("DEGtsvDownload", "DEG Geneset .tsv")
                           )
                         ),
                         ### Main panel -----------------------------------------
@@ -9645,18 +9646,42 @@ server <- function(input, output, session) {
         }
         
         if (input$UpDnChoice == "UpAndDown_Regulated") {
-          GeneSetName_Up <- paste0("DEgenes_Top",input$top_x2,"_UpReg_",metacol_reactVal(),feature_labs)
-          GeneSetName_Dn <- paste0("DEgenes_Top",input$top_x2,"_DownReg_",metacol_reactVal(),feature_labs)
+          GeneSetName_Up <- paste0("Top",input$top_x2,"Up_",ProjectName_react(),"_",metacol_reactVal(),feature_labs)
+          GeneSetName_Dn <- paste0("Top",input$top_x2,"Down_",ProjectName_react(),"_",metacol_reactVal(),feature_labs)
           updateTextInput(session,"DEGGeneSetName1", label = "Upregulated Gene Set Name:",value = GeneSetName_Up)
           updateTextInput(session,"DEGGeneSetName2", label = "Downregulated Gene Set Name:",value = GeneSetName_Dn)
         } else if (input$UpDnChoice == "Up_Regulated") {
-          GeneSetName_Up <- paste0("DEgenes_Top",input$top_x2,"_UpReg_",metacol_reactVal(),feature_labs)
+          GeneSetName_Up <- paste0("Top",input$top_x2,"Up_",ProjectName_react(),"_",metacol_reactVal(),feature_labs)
           updateTextInput(session,"DEGGeneSetName1", label = "Upregulated Gene Set Name:",value = GeneSetName_Up)
         } else if (input$UpDnChoice == "Down_Regulated") {
-          GeneSetName_Dn <- paste0("DEgenes_Top",input$top_x2,"_DownReg_",metacol_reactVal(),feature_labs)
+          GeneSetName_Dn <- paste0("Top",input$top_x2,"Down_",ProjectName_react(),"_",metacol_reactVal(),feature_labs)
           updateTextInput(session,"DEGGeneSetName1", label = "Downregulated Gene Set Name:",value = GeneSetName_Dn)
         }
         
+      })
+      
+      observe({
+        req(input$volcanoCompChoice2)
+        req(input$top_x2)
+        req(metacol_reactVal())
+        req(input$UpDnChoice)
+        
+        if (input$volcanoCompChoice2 == "Limma: Two groups") {
+          feature_labs <- paste0("_",input$comparisonA2.DEG,"_",input$comparisonB2.DEG)
+        } else if (input$volcanoCompChoice2 == "Limma: One group") {
+          feature_labs <- paste0("_",input$comparisonA2.DEG_one)
+        } else if (input$volcanoCompChoice2 == "DESeq2") {
+          feature_labs <- paste0("_",input$DESeqDesignColRef_tab)
+        }
+        
+        if (input$UpDnChoice == "UpAndDown_Regulated") {
+          NewFileName <- paste0("Top",input$top_x2,"UpAndDown_",ProjectName_react(),"_",metacol_reactVal(),feature_labs,"_Geneset")
+        } else if (input$UpDnChoice == "Up_Regulated") {
+          NewFileName <- paste0("Top",input$top_x2,"Up_",ProjectName_react(),"_",metacol_reactVal(),feature_labs,"_Geneset")
+        } else if (input$UpDnChoice == "Down_Regulated") {
+          NewFileName <- paste0("Top",input$top_x2,"Down_",ProjectName_react(),"_",metacol_reactVal(),feature_labs,"_Geneset")
+        }
+        updateTextInput(session,"DEGfileName",value = NewFileName)
       })
       
       #render download button for DEG GMT
@@ -9679,8 +9704,8 @@ server <- function(input, output, session) {
           description <- paste0("FCCutoff_",abs(input$fc_cutoff2),"_PvalCutoff_",input$p_cutoff2)
           
           if (input$UpDnChoice == "UpAndDown_Regulated"){
-            GeneSetName_Up <- ifelse(is.null(GeneSetName_Up),paste0("DEgenes_Top",input$top_x2,"_UpReg"),GeneSetName_Up)
-            GeneSetName_Dn <- ifelse(is.null(GeneSetName_Dn),paste0("DEgenes_Top",input$top_x2,"_DownReg"),GeneSetName_Dn)
+            GeneSetName_Up <- ifelse(is.null(GeneSetName_Up),paste0("Top",input$top_x2,"_UpReg"),GeneSetName_Up)
+            GeneSetName_Dn <- ifelse(is.null(GeneSetName_Dn),paste0("Top",input$top_x2,"_DownReg"),GeneSetName_Dn)
             genes_up <- rownames(top1)[which(top1$logFC > abs(input$fc_cutoff2) & top1$P.Value < input$p_cutoff2)]
             genes_dn <- rownames(top1)[which(top1$logFC > -abs(input$fc_cutoff2) & top1$P.Value < input$p_cutoff2)]
             genes_up_h <- t(as.data.frame(head(genes_up, n=input$top_x2)))
@@ -9688,13 +9713,13 @@ server <- function(input, output, session) {
             genes_up_h_gmt <- data.frame(name = GeneSetName_Up,
                                          description = description,
                                          genes_up_h)
-            genes_dn_h_gmt <- data.frame(name = GeneSetName_Up,
+            genes_dn_h_gmt <- data.frame(name = GeneSetName_Dn,
                                          description = description,
                                          genes_dn_h)
             genes_h_gmt <- rbindlist(list(genes_up_h_gmt,genes_dn_h_gmt), fill = T)
           }
           else if (input$UpDnChoice == "Up_Regulated"){
-            GeneSetName_Up <- ifelse(is.null(GeneSetName_Up),paste0("DEgenes_Top",input$top_x2,"_UpReg"),GeneSetName_Up)
+            GeneSetName_Up <- ifelse(is.null(GeneSetName_Up),paste0("Top",input$top_x2,"_UpReg"),GeneSetName_Up)
             genes_up <- rownames(top1)[which(top1$logFC > abs(input$fc_cutoff2) & top1$P.Value < input$p_cutoff2)]
             genes_up_h <- t(as.data.frame(head(genes_up, n=input$top_x2)))
             genes_up_h_gmt <- data.frame(GeneSetName_Up,
@@ -9703,7 +9728,7 @@ server <- function(input, output, session) {
             genes_h_gmt <- genes_up_h_gmt
           }
           else if (input$UpDnChoice == "Down_Regulated"){
-            GeneSetName_Dn <- ifelse(is.null(GeneSetName_Dn),paste0("DEgenes_Top",input$top_x2,"_DownReg"),GeneSetName_Dn)
+            GeneSetName_Dn <- ifelse(is.null(GeneSetName_Dn),paste0("Top",input$top_x2,"_DownReg"),GeneSetName_Dn)
             genes_dn <- rownames(top1)[which(top1$logF < -abs(input$fc_cutoff2) & top1$P.Value < input$p_cutoff2)]
             genes_dn_h <- t(as.data.frame(head(genes_dn, n=input$top_x2)))
             genes_dn_h_gmt <- data.frame(GeneSetName_Dn,
@@ -9712,6 +9737,58 @@ server <- function(input, output, session) {
             genes_h_gmt <- genes_dn_h_gmt
           }
           write_delim(genes_h_gmt, file, delim = '\t', col_names = F)
+        }
+      )
+      
+      #render download button for DEG GMT
+      output$DEGtsvDownload <- downloadHandler(
+        filename = function() {
+          paste(input$DEGfileName,".tsv",sep = "")
+        },
+        content = function(file) {
+          top1 <- DEGtable1_react()
+          
+          if (input$UpDnChoice == "UpAndDown_Regulated") {
+            GeneSetName_Up <- input$DEGGeneSetName1
+            GeneSetName_Dn <- input$DEGGeneSetName2
+          } else if (input$UpDnChoice == "Up_Regulated") {
+            GeneSetName_Up <- input$DEGGeneSetName1
+          } else if (input$UpDnChoice == "Down_Regulated") {
+            GeneSetName_Dn <- input$DEGGeneSetName1
+          }
+          
+          description <- paste0("FCCutoff_",abs(input$fc_cutoff2),"_PvalCutoff_",input$p_cutoff2)
+          
+          if (input$UpDnChoice == "UpAndDown_Regulated"){
+            GeneSetName_Up <- ifelse(is.null(GeneSetName_Up),paste0("Top",input$top_x2,"_UpReg"),GeneSetName_Up)
+            GeneSetName_Dn <- ifelse(is.null(GeneSetName_Dn),paste0("Top",input$top_x2,"_DownReg"),GeneSetName_Dn)
+            genes_up <- rownames(top1)[which(top1$logFC > abs(input$fc_cutoff2) & top1$P.Value < input$p_cutoff2)]
+            genes_dn <- rownames(top1)[which(top1$logFC > -abs(input$fc_cutoff2) & top1$P.Value < input$p_cutoff2)]
+            genes_up_h <- head(genes_up, n=input$top_x2)
+            genes_dn_h <- head(genes_dn, n=input$top_x2)
+            genes_up_h_tsv <- data.frame(term = rep(GeneSetName_Up,length(genes_up_h)),
+                                         gene = genes_up_h)
+            genes_dn_h_tsv <- data.frame(term = rep(GeneSetName_Dn,length(genes_dn_h)),
+                                         gene = genes_dn_h)
+            genes_h_tsv <- rbindlist(list(genes_up_h_tsv,genes_dn_h_tsv), fill = T)
+          }
+          else if (input$UpDnChoice == "Up_Regulated"){
+            GeneSetName_Up <- ifelse(is.null(GeneSetName_Up),paste0("Top",input$top_x2,"_UpReg"),GeneSetName_Up)
+            genes_up <- rownames(top1)[which(top1$logFC > abs(input$fc_cutoff2) & top1$P.Value < input$p_cutoff2)]
+            genes_up_h <- head(genes_up, n=input$top_x2)
+            genes_up_h_tsv <- data.frame(term = rep(GeneSetName_Up,length(genes_up_h)),
+                                         gene = genes_up_h)
+            genes_h_tsv <- genes_up_h_tsv
+          }
+          else if (input$UpDnChoice == "Down_Regulated"){
+            GeneSetName_Dn <- ifelse(is.null(GeneSetName_Dn),paste0("Top",input$top_x2,"_DownReg"),GeneSetName_Dn)
+            genes_dn <- rownames(top1)[which(top1$logF < -abs(input$fc_cutoff2) & top1$P.Value < input$p_cutoff2)]
+            genes_dn_h <- head(genes_dn, n=input$top_x2)
+            genes_dn_h_tsv <- data.frame(term = rep(GeneSetName_Dn,length(genes_dn_h)),
+                                         gene = genes_dn_h)
+            genes_h_tsv <- genes_dn_h_tsv
+          }
+          write_delim(genes_h_tsv, file, delim = '\t')
         }
       )
       
