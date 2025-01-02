@@ -267,8 +267,8 @@ Gene set enrichment analysis (GSEA) is performed through signal-to-noise calcula
 4. The ssGSEA score file may be downloaded here
    * This table may be used in the [DRPPM-EASY-Integration App](https://github.com/shawlab-moffitt/DRPPM-EASY-Integration) wher you can compare two of these types of files to each other, or you can compare one of the files to an expression matrix to generate a correlation ranking
 
-
-
+### Reference Citation ###
+Obermayer A, Dong L, Hu Q, Golden M, Noble JD, Rodriguez P, Robinson TJ, Teng M, Tan AC, Shaw TI*. DRPPM-EASY: A Web-Based Framework for Integrative Analysis of Multi-Omics Cancer Datasets. Biology (Basel). 2022 Feb 8;11(2):260. doi: 10.3390/biology11020260. PMID: 35205126 PMCID: PMC8869715
 
 # Quesions and Comments
 
