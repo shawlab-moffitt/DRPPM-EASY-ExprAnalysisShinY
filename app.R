@@ -1,4 +1,4 @@
-type_id <- paste0("v2.0.20241122")
+type_id <- paste0("v2.0.20250116")
 
 # User Data Input --------------------------------------------------------------
 # Project Name
@@ -1092,7 +1092,7 @@ DGE_tab <- tabPanel("Differential Expression Analysis",
                                                       fluidRow(
                                                         column(6,
                                                                numericInput("fc_cutoff", "LogFC Threshold",
-                                                                            min = 0, max = 5, step = 0.1, value = 1)
+                                                                            min = 0, max = 5, step = 0.1, value = 0)
                                                         ),
                                                         column(6,
                                                                numericInput("p_cutoff", "P.Value Threshold:",
@@ -1334,7 +1334,7 @@ DGE_tab <- tabPanel("Differential Expression Analysis",
                                            fluidRow(
                                              column(6,
                                                     numericInput("fc_cutoff2", "LogFC Threshold",
-                                                                 min = 0, max = 5, step = 0.1, value = 1)
+                                                                 min = 0, max = 5, step = 0.1, value = 0)
                                              ),
                                              column(6,
                                                     numericInput("p_cutoff2", "P.Value Cutoff:",
@@ -9706,8 +9706,13 @@ server <- function(input, output, session) {
           if (input$UpDnChoice == "UpAndDown_Regulated"){
             GeneSetName_Up <- ifelse(is.null(GeneSetName_Up),paste0("Top",input$top_x2,"_UpReg"),GeneSetName_Up)
             GeneSetName_Dn <- ifelse(is.null(GeneSetName_Dn),paste0("Top",input$top_x2,"_DownReg"),GeneSetName_Dn)
-            genes_up <- rownames(top1)[which(top1$logFC > abs(input$fc_cutoff2) & top1$P.Value < input$p_cutoff2)]
-            genes_dn <- rownames(top1)[which(top1$logFC > -abs(input$fc_cutoff2) & top1$P.Value < input$p_cutoff2)]
+            if (input$fc_cutoff2 != 0) {
+              genes_up <- rownames(top1)[which(top1$logFC > abs(input$fc_cutoff2) & top1$P.Value < input$p_cutoff2)]
+              genes_dn <- rownames(top1)[which(top1$logFC > -abs(input$fc_cutoff2) & top1$P.Value < input$p_cutoff2)]
+            }  else {
+              genes_up <- rownames(top1)[which(top1$logFC > input$fc_cutoff2 & top1$P.Value < input$p_cutoff2)]
+              genes_dn <- rownames(top1)[which(top1$logFC < input$fc_cutoff2 & top1$P.Value < input$p_cutoff2)]
+            }
             genes_up_h <- t(as.data.frame(head(genes_up, n=input$top_x2)))
             genes_dn_h <- t(as.data.frame(head(genes_dn, n=input$top_x2)))
             genes_up_h_gmt <- data.frame(name = GeneSetName_Up,
@@ -9729,7 +9734,12 @@ server <- function(input, output, session) {
           }
           else if (input$UpDnChoice == "Down_Regulated"){
             GeneSetName_Dn <- ifelse(is.null(GeneSetName_Dn),paste0("Top",input$top_x2,"_DownReg"),GeneSetName_Dn)
-            genes_dn <- rownames(top1)[which(top1$logF < -abs(input$fc_cutoff2) & top1$P.Value < input$p_cutoff2)]
+            if (input$fc_cutoff2 != 0) {
+              genes_dn <- rownames(top1)[which(top1$logFC > -abs(input$fc_cutoff2) & top1$P.Value < input$p_cutoff2)]
+            }  else {
+              genes_dn <- rownames(top1)[which(top1$logFC < input$fc_cutoff2 & top1$P.Value < input$p_cutoff2)]
+            }
+            #genes_dn <- rownames(top1)[which(top1$logF < -abs(input$fc_cutoff2) & top1$P.Value < input$p_cutoff2)]
             genes_dn_h <- t(as.data.frame(head(genes_dn, n=input$top_x2)))
             genes_dn_h_gmt <- data.frame(GeneSetName_Dn,
                                          description,
@@ -9762,8 +9772,13 @@ server <- function(input, output, session) {
           if (input$UpDnChoice == "UpAndDown_Regulated"){
             GeneSetName_Up <- ifelse(is.null(GeneSetName_Up),paste0("Top",input$top_x2,"_UpReg"),GeneSetName_Up)
             GeneSetName_Dn <- ifelse(is.null(GeneSetName_Dn),paste0("Top",input$top_x2,"_DownReg"),GeneSetName_Dn)
-            genes_up <- rownames(top1)[which(top1$logFC > abs(input$fc_cutoff2) & top1$P.Value < input$p_cutoff2)]
-            genes_dn <- rownames(top1)[which(top1$logFC > -abs(input$fc_cutoff2) & top1$P.Value < input$p_cutoff2)]
+            if (input$fc_cutoff2 != 0) {
+              genes_up <- rownames(top1)[which(top1$logFC > abs(input$fc_cutoff2) & top1$P.Value < input$p_cutoff2)]
+              genes_dn <- rownames(top1)[which(top1$logFC > -abs(input$fc_cutoff2) & top1$P.Value < input$p_cutoff2)]
+            }  else {
+              genes_up <- rownames(top1)[which(top1$logFC > input$fc_cutoff2 & top1$P.Value < input$p_cutoff2)]
+              genes_dn <- rownames(top1)[which(top1$logFC < input$fc_cutoff2 & top1$P.Value < input$p_cutoff2)]
+            }
             genes_up_h <- head(genes_up, n=input$top_x2)
             genes_dn_h <- head(genes_dn, n=input$top_x2)
             genes_up_h_tsv <- data.frame(term = rep(GeneSetName_Up,length(genes_up_h)),
@@ -9782,7 +9797,11 @@ server <- function(input, output, session) {
           }
           else if (input$UpDnChoice == "Down_Regulated"){
             GeneSetName_Dn <- ifelse(is.null(GeneSetName_Dn),paste0("Top",input$top_x2,"_DownReg"),GeneSetName_Dn)
-            genes_dn <- rownames(top1)[which(top1$logF < -abs(input$fc_cutoff2) & top1$P.Value < input$p_cutoff2)]
+            if (input$fc_cutoff2 != 0) {
+              genes_dn <- rownames(top1)[which(top1$logFC > -abs(input$fc_cutoff2) & top1$P.Value < input$p_cutoff2)]
+            }  else {
+              genes_dn <- rownames(top1)[which(top1$logFC < input$fc_cutoff2 & top1$P.Value < input$p_cutoff2)]
+            }
             genes_dn_h <- head(genes_dn, n=input$top_x2)
             genes_dn_h_tsv <- data.frame(term = rep(GeneSetName_Dn,length(genes_dn_h)),
                                          gene = genes_dn_h)
