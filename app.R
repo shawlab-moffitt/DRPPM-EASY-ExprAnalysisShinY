@@ -512,8 +512,9 @@ Data_Exploration_tab <- tabPanel("Data Exploration",
                                                                                              checkboxInput("clustcolsMVG","Cluster Columns", value = T)
                                                                                       )
                                                                                     ),
+                                                                                    
                                                                                     uiOutput("ClusterMethodMVG"),
-                                                                                    numericInput("NumClusters", step = 1, label = "Number of Clusters (Cut Tree with ~k)", value = 2),
+                                                                                    #numericInput("NumClusters", step = 1, label = "Number of Clusters (Cut Tree with ~k)", value = 2),
                                                                                     h4("Download Cluster Result:"),
                                                                                     downloadButton("downloadClusters", "Download .tsv"),
                                                                                     h4("Download Most Variable Genes List:"),
@@ -1655,6 +1656,7 @@ GSEA_tab <- tabPanel("GSEA Analysis",
                                       value = 2),
                              #### Enrich Sig Table
                              tabPanel("Generate Enriched Signatures Table",
+                                      p(),
                                       p("Please note this may take several minutes depending on size and quantity of gene sets in GMT file."),
                                       #uiOutput("genESTbutton"),
                                       actionButton("GenerateEST", "Generate enriched signature table for selected gene set"),
@@ -3774,9 +3776,18 @@ server <- function(input, output, session) {
         
         if (input$clustrowsMVG == TRUE | input$clustcolsMVG == TRUE) {
           
-          selectInput("ClusteringMethod",
-                      "Select Clustering Method",
-                      choices = c("complete", "ward.D", "ward.D2", "single", "average", "mcquitty", "median", "centroid"))
+          fluidRow(
+            column(6,
+                   selectInput("ClusteringMethod",
+                               "Select Clustering Method",
+                               choices = c("complete", "ward.D", "ward.D2", "single", "average", "mcquitty", "median", "centroid"))
+                   ),
+            column(6,
+                   numericInput("NumClusters", step = 1, label = "Num of Row Clusters (k)", value = NA)
+                   )
+          )
+          
+          
           
         }
         
@@ -5091,13 +5102,14 @@ server <- function(input, output, session) {
           row_font <- input$heatmapFont2.r
           col_font <- input$heatmapFont2.c
           clust_method <- input$ClusteringMethod
+          kmeans <- ifelse(is.na(input$NumClusters),1,input$NumClusters)
           clust_cols_opt <- input$clustcolsMVG
           clust_rows_opt <- input$clustrowsMVG
           colAnno <- heat_colAnn()
           dataset <- MVG_heat_data()
           p <- suppressMessages(ComplexHeatmap::Heatmap(dataset,
                                                         top_annotation = colAnno,
-                                                        clustering_method_rows = clust_method,
+                                                        clustering_method_rows = clust_method, km = kmeans,
                                                         show_row_names = row_names_choice, show_column_names = col_names_choice,
                                                         cluster_rows = clust_rows_opt, cluster_columns = clust_cols_opt,
                                                         row_names_gp = gpar(fontsize = row_font), column_names_gp = gpar(fontsize = col_font),
@@ -5203,13 +5215,14 @@ server <- function(input, output, session) {
           clust_rows_opt <- input$ClusRowOptCust
           row_font <- input$heatmapFont3.r
           col_font <- input$heatmapFont3.c
+          kmeans <- ifelse(is.na(input$NumClusters),1,input$NumClusters)
           clust_method <- input$ClusteringMethodCust
           colAnno <- Cutsom_heat_colAnn()
           dataset <- Custom_heat_data()
           
           p <- suppressMessages(ComplexHeatmap::Heatmap(dataset,
                                                         top_annotation = colAnno,
-                                                        clustering_method_rows = clust_method,
+                                                        clustering_method_rows = clust_method, km = kmeans,
                                                         show_row_names = row_names_choice, show_column_names = col_names_choice,
                                                         cluster_rows = clust_rows_opt, cluster_columns = clust_cols_opt,
                                                         row_names_gp = gpar(fontsize = row_font), column_names_gp = gpar(fontsize = col_font),
@@ -5328,6 +5341,7 @@ server <- function(input, output, session) {
           ## UI Inputs
           row_names_choice <- input$ShowRowNames3     #choose to show row names or not
           col_names_choice <- input$ShowColNames3
+          kmeans <- ifelse(is.na(input$NumClusters),1,input$NumClusters)
           clust_method <- input$ClusteringMethod_degh #Cluster method for heatmap
           col_font <- input$heatmapFont3.c.deg        #Heatmap column font size
           row_font <- input$heatmapFont3.r.deg        #Heatmap row font size
@@ -5341,7 +5355,7 @@ server <- function(input, output, session) {
           
           p <- suppressMessages(ComplexHeatmap::Heatmap(dataset,
                                                         top_annotation = colAnno,
-                                                        clustering_method_rows = clust_method,
+                                                        clustering_method_rows = clust_method, km = kmeans,
                                                         show_row_names = row_names_choice, show_column_names = col_names_choice,
                                                         cluster_rows = clust_rows_opt, cluster_columns = clust_cols_opt,
                                                         row_names_gp = gpar(fontsize = row_font), column_names_gp = gpar(fontsize = col_font),
@@ -5651,6 +5665,7 @@ server <- function(input, output, session) {
         col_font <- input$heatmapFont1.c
         clust_cols_opt <- input$clustcolsSSheat
         clust_rows_opt <- input$clustrowsSSheat
+        kmeans <- ifelse(is.na(input$NumClusters),1,input$NumClusters)
         if (is.null(input$ClusterMethodSSheat) == TRUE) {
           clust_method <- 'complete'
         } else if (is.null(input$ClusterMethodSSheat) == FALSE) {
@@ -5662,7 +5677,7 @@ server <- function(input, output, session) {
         
         p <- suppressMessages(ComplexHeatmap::Heatmap(dataset,
                                                       top_annotation = colAnno,
-                                                      clustering_method_rows = clust_method,
+                                                      clustering_method_rows = clust_method, km = kmeans,
                                                       show_row_names = row_names_choice, show_column_names = col_names_choice,
                                                       cluster_rows = clust_rows_opt, cluster_columns = clust_cols_opt,
                                                       row_names_gp = gpar(fontsize = row_font), column_names_gp = gpar(fontsize = col_font),
@@ -5820,6 +5835,7 @@ server <- function(input, output, session) {
         col_font <- input$heatmapFont1.c
         clust_cols_opt <- input$clustcolsSSheat
         clust_rows_opt <- input$clustrowsSSheat
+        kmeans <- ifelse(is.na(input$NumClusters),1,input$NumClusters)
         if (is.null(input$ClusterMethodSSheat) == TRUE) {
           clust_method <- 'complete'
         }
@@ -5832,7 +5848,7 @@ server <- function(input, output, session) {
         
         p <- suppressMessages(ComplexHeatmap::Heatmap(dataset,
                                                       top_annotation = colAnno,
-                                                      clustering_method_rows = clust_method,
+                                                      clustering_method_rows = clust_method, km = kmeans,
                                                       show_row_names = row_names_choice, show_column_names = col_names_choice,
                                                       cluster_rows = clust_rows_opt, cluster_columns = clust_cols_opt,
                                                       row_names_gp = gpar(fontsize = row_font), column_names_gp = gpar(fontsize = col_font),
