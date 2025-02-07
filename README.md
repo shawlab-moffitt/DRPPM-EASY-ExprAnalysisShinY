@@ -6,12 +6,6 @@ With the rapid generation of high throughput datasets, the need for quick and re
 
 The user can access the easy app through https://shawlab-moffitt.shinyapps.io/drppm_easy_url_app/
 
-The ability to analyze omics data (such as genomic and proteomic data) is of significant interest. Thus we also generated DRPPM-EASY-Integration to facilitate the integration between multiple expression data set. [DRPPM-EASY-Integration](https://github.com/shawlab-moffitt/DRPPM-EASY-Integration) allows users to compare expression data between two matrices. The user can use the platform to identify key features being shared or differentated between the two data sets. We have implemented a pipeline to perform reciprocal GSEA and gene set comparison, to examine the "connectivity" between two data matrices.
-
-Finally, we developed an interface for exploration of complex hetergeneous data such as CCLE or CPTAC. [DRPPM-EASY-LargeProject](https://github.com/shawlab-moffitt/DRPPM-EASY-LargeProject) utilizes a sample selection tab which allows users to select expression and meta data and the [DRPPM-EASY-LargeProject-Integration](https://github.com/shawlab-moffitt/DRPPM-EASY-LargeProject-Integration) allows the user to compare there expression data with samples they choose to select from a large project dataset. As an example, we have implemented an instance of querying the Cancer Cell Line Encyclopedia (CCLE) data based on cancer type or lineage and sample type for analysis within the DRPPM-EASY app http://shawlab.science/shiny/DRPPM_EASY_LargeProject_CCLE/. Separate instance of the Large Project implementation is http://shawlab.science/shiny/DRPPM_EASY_LargeProject_LSCC_CPTAC/. Backup instance of these server are made available in 
-
-The flow chart below gives a layout of the EASY app's family infrastructure which we will describe in further detail.
-
 ![alt text](https://github.com/shawlab-moffitt/DRPPM-EASY-ExprAnalysisShinY/blob/main/App_Demo_Pictures/EASY_App_Overview.svg?raw=true)
 
 # Setup
