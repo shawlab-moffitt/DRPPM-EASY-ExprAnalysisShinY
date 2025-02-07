@@ -6,6 +6,7 @@ With the rapid generation of high throughput datasets, the need for quick and re
 
 The user can access the easy app through https://shawlab-moffitt.shinyapps.io/drppm_easy_url_app/
 
+![alt text](https://github.com/shawlab-moffitt/DRPPM-EASY-ExprAnalysisShinY/blob/main/App_Demo_Pictures/EASY_App_Overview.svg?raw=true)
 
 # Setup
 
