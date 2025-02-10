@@ -1,4 +1,4 @@
-type_id <- paste0("v2.0.20250116")
+type_id <- paste0("v2.0.20250210")
 
 # User Data Input --------------------------------------------------------------
 # Project Name
@@ -376,7 +376,7 @@ DataInput_tab <- tabPanel("Data Input",
                                          #selectizeInput("SubsetCrit","Sample Criteria:",choices = NULL,selected = 1),
                                          #uiOutput("rendSubsetCol"),
                                          uiOutput("rendSubsetCrit")
-                                         ),
+                                ),
                                 tabPanel("Split Columns",
                                          p(),
                                          fluidRow(
@@ -1103,7 +1103,7 @@ DGE_tab <- tabPanel("Differential Expression Analysis",
                                                       conditionalPanel(condition = "input.datasettwo == '1'" ,
                                                                        radioButtons("PorAdjPval","Y-Axis Scale:",choices = c("-log10(P.value)","-log10(Adjusted P.value)"),
                                                                                     inline = T)
-                                                                       ),
+                                                      ),
                                                       h4("Gene Selection Parameters:"),
                                                       numericInput("top_x", "Number of Top Hits:", value = 10,
                                                                    min = 0),
@@ -1331,7 +1331,7 @@ DGE_tab <- tabPanel("Differential Expression Analysis",
                                            textInput("DEGGeneSetName1", "Upregulated Gene Set Name:",value = NULL),
                                            conditionalPanel(condition = "input.UpDnChoice == 'UpAndDown_Regulated'",
                                                             textInput("DEGGeneSetName2", "Downregulated Gene Set Name:",value = NULL)
-                                                            ),
+                                           ),
                                            fluidRow(
                                              column(6,
                                                     numericInput("fc_cutoff2", "LogFC Threshold",
@@ -1361,10 +1361,10 @@ DGE_tab <- tabPanel("Differential Expression Analysis",
                                               verbatimTextOutput("VolGroupsText"),
                                               jqui_resizable(plotOutput('Volcano3', width = "800px", height = "550px",
                                                                         hover = hoverOpts("plot_hover", delay = 10, delayType = "debounce")))
-                                              ),
+                                       ),
                                        column(4,
                                               uiOutput("hover_info")
-                                              )
+                                       )
                                      ),
                                      fluidRow(
                                        downloadButton("dnldPlotSVG_vol","Download as SVG"),
@@ -1383,7 +1383,7 @@ DGE_tab <- tabPanel("Differential Expression Analysis",
                                        column(4,
                                               uiOutput("hover_info2")
                                        )
-                                      ),
+                                     ),
                                      #verbatimTextOutput("MAGroupsText"),
                                      fluidRow(
                                        downloadButton("dnldPlotSVG_MA","Download as SVG"),
@@ -1476,7 +1476,7 @@ GSEA_tab <- tabPanel("GSEA Analysis",
                                                                                     ),
                                                                                     column (6,
                                                                                             uiOutput("rendcomparisonB")
-                                                                                            )
+                                                                                    )
                                                                                   )
                                                                  ),
                                                                  conditionalPanel(condition = "input.volcanoCompChoice3 == 'One group'",
@@ -1562,7 +1562,7 @@ GSEA_tab <- tabPanel("GSEA Analysis",
                                                                           numericInput("GSEAheatmapWidth1","Download Width (in)",value = 15)
                                                                    )
                                                                  )
-                                                                 ),
+                                                ),
                                                 conditionalPanel(condition = "input.datasetthree == '6'",
                                                                  conditionalPanel("input.datasetssheat == '3'",
                                                                                   selectInput("ColorPalette_gseaHeat", "Select Color Palette:",
@@ -3085,8 +3085,8 @@ server <- function(input, output, session) {
             preSelect <- "Select All Samples"
           }
           updateSelectizeInput(session,"SubsetCol","Subset Samples By:",
-                      choices = CharCols,
-                      selected = preSelect, server = T)
+                               choices = CharCols,
+                               selected = preSelect, server = T)
         }
         
       })
@@ -3781,10 +3781,10 @@ server <- function(input, output, session) {
                    selectInput("ClusteringMethod",
                                "Select Clustering Method",
                                choices = c("complete", "ward.D", "ward.D2", "single", "average", "mcquitty", "median", "centroid"))
-                   ),
+            ),
             column(6,
                    numericInput("NumClusters", step = 1, label = "Num of Row Clusters (k)", value = NA)
-                   )
+            )
           )
           
           
@@ -3895,6 +3895,7 @@ server <- function(input, output, session) {
         #metacol <- metacol_reactVal()
         metacol <- input$DEGcolHeat
         metagroups <- unique(meta[,metacol])
+        metagroups <- sort(metagroups,na.last = TRUE)
         selectInput("comparisonA2_h", "Comparison: GroupA",
                     choices = metagroups, selected = metagroups[1])
       })
@@ -3906,6 +3907,7 @@ server <- function(input, output, session) {
         #metacol <- metacol_reactVal()
         metacol <- input$DEGcolHeat
         metagroups <- unique(meta[,metacol])
+        metagroups <- sort(metagroups,na.last = TRUE)
         selectInput("comparisonA2_h_one", "Comparison: GroupA",
                     choices = metagroups, selected = metagroups[1])
       })
@@ -3928,6 +3930,7 @@ server <- function(input, output, session) {
           metacol <- colnames(meta)[2]
         }
         metagroups <- unique(meta[,metacol])
+        metagroups <- sort(metagroups,na.last = TRUE)
         selectInput("comparisonA", "Comparison: GroupA",
                     choices = metagroups, selected = metagroups[1])
       })
@@ -3940,6 +3943,7 @@ server <- function(input, output, session) {
           metacol <- colnames(meta)[2]
         }
         metagroups <- unique(meta[,metacol])
+        metagroups <- sort(metagroups,na.last = TRUE)
         selectInput("comparisonA_one", "Comparison Group",
                     choices = metagroups, selected = metagroups[1])
       })
@@ -3952,6 +3956,7 @@ server <- function(input, output, session) {
           metacol <- colnames(meta)[2]
         }
         metagroups <- unique(meta[,metacol])
+        metagroups <- sort(metagroups,na.last = TRUE)
         selectInput("comparisonB", "Comparison: GroupB",
                     choices = metagroups, selected = metagroups[2])
         #if (ncol(meta) == 2){
@@ -3973,6 +3978,7 @@ server <- function(input, output, session) {
         #metacol <- metacol_reactVal()
         metacol <- input$DEGcolHeat
         metagroups <- unique(meta[,metacol])
+        metagroups <- sort(metagroups,na.last = TRUE)
         selectInput("comparisonB2_h", "Comparison: GroupB",
                     choices = metagroups, selected = metagroups[2])
         #if (ncol(meta) == 2){
@@ -4005,6 +4011,7 @@ server <- function(input, output, session) {
           metacol <- colnames(meta)[2]
         }
         metagroups <- unique(meta[,metacol])
+        metagroups <- sort(metagroups,na.last = TRUE)
         selectInput("comparisonA2", "Comparison: GroupA",
                     choices = metagroups, selected = metagroups[1])
         
@@ -4018,6 +4025,7 @@ server <- function(input, output, session) {
           metacol <- colnames(meta)[2]
         }
         metagroups <- unique(meta[,metacol])
+        metagroups <- sort(metagroups,na.last = TRUE)
         selectInput("comparisonA2_one", "Comparison Group",
                     choices = metagroups, selected = metagroups[1])
         
@@ -4031,6 +4039,7 @@ server <- function(input, output, session) {
           metacol <- colnames(meta)[2]
         }
         metagroups <- unique(meta[,metacol])
+        metagroups <- sort(metagroups,na.last = TRUE)
         selectInput("comparisonB2", "Comparison: GroupB",
                     choices = metagroups, selected = metagroups[2])
         #if (ncol(meta) == 2){
@@ -4063,6 +4072,7 @@ server <- function(input, output, session) {
           metacol <- colnames(meta)[2]
         }
         metagroups <- unique(meta[,metacol])
+        metagroups <- sort(metagroups,na.last = TRUE)
         selectInput("comparisonA2.avg", "Comparison: GroupA",
                     choices = metagroups, selected = metagroups[1])
         #if (ncol(meta) == 2){
@@ -4085,6 +4095,7 @@ server <- function(input, output, session) {
           metacol <- colnames(meta)[2]
         }
         metagroups <- unique(meta[,metacol])
+        metagroups <- sort(metagroups,na.last = TRUE)
         selectInput("comparisonB2.avg", "Comparison: GroupB",
                     choices = metagroups, selected = metagroups[2])
         #if (ncol(meta) == 2){
@@ -4165,6 +4176,7 @@ server <- function(input, output, session) {
           metacol <- colnames(meta)[2]
         }
         metagroups <- unique(meta[,metacol])
+        metagroups <- sort(metagroups,na.last = TRUE)
         selectInput("comparisonA2.DEG", "Comparison: GroupA",
                     choices = metagroups, selected = metagroups[1])
       })
@@ -4177,6 +4189,7 @@ server <- function(input, output, session) {
           metacol <- colnames(meta)[2]
         }
         metagroups <- unique(meta[,metacol])
+        metagroups <- sort(metagroups,na.last = TRUE)
         selectInput("comparisonA2.DEG_one", "Comparison Group",
                     choices = metagroups, selected = metagroups[1])
       })
@@ -4189,6 +4202,7 @@ server <- function(input, output, session) {
           metacol <- colnames(meta)[2]
         }
         metagroups <- unique(meta[,metacol])
+        metagroups <- sort(metagroups,na.last = TRUE)
         selectInput("comparisonB2.DEG", "Comparison: GroupB",
                     choices = metagroups, selected = metagroups[2])
         #if (ncol(meta) == 2){
@@ -4494,64 +4508,64 @@ server <- function(input, output, session) {
         
         
         
-          #meta <- meta_react()
-          #metacol <- metacol_reactVal()
-          #if (length(colnames(meta)) == 2) {
-          #  metacol <- colnames(meta)[2]
-          #}
-          A <- A_raw()
-          gmt <- geneset_gmt()
-          #withProgress(message = "Processing", value = 0, {
-          #  incProgress(0.25, detail = "Calculating Signal-to-Noise")
-            ##----Signal-to-Noise Calculation----##
-            A <- A + 0.00000001
-            P = as.matrix(as.numeric(colnames(A) %in% groupA))
-            n1 <- sum(P[,1])
-            M1 <- A %*% P
-            M1 <- M1/n1
-            A2 <- A*A
-            S1 <- A2 %*% P
-            S1 <- S1/n1 - M1*M1
-            S1 <- sqrt(abs((n1/(n1-1)) * S1))
-            P = as.matrix(as.numeric(colnames(A) %in% groupB))
-            n2 <- sum(P[,1])
-            M2 <- A %*% P
-            M2 <- M2/n2
-            A2 <- A*A
-            S2 <- A2 %*% P
-            S2 <- S2/n2 - M2*M2
-            S2 <- sqrt(abs((n2/(n2-1)) * S2))
-            rm(A2)
-            # small sigma "fix" as used in GeneCluster
-            S2 <- ifelse(0.2*abs(M2) < S2, S2, 0.2*abs(M2))
-            S2 <- ifelse(S2 == 0, 0.2, S2)
-            S1 <- ifelse(0.2*abs(M1) < S1, S1, 0.2*abs(M1))
-            S1 <- ifelse(S1 == 0, 0.2, S1)
-            M1 <- M1 - M2
-            rm(M2)
-            S1 <- S1 + S2
-            rm(S2)
-            s2n.matrix <- M1/S1
-            ##----Reformatting----##
-            #incProgress(0.25, detail = "Formatting Data")
-            s2n.df <- as.data.frame(s2n.matrix)
-            s2n.df$GeneID <- rownames(s2n.df)
-            rownames(s2n.df) <- NULL
-            data <- dplyr::select(s2n.df, GeneID, V1)
-            data.gsea <- data$V1
-            names(data.gsea) <- as.character(data$GeneID)
-            s2n.matrix.s <- sort(data.gsea, decreasing = T)
-            #incProgress(0.25, detail = "Performing GSEA")
-            ####----GSEA----####
-            #perform GSEA
-            gsea.res <- GSEA(s2n.matrix.s, TERM2GENE = gmt, verbose = F, pvalueCutoff = input$userPval, eps = NA)
-            #gsea.res <- GSEA(s2n.matrix.s, TERM2GENE = gmt(), verbose = F, pvalueCutoff = 1)
-            #extract results and convert to tibble
-            gsea.df <- gsea.res@result
-            gsea.df
-          #  incProgress(0.25, detail = "Complete!")
-          #})
-          gsea.df
+        #meta <- meta_react()
+        #metacol <- metacol_reactVal()
+        #if (length(colnames(meta)) == 2) {
+        #  metacol <- colnames(meta)[2]
+        #}
+        A <- A_raw()
+        gmt <- geneset_gmt()
+        #withProgress(message = "Processing", value = 0, {
+        #  incProgress(0.25, detail = "Calculating Signal-to-Noise")
+        ##----Signal-to-Noise Calculation----##
+        A <- A + 0.00000001
+        P = as.matrix(as.numeric(colnames(A) %in% groupA))
+        n1 <- sum(P[,1])
+        M1 <- A %*% P
+        M1 <- M1/n1
+        A2 <- A*A
+        S1 <- A2 %*% P
+        S1 <- S1/n1 - M1*M1
+        S1 <- sqrt(abs((n1/(n1-1)) * S1))
+        P = as.matrix(as.numeric(colnames(A) %in% groupB))
+        n2 <- sum(P[,1])
+        M2 <- A %*% P
+        M2 <- M2/n2
+        A2 <- A*A
+        S2 <- A2 %*% P
+        S2 <- S2/n2 - M2*M2
+        S2 <- sqrt(abs((n2/(n2-1)) * S2))
+        rm(A2)
+        # small sigma "fix" as used in GeneCluster
+        S2 <- ifelse(0.2*abs(M2) < S2, S2, 0.2*abs(M2))
+        S2 <- ifelse(S2 == 0, 0.2, S2)
+        S1 <- ifelse(0.2*abs(M1) < S1, S1, 0.2*abs(M1))
+        S1 <- ifelse(S1 == 0, 0.2, S1)
+        M1 <- M1 - M2
+        rm(M2)
+        S1 <- S1 + S2
+        rm(S2)
+        s2n.matrix <- M1/S1
+        ##----Reformatting----##
+        #incProgress(0.25, detail = "Formatting Data")
+        s2n.df <- as.data.frame(s2n.matrix)
+        s2n.df$GeneID <- rownames(s2n.df)
+        rownames(s2n.df) <- NULL
+        data <- dplyr::select(s2n.df, GeneID, V1)
+        data.gsea <- data$V1
+        names(data.gsea) <- as.character(data$GeneID)
+        s2n.matrix.s <- sort(data.gsea, decreasing = T)
+        #incProgress(0.25, detail = "Performing GSEA")
+        ####----GSEA----####
+        #perform GSEA
+        gsea.res <- GSEA(s2n.matrix.s, TERM2GENE = gmt, verbose = F, pvalueCutoff = input$userPval, eps = NA)
+        #gsea.res <- GSEA(s2n.matrix.s, TERM2GENE = gmt(), verbose = F, pvalueCutoff = 1)
+        #extract results and convert to tibble
+        gsea.df <- gsea.res@result
+        gsea.df
+        #  incProgress(0.25, detail = "Complete!")
+        #})
+        gsea.df
         #}
       })
       
@@ -4843,7 +4857,7 @@ server <- function(input, output, session) {
               #metaSub[,metacol] <- factor(metaSub[,metacol])
               form <- as.formula(paste0("~0 +",metacol))
             }
-              
+            
             if (ncol(mat) > 0) {
               
               if(nlevels(metaSub[,metacol]) >= 2){
@@ -6151,7 +6165,7 @@ server <- function(input, output, session) {
         #  ssgsea <- gsva(A,GS,method = scoreMethod, verbose = FALSE, ssgsea.norm = F)
         #}
         #
-#
+        #
         #SD=apply(ssgsea,1, sd, na.rm = TRUE) #get SD
         #
         #ssgsea2 = t(ssgsea)
@@ -6426,7 +6440,7 @@ server <- function(input, output, session) {
                                      lengthMenu = c("10", "25", "50", "100"), scrollX = T)) %>%
           formatSignif(columns = c(5:7), digits = 3) %>%
           formatRound(columns = c(3,4), digits = 3)
-            
+        
         #if (input$tables == 3) {
         #  #if (ncol(meta) > 2) {
         #  #  req(input$GSEAmetaCol)
@@ -7041,8 +7055,8 @@ server <- function(input, output, session) {
       
       #render GSEA plot
       output$enrichplot0 <- renderPlot({
-       p <- enrichplot0_react()
-       p
+        p <- enrichplot0_react()
+        p
       })
       
       GeneSetName_React <- reactive({
@@ -7304,8 +7318,8 @@ server <- function(input, output, session) {
           aes(label = rownames(top_hits_up)),
           color="gray20",
           size = 6,
-          nudge_x = 0.2,
-          nudge_y=0.2,
+          #nudge_x = 0.2,
+          #nudge_y=0.2,
           box.padding = unit(0.9, "lines"),
           point.padding = unit(.3+4*0.1, "lines"),
           max.overlaps = 50)
@@ -7314,8 +7328,8 @@ server <- function(input, output, session) {
           aes(label = rownames(top_hits_dn)),
           color="gray20",
           size = 6,
-          nudge_x = 0.2,
-          nudge_y=0.2,
+          #nudge_x = 0.2,
+          #nudge_y=0.2,
           box.padding = unit(0.9, "lines"),
           point.padding = unit(.3+4*0.1, "lines"),
           max.overlaps = 50)
@@ -7324,8 +7338,8 @@ server <- function(input, output, session) {
           aes(label = rownames(top2_selec)),
           color="gray20",
           size = 6,
-          nudge_x = 0.2,
-          nudge_y=0.2,
+          #nudge_x = 0.2,
+          #nudge_y=0.2,
           box.padding = unit(0.9, "lines"),
           point.padding = unit(.3+4*0.1, "lines"),
           max.overlaps = 50)
@@ -7934,11 +7948,11 @@ server <- function(input, output, session) {
           colnames(expr_gene)[1] <- gene
           expr_gene <- merge(expr_gene, meta_temp, by=0)
           colnames(expr_gene)[1] <- "SampleName"
-
+          
           expr_gene2 <- merge(expr_gene,meta, all = T)
           plottitle <- paste(gene,"Average Gene Expression Across",metacol)
           genetitle <- paste(gene,"Average Expression")
-
+          
           if (logchoice == T) {
             expr_gene2[,gene] <- log2(expr_gene2[,gene] + 1)
             plottitle <- paste(gene,"Average Gene Expression (Log2) Across",metacol)
@@ -8120,24 +8134,27 @@ server <- function(input, output, session) {
         upRed <- "lightcoral"
         dnBlue <- "cadetblue3"
         mdGray <- "gray70"
+        log_fc <- input$fc_cutoff
+        pval_cut <- input$p_cutoff
+        top_hits <- input$top_x
         #add color categories based on FC and pval
         top2['threshold'] <- "none"
         if (pvalChoice == "-log10(P.value)") {
-          top2[which(top2$logFC > abs(input$fc_cutoff) & top2$P.Value < input$p_cutoff), "threshold"] <- "up"
-          top2[which(top2$logFC < -abs(input$fc_cutoff) & top2$P.Value < input$p_cutoff), "threshold"] <- "down"
+          top2[which(top2$logFC > abs(log_fc) & top2$P.Value < pval_cut), "threshold"] <- "up"
+          top2[which(top2$logFC < -abs(log_fc) & top2$P.Value < pval_cut), "threshold"] <- "down"
           #select number of top hits based on input
-          top_hits_up <- top2[head(which(top2$logFC > abs(input$fc_cutoff) & top2$P.Value < input$p_cutoff), n = input$top_x),]
-          top_hits_dn <- top2[head(which(top2$logFC < -abs(input$fc_cutoff) & top2$P.Value < input$p_cutoff), n = input$top_x),]
+          top_hits_up <- top2[head(which(top2$logFC > abs(log_fc) & top2$P.Value < pval_cut), n = top_hits),]
+          top_hits_dn <- top2[head(which(top2$logFC < -abs(log_fc) & top2$P.Value < pval_cut), n = top_hits),]
           #create plot
           x <- ggplot(data = top2, aes(x = logFC, y = -log10(P.Value))) +
             geom_point(size = 2, shape = 16) +
             theme_light(base_size = 16)
         } else if (pvalChoice == "-log10(Adjusted P.value)") {
-          top2[which(top2$logFC > abs(input$fc_cutoff) & top2$adj.P.Val < input$p_cutoff), "threshold"] <- "up"
-          top2[which(top2$logFC < -abs(input$fc_cutoff) & top2$adj.P.Val < input$p_cutoff), "threshold"] <- "down"
+          top2[which(top2$logFC > abs(log_fc) & top2$adj.P.Val < pval_cut), "threshold"] <- "up"
+          top2[which(top2$logFC < -abs(log_fc) & top2$adj.P.Val < pval_cut), "threshold"] <- "down"
           #select number of top hits based on input
-          top_hits_up <- top2[head(which(top2$logFC > abs(input$fc_cutoff) & top2$adj.P.Val < input$p_cutoff), n = input$top_x),]
-          top_hits_dn <- top2[head(which(top2$logFC < -abs(input$fc_cutoff) & top2$adj.P.Val < input$p_cutoff), n = input$top_x),]
+          top_hits_up <- top2[head(which(top2$logFC > abs(log_fc) & top2$adj.P.Val < pval_cut), n = top_hits),]
+          top_hits_dn <- top2[head(which(top2$logFC < -abs(log_fc) & top2$adj.P.Val < pval_cut), n = top_hits),]
           #create plot
           x <- ggplot(data = top2, aes(x = logFC, y = -log10(adj.P.Val))) +
             geom_point(size = 2, shape = 16) +
@@ -8157,10 +8174,10 @@ server <- function(input, output, session) {
         x <- x + aes(color = threshold) +
           scale_color_manual(values = c("up" = upRed,"down" = dnBlue, "none" = mdGray))
         #FC and pval lines
-        x <- x + geom_vline(xintercept = c(-abs(input$fc_cutoff),abs(input$fc_cutoff)), linetype="dashed", color="gray20")
-        x <- x + geom_hline(yintercept = -log10(input$p_cutoff), linetype="dashed", color="gray20")
+        x <- x + geom_vline(xintercept = c(-abs(log_fc),abs(log_fc)), linetype="dashed", color="gray20")
+        x <- x + geom_hline(yintercept = -log10(pval_cut), linetype="dashed", color="gray20")
         #label top hits if needed
-        if (input$top_x > 0) {
+        if (top_hits > 0) {
           x <- x + geom_text_repel(
             data =  top_hits_up,
             #aes(label = rownames(top_hits_up), fontface = anno_face),
@@ -8168,8 +8185,8 @@ server <- function(input, output, session) {
             size = anno_font,
             color="gray20",
             min.segment.length = 0,
-            nudge_x = 0.2,
-            nudge_y=0.2,
+            #nudge_x = 0.2,
+            #nudge_y=0.2,
             box.padding = unit(0.9, "lines"),
             point.padding = unit(.3+4*0.1, "lines"),
             max.overlaps = Inf)
@@ -8180,8 +8197,8 @@ server <- function(input, output, session) {
             size = anno_font,
             color="gray20",
             min.segment.length = 0,
-            nudge_x = 0.2,
-            nudge_y=0.2,
+            #nudge_x = 0.2,
+            #nudge_y=0.2,
             box.padding = unit(0.9, "lines"),
             point.padding = unit(.3+4*0.1, "lines"),
             max.overlaps = Inf)
@@ -8193,8 +8210,8 @@ server <- function(input, output, session) {
           size = anno_font,
           color="gray20",
           min.segment.length = 0,
-          nudge_x = 0.2,
-          nudge_y=0.2,
+          #nudge_x = 0.2,
+          #nudge_y=0.2,
           box.padding = unit(0.9, "lines"),
           point.padding = unit(.3+4*0.1, "lines"),
           max.overlaps = Inf)
@@ -8238,6 +8255,7 @@ server <- function(input, output, session) {
                        axis.title = element_text(size = axis_font))
         #x <- x + theme(axis.title = element_text(size = axis_font))
         x <- x + labs(x = "log2FC", y = pvalChoice)
+        #save(list = ls(), file = "volcano_env.RData", envir = environment())
         x
         
         
@@ -8377,8 +8395,8 @@ server <- function(input, output, session) {
           aes(label = GeneSymbol),
           size = 6,
           color="gray20",
-          nudge_x = 0.2,
-          nudge_y=0.2,
+          #nudge_x = 0.2,
+          #nudge_y=0.2,
           box.padding = unit(0.9, "lines"),
           point.padding = unit(.3+4*0.1, "lines"),
           max.overlaps = 50)
@@ -8719,8 +8737,8 @@ server <- function(input, output, session) {
             aes(label = rownames(top_hits_up)),
             color="gray20",
             size = 6,
-            nudge_x = 0.2,
-            nudge_y=0.2,
+            #nudge_x = 0.2,
+            #nudge_y=0.2,
             box.padding = unit(0.9, "lines"),
             point.padding = unit(.3+4*0.1, "lines"),
             max.overlaps = 50)
@@ -8729,8 +8747,8 @@ server <- function(input, output, session) {
             aes(label = rownames(top_hits_dn)),
             color="gray20",
             size = 6,
-            nudge_x = 0.2,
-            nudge_y=0.2,
+            #nudge_x = 0.2,
+            #nudge_y=0.2,
             box.padding = unit(0.9, "lines"),
             point.padding = unit(.3+4*0.1, "lines"),
             max.overlaps = 50)
@@ -8739,8 +8757,8 @@ server <- function(input, output, session) {
             aes(label = rownames(top2_selec)),
             color="gray20",
             size = 6,
-            nudge_x = 0.2,
-            nudge_y=0.2,
+            #nudge_x = 0.2,
+            #nudge_y=0.2,
             box.padding = unit(0.9, "lines"),
             point.padding = unit(.3+4*0.1, "lines"),
             max.overlaps = 50)
@@ -9067,8 +9085,8 @@ server <- function(input, output, session) {
             aes(label = rownames(top_hits_up)),
             color="gray20",
             size = 6,
-            nudge_x = 0.2,
-            nudge_y=0.2,
+            #nudge_x = 0.2,
+            #nudge_y=0.2,
             box.padding = unit(0.9, "lines"),
             point.padding = unit(.3+4*0.1, "lines"),
             max.overlaps = 50)
@@ -9077,8 +9095,8 @@ server <- function(input, output, session) {
             aes(label = rownames(top_hits_dn)),
             color="gray20",
             size = 6,
-            nudge_x = 0.2,
-            nudge_y=0.2,
+            #nudge_x = 0.2,
+            #nudge_y=0.2,
             box.padding = unit(0.9, "lines"),
             point.padding = unit(.3+4*0.1, "lines"),
             max.overlaps = 50)
@@ -9087,8 +9105,8 @@ server <- function(input, output, session) {
             aes(label = rownames(top2_selec)),
             color="gray20",
             size = 6,
-            nudge_x = 0.2,
-            nudge_y=0.2,
+            #nudge_x = 0.2,
+            #nudge_y=0.2,
             box.padding = unit(0.9, "lines"),
             point.padding = unit(.3+4*0.1, "lines"),
             max.overlaps = 50)
@@ -10210,7 +10228,7 @@ server <- function(input, output, session) {
         }
       )
       
-
+      
       
       ####----Text----####
       
@@ -10375,7 +10393,7 @@ server <- function(input, output, session) {
         metaSub <- meta[,grepl(paste(c(colnames(meta)[1],metacol,covars),collapse = "|"),colnames(meta)), drop = F]
         metaSub_noNA <- metaSub[complete.cases(metaSub),]
         
-
+        
         if (all(c(colnames(meta)[1],metacol) %in% colnames(metaSub_noNA))) {
           if (input$volcanoCompChoice == "Limma: Two groups") {
             groupA <- input$comparisonA2
