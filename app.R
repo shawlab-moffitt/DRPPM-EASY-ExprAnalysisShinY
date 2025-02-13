@@ -1,4 +1,4 @@
-type_id <- paste0("v2.0.20250210")
+type_id <- paste0("v2.0.20250213")
 
 # User Data Input --------------------------------------------------------------
 # Project Name
@@ -8040,11 +8040,6 @@ server <- function(input, output, session) {
             genetitle <- paste(gene,"Average Expression (Log2)")
           }
           
-          #colnames(expr_gene2)[c(1,2,3)] <- c("SampleName","Type","GeneName")
-          #expr_gene2 <- expr_gene2 %>%
-          #  relocate(SampleName,GeneName,Type)
-          
-          #save(list = ls(), file = "Barplot_env.RData", envir = environment())
           
           se <- function(x) sd(x)/sqrt(length(x))
           expr_gene_stats <- expr_gene2 %>%
