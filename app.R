@@ -80,6 +80,11 @@ if ("recount" %in% rownames(installed.packages()) && "recount3" %in% rownames(in
   RecountAvail <- TRUE
 }
 
+#'biomaRt', 'sva', 'ConsensusTME', 'quantiseqr','singscore'
+immudecon_check <- "immunedeconv" %in% rownames(installed.packages())
+if (immudecon_check == TRUE) {
+  library(immunedeconv)
+}
 
 
 date_to_gene <- function(vec,mouse = FALSE) {
@@ -341,7 +346,10 @@ DataInput_tab <- tabPanel("Data Input",
                               fluidRow(
                                 column(6, style = 'margin-top:-20px;',
                                        checkboxGroupInput("RawCountQuantNorm",label = NULL,
-                                                          choices = c("Input data is log-transformed","Normalize Raw Counts","Quantile Normalization","Filter Matrix"))
+                                                          choices = c("Input data is log-transformed",
+                                                                      "Normalize Raw Counts",
+                                                                      "Quantile Normalization",
+                                                                      "Filter Matrix"))
                                 ),
                                 column(6, style = 'margin-top:-20px;',
                                        uiOutput("rendRawCountNorm"),
@@ -349,6 +357,10 @@ DataInput_tab <- tabPanel("Data Input",
                                        uiOutput("rendDESeqDesignColRef")
                                 )
                               ),
+                              if (immudecon_check == TRUE) {
+                                radioButtons("ImmDeconvAnalysis","Perform Expression Analysis On:",choices = c("Gene Expression","Immune Deconvolution"),
+                                             selected = "Gene Expression", inline = T)
+                              },
                               conditionalPanel("input.RawCountQuantNorm.includes('Filter Matrix')",
                                                fluidRow(
                                                  column(6, style = 'margin-bottom:-15px;',
@@ -1833,6 +1845,7 @@ server <- function(input, output, session) {
       meta_input <- reactiveVal()
       expr_raw <- reactiveVal()
       A_raw <- reactiveVal()
+      ImmDeconv_react <- reactiveVal()
       geneList_raw <- reactiveVal()
       Gene_raw <- reactiveVal()
       FileCheckAlerts_react <- reactiveVal()
@@ -1924,6 +1937,7 @@ server <- function(input, output, session) {
           updateRadioButtons(session,"volcanoCompChoice4", choices = c("Limma: Two groups","Limma: One group"), inline = T)
         }
       })
+      
       
       #output$rendDESeqDesignCol_heat <- renderUI({
       #  req(input$RawCountNorm)
@@ -2523,6 +2537,22 @@ server <- function(input, output, session) {
           expr <- expr[,sampsames]
           meta <- meta[which(meta[,1] %in% sampsames),]
           
+          if (immudecon_check == TRUE) {
+            withProgress(message = "Processing", value = 0, {
+              incProgress(0.5, detail = "Performing Immune Deconvolution")
+              mcp_counter_decon <- as.data.frame(deconvolute(expr, "mcp_counter"))
+              rownames(mcp_counter_decon) <- paste0(mcp_counter_decon[,1],"_MCP_Counter_Immunedeconv")
+              estimate_decon <- as.data.frame(deconvolute(expr, "estimate"))
+              rownames(estimate_decon) <- paste0(estimate_decon[,1],"_Estimate_Immunedeconv")
+              imm_deconv <- rbind(mcp_counter_decon,estimate_decon)[,-1]
+              ImmDeconv_react(imm_deconv)
+              imm_deconv <- as.data.frame(t(imm_deconv))
+              meta <- merge(meta,imm_deconv, by.x = colnames(meta)[1], by.y = 0, all.x = T)
+              incProgress(0.5, detail = "Complete")
+            })
+          }
+          
+          
           expr_input(expr)
           meta_input(meta)
           
@@ -2597,6 +2627,33 @@ server <- function(input, output, session) {
       
       
       ## Data Preview ----------------------------------------------------------
+      
+      observe({
+        if (immudecon_check & input$ImmDeconvAnalysis == "Immune Deconvolution") {
+          req(ImmDeconv_react())
+          expr <- ImmDeconv_react()
+          Gene <- rownames(expr)
+          geneList <- as.data.frame(Gene)
+          geneList_raw(geneList);
+          Gene_raw(Gene)
+          CTKgenes <- CTKgenes[which(CTKgenes %in% Gene)]
+          updateSelectizeInput(session = session, inputId = "heatmapGeneSelec",
+                               choices = Gene,selected = CTKgenes, server = T)
+          updateSelectizeInput(session = session, inputId = "avgheatmapGeneSelec",
+                               choices = Gene,selected = CTKgenes, server = T)
+          updateSelectizeInput(session = session, inputId = "scatterG1",
+                               choices = Gene,selected = Gene[1], server = T)
+          updateSelectizeInput(session = session, inputId = "scatterG2",
+                               choices = Gene,selected = Gene[2], server = T)
+          updateSelectizeInput(session = session, inputId = "userGeneSelec",
+                               choices = sort(as.vector(geneList[,1])),selected = NULL, server = T)
+          updateSelectizeInput(session = session, inputId = "scatterGeneSelec",
+                               choices = rownames(expr),selected = NULL, server = T)
+        }
+        
+        
+      })
+      
       output$FileCheckAlerts <- renderPrint({
         
         req(FileCheckAlerts_react())
@@ -2608,7 +2665,13 @@ server <- function(input, output, session) {
       output$ExprFile_Preview <- DT::renderDataTable({
         req(expr_input())
         req(input$ExprHead)
-        expr <- expr_input()
+        
+        if (immudecon_check & input$ImmDeconvAnalysis == "Immune Deconvolution") {
+          req(ImmDeconv_react())
+          expr <- ImmDeconv_react()
+        } else {
+          expr <- expr_input()
+        }
         if (input$ExprHead == "View table head") {
           expr <- head(expr,c(100,100))
         }
@@ -3618,10 +3681,12 @@ server <- function(input, output, session) {
         
       })
       
+      
       meta_react <- reactive({
         
         req(meta_input())
         meta <- meta_input()
+        
         if (ncol(meta) > 2) {
           req(input$SubsetCol)
           SubCol <- input$SubsetCol
@@ -3633,13 +3698,13 @@ server <- function(input, output, session) {
                 meta
               }
             }
-          } else {
-            meta
-          }
-        } else {
-          meta
-        }
-        
+          } #else {
+            #meta
+          #}
+        } #else {
+          #meta
+        #}
+        meta
       })
       
       #observe({
@@ -3668,16 +3733,31 @@ server <- function(input, output, session) {
       
       
       expr_react <- reactive({
-        
+        req(meta_react())
         meta <- meta_react()
-        expr <- expr_input()
+        if (immudecon_check & input$ImmDeconvAnalysis == "Immune Deconvolution") {
+          req(ImmDeconv_react())
+          expr <- ImmDeconv_react()
+        } else {
+          req(expr_input())
+          expr <- expr_input()
+        }
         expr2 <- expr[,meta[,1]]
         expr2
         
       })
       observe({
-        req(expr_react())
-        expr <- expr_react()
+        if (immudecon_check & input$ImmDeconvAnalysis == "Immune Deconvolution") {
+          req(ImmDeconv_react())
+          req(meta_react())
+          meta <- meta_react()
+          req(expr_input())
+          expr <- expr_input()
+          expr <- expr[,meta[,1]]
+        } else {
+          req(expr_react())
+          expr <- expr_react()
+        }
         A <- as.matrix(expr)
         A_raw(A)
       })
@@ -5691,7 +5771,7 @@ server <- function(input, output, session) {
         
         p <- suppressMessages(ComplexHeatmap::Heatmap(dataset,
                                                       top_annotation = colAnno,
-                                                      clustering_method_rows = clust_method, km = kmeans,
+                                                      clustering_method_rows = clust_method,
                                                       show_row_names = row_names_choice, show_column_names = col_names_choice,
                                                       cluster_rows = clust_rows_opt, cluster_columns = clust_cols_opt,
                                                       row_names_gp = gpar(fontsize = row_font), column_names_gp = gpar(fontsize = col_font),
@@ -5860,9 +5940,10 @@ server <- function(input, output, session) {
         dataset <- ssgsea_heat2_data()
         colAnno <- ssgsea_heat_anno2()
         
+
         p <- suppressMessages(ComplexHeatmap::Heatmap(dataset,
                                                       top_annotation = colAnno,
-                                                      clustering_method_rows = clust_method, km = kmeans,
+                                                      clustering_method_rows = clust_method,
                                                       show_row_names = row_names_choice, show_column_names = col_names_choice,
                                                       cluster_rows = clust_rows_opt, cluster_columns = clust_cols_opt,
                                                       row_names_gp = gpar(fontsize = row_font), column_names_gp = gpar(fontsize = col_font),
@@ -7944,24 +8025,26 @@ server <- function(input, output, session) {
           
           gene <- geneList[input$GeneListTableBarPlot_rows_selected, 1]
           expr_gene <- data.frame(row.names = names(expr[gene,]),
-                                  Gene = unname(unlist(expr[gene,])))
-          colnames(expr_gene)[1] <- gene
+                                  GeneName = unname(unlist(expr[gene,])))
+          #colnames(expr_gene)[1] <- gene
           expr_gene <- merge(expr_gene, meta_temp, by=0)
-          colnames(expr_gene)[1] <- "SampleName"
+          colnames(expr_gene)[c(1,3)] <- c("SampleName","Type")
           
           expr_gene2 <- merge(expr_gene,meta, all = T)
           plottitle <- paste(gene,"Average Gene Expression Across",metacol)
           genetitle <- paste(gene,"Average Expression")
           
           if (logchoice == T) {
-            expr_gene2[,gene] <- log2(expr_gene2[,gene] + 1)
+            expr_gene2[,"GeneName"] <- log2(expr_gene2[,"GeneName"] + 1)
             plottitle <- paste(gene,"Average Gene Expression (Log2) Across",metacol)
             genetitle <- paste(gene,"Average Expression (Log2)")
           }
           
-          colnames(expr_gene2)[c(1,2,3)] <- c("SampleName","Type","GeneName")
-          expr_gene2 <- expr_gene2 %>%
-            relocate(SampleName,GeneName,Type)
+          #colnames(expr_gene2)[c(1,2,3)] <- c("SampleName","Type","GeneName")
+          #expr_gene2 <- expr_gene2 %>%
+          #  relocate(SampleName,GeneName,Type)
+          
+          #save(list = ls(), file = "Barplot_env.RData", envir = environment())
           
           se <- function(x) sd(x)/sqrt(length(x))
           expr_gene_stats <- expr_gene2 %>%
