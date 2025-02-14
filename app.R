@@ -1,4 +1,4 @@
-type_id <- paste0("v2.0.20250213")
+type_id <- paste0("v2.0.20250214")
 
 # User Data Input --------------------------------------------------------------
 # Project Name
@@ -345,11 +345,20 @@ DataInput_tab <- tabPanel("Data Input",
                               uiOutput("rendExprFileInput"),
                               fluidRow(
                                 column(6, style = 'margin-top:-20px;',
-                                       checkboxGroupInput("RawCountQuantNorm",label = NULL,
-                                                          choices = c("Input data is log-transformed",
-                                                                      "Normalize Raw Counts",
-                                                                      "Quantile Normalization",
-                                                                      "Filter Matrix"))
+                                       if (immudecon_check == TRUE) {
+                                         checkboxGroupInput("RawCountQuantNorm",label = NULL,
+                                                            choices = c("Input data is log-transformed",
+                                                                        "Normalize Raw Counts",
+                                                                        "Quantile Normalization",
+                                                                        "Filter Matrix",
+                                                                        "Perform Immune Deconvolution"))
+                                       } else {
+                                         checkboxGroupInput("RawCountQuantNorm",label = NULL,
+                                                            choices = c("Input data is log-transformed",
+                                                                        "Normalize Raw Counts",
+                                                                        "Quantile Normalization",
+                                                                        "Filter Matrix"))
+                                       }
                                 ),
                                 column(6, style = 'margin-top:-20px;',
                                        uiOutput("rendRawCountNorm"),
@@ -357,10 +366,14 @@ DataInput_tab <- tabPanel("Data Input",
                                        uiOutput("rendDESeqDesignColRef")
                                 )
                               ),
-                              if (immudecon_check == TRUE) {
-                                radioButtons("ImmDeconvAnalysis","Perform Expression Analysis On:",choices = c("Gene Expression","Immune Deconvolution"),
-                                             selected = "Gene Expression", inline = T)
-                              },
+                              conditionalPanel(condition = "input.RawCountQuantNorm.includes('Perform Immune Deconvolution')",
+                                               radioButtons("ImmDeconvAnalysis","Perform Expression Analysis On:",choices = c("Gene Expression","Immune Deconvolution"),
+                                                            selected = "Gene Expression", inline = T)
+                                               ),
+                              #if (immudecon_check == TRUE) {
+                              #  radioButtons("ImmDeconvAnalysis","Perform Expression Analysis On:",choices = c("Gene Expression","Immune Deconvolution"),
+                              #               selected = "Gene Expression", inline = T)
+                              #},
                               conditionalPanel("input.RawCountQuantNorm.includes('Filter Matrix')",
                                                fluidRow(
                                                  column(6, style = 'margin-bottom:-15px;',
@@ -2537,7 +2550,7 @@ server <- function(input, output, session) {
           expr <- expr[,sampsames]
           meta <- meta[which(meta[,1] %in% sampsames),]
           
-          if (immudecon_check == TRUE) {
+          if (immudecon_check == TRUE & "Perform Immune Deconvolution" %in% input$RawCountQuantNorm) {
             withProgress(message = "Processing", value = 0, {
               incProgress(0.5, detail = "Performing Immune Deconvolution")
               mcp_counter_decon <- as.data.frame(deconvolute(expr, "mcp_counter"))
@@ -2592,6 +2605,7 @@ server <- function(input, output, session) {
         })
       })
       
+      
       observeEvent(input$SplitColumn, {
         req(meta_input())
         meta <- meta_input()
@@ -2629,26 +2643,49 @@ server <- function(input, output, session) {
       ## Data Preview ----------------------------------------------------------
       
       observe({
-        if (immudecon_check & input$ImmDeconvAnalysis == "Immune Deconvolution") {
-          req(ImmDeconv_react())
-          expr <- ImmDeconv_react()
-          Gene <- rownames(expr)
-          geneList <- as.data.frame(Gene)
-          geneList_raw(geneList);
-          Gene_raw(Gene)
-          CTKgenes <- CTKgenes[which(CTKgenes %in% Gene)]
-          updateSelectizeInput(session = session, inputId = "heatmapGeneSelec",
-                               choices = Gene,selected = CTKgenes, server = T)
-          updateSelectizeInput(session = session, inputId = "avgheatmapGeneSelec",
-                               choices = Gene,selected = CTKgenes, server = T)
-          updateSelectizeInput(session = session, inputId = "scatterG1",
-                               choices = Gene,selected = Gene[1], server = T)
-          updateSelectizeInput(session = session, inputId = "scatterG2",
-                               choices = Gene,selected = Gene[2], server = T)
-          updateSelectizeInput(session = session, inputId = "userGeneSelec",
-                               choices = sort(as.vector(geneList[,1])),selected = NULL, server = T)
-          updateSelectizeInput(session = session, inputId = "scatterGeneSelec",
-                               choices = rownames(expr),selected = NULL, server = T)
+        if (immudecon_check) {
+          req(input$ImmDeconvAnalysis)
+          if (input$ImmDeconvAnalysis == "Immune Deconvolution") {
+            req(ImmDeconv_react())
+            expr <- ImmDeconv_react()
+            Gene <- rownames(expr)
+            geneList <- as.data.frame(Gene)
+            geneList_raw(geneList);
+            Gene_raw(Gene)
+            CTKgenes <- CTKgenes[which(CTKgenes %in% Gene)]
+            updateSelectizeInput(session = session, inputId = "heatmapGeneSelec",
+                                 choices = Gene,selected = CTKgenes, server = T)
+            updateSelectizeInput(session = session, inputId = "avgheatmapGeneSelec",
+                                 choices = Gene,selected = CTKgenes, server = T)
+            updateSelectizeInput(session = session, inputId = "scatterG1",
+                                 choices = Gene,selected = Gene[1], server = T)
+            updateSelectizeInput(session = session, inputId = "scatterG2",
+                                 choices = Gene,selected = Gene[2], server = T)
+            updateSelectizeInput(session = session, inputId = "userGeneSelec",
+                                 choices = sort(as.vector(geneList[,1])),selected = NULL, server = T)
+            updateSelectizeInput(session = session, inputId = "scatterGeneSelec",
+                                 choices = rownames(expr),selected = NULL, server = T)
+          } else if (input$ImmDeconvAnalysis == "Gene Expression") {
+            req(ImmDeconv_react())
+            expr <- expr_input()
+            Gene <- rownames(expr)
+            geneList <- as.data.frame(Gene)
+            geneList_raw(geneList);
+            Gene_raw(Gene)
+            CTKgenes <- CTKgenes[which(CTKgenes %in% Gene)]
+            updateSelectizeInput(session = session, inputId = "heatmapGeneSelec",
+                                 choices = Gene,selected = CTKgenes, server = T)
+            updateSelectizeInput(session = session, inputId = "avgheatmapGeneSelec",
+                                 choices = Gene,selected = CTKgenes, server = T)
+            updateSelectizeInput(session = session, inputId = "scatterG1",
+                                 choices = Gene,selected = Gene[1], server = T)
+            updateSelectizeInput(session = session, inputId = "scatterG2",
+                                 choices = Gene,selected = Gene[2], server = T)
+            updateSelectizeInput(session = session, inputId = "userGeneSelec",
+                                 choices = sort(as.vector(geneList[,1])),selected = NULL, server = T)
+            updateSelectizeInput(session = session, inputId = "scatterGeneSelec",
+                                 choices = rownames(expr),selected = NULL, server = T)
+          }
         }
         
         
