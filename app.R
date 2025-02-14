@@ -183,9 +183,13 @@ mouse <- ifelse(!as.logical(human),TRUE,FALSE)
 #
 #}
 
-get_feat_cols <- function(data) {
-  data <- data[sapply(data, function(x) length(unique(x))>1)]
-  data <- data[sapply(data, function(x) length(unique(x))<length(x))]
+get_feat_cols <- function(data, keep_num = TRUE) {
+  if (keep_num) {
+    data <- data[sapply(data, function(x) length(unique(x))>1)]
+  } else {
+    data <- data[sapply(data, function(x) length(unique(x))>1)]
+    data <- data[sapply(data, function(x) length(unique(x))<length(x))]
+  }
   return(colnames(data))
 }
 
@@ -3197,7 +3201,7 @@ server <- function(input, output, session) {
         meta <- meta_input()
         if (ncol(meta) > 2) {
           #CharCols <- c("Select All Samples",suppressWarnings(column_type_check(meta,"character"))[-1])
-          CharCols <- c("Select All Samples",get_feat_cols(meta))
+          CharCols <- c("Select All Samples",get_feat_cols(meta, keep_num = FALSE))
           if (isTruthy(SubCol_reactVal())) {
             preSelect <- SubCol_reactVal()
           } else {
@@ -3415,7 +3419,7 @@ server <- function(input, output, session) {
         meta <- meta_react()
         #FeatureChoices <- c("Select All Samples",suppressWarnings(column_type_check(meta,"character"))[-1])
         #FeatureChoices <- suppressWarnings(column_type_check(meta,"character"))[-1]
-        FeatureChoices <- get_feat_cols(meta)
+        FeatureChoices <- get_feat_cols(meta, keep_num = FALSE)
         if (input$SubsetCol != "Select All Samples") {
           FeatureChoices <- FeatureChoices[which(FeatureChoices!=input$SubsetCol)]
         }
@@ -3453,7 +3457,7 @@ server <- function(input, output, session) {
         req(meta_react())
         meta <- meta_react()
         #FeatureChoices <- suppressWarnings(column_type_check(meta,"character"))[-1]
-        FeatureChoices <- get_feat_cols(meta)
+        FeatureChoices <- get_feat_cols(meta, keep_num = FALSE)
         if (input$SubsetCol != "Select All Samples") {
           FeatureChoices <- FeatureChoices[which(FeatureChoices!=input$SubsetCol)]
         }
@@ -3467,7 +3471,7 @@ server <- function(input, output, session) {
         meta <- meta_react()
         #FeatureChoices <- c("Select All Samples",suppressWarnings(column_type_check(meta,"character"))[-1])
         #FeatureChoices <- suppressWarnings(column_type_check(meta,"character"))[-1]
-        FeatureChoices <- get_feat_cols(meta)
+        FeatureChoices <- get_feat_cols(meta, keep_num = FALSE)
         if (input$SubsetCol != "Select All Samples") {
           FeatureChoices <- FeatureChoices[which(FeatureChoices!=input$SubsetCol)]
         }
@@ -3506,7 +3510,7 @@ server <- function(input, output, session) {
         meta <- meta_react()
         #FeatureChoices <- c("Select All Samples",suppressWarnings(column_type_check(meta,"character"))[-1])
         #FeatureChoices <- suppressWarnings(column_type_check(meta,"character"))[-1]
-        FeatureChoices <- get_feat_cols(meta)
+        FeatureChoices <- get_feat_cols(meta, keep_num = FALSE)
         if (input$SubsetCol != "Select All Samples") {
           FeatureChoices <- FeatureChoices[which(FeatureChoices!=input$SubsetCol)]
         }
@@ -3543,7 +3547,7 @@ server <- function(input, output, session) {
         req(meta_react())
         meta <- meta_react()
         #FeatureChoices <- suppressWarnings(column_type_check(meta,"character"))[-1]
-        FeatureChoices <- get_feat_cols(meta)
+        FeatureChoices <- get_feat_cols(meta, keep_num = FALSE)
         if (isTruthy(input$SubsetCol)) {
           if (input$SubsetCol != "Select All Samples") {
             FeatureChoices <- FeatureChoices[which(FeatureChoices!=input$SubsetCol)]
@@ -3559,7 +3563,7 @@ server <- function(input, output, session) {
         req(meta_react())
         meta <- meta_react()
         #FeatureChoices <- suppressWarnings(column_type_check(meta,"character"))[-1]
-        FeatureChoices <- get_feat_cols(meta)
+        FeatureChoices <- get_feat_cols(meta, keep_num = FALSE)
         if (input$DEGGroupCol != "Select All Samples") {
           FeatureChoices <- FeatureChoices[which(FeatureChoices!=input$DEGGroupCol)]
         }
@@ -3648,7 +3652,7 @@ server <- function(input, output, session) {
         meta <- meta_react()
         #FeatureChoices <- c("Select All Samples",suppressWarnings(column_type_check(meta,"character"))[-1])
         #FeatureChoices <- suppressWarnings(column_type_check(meta,"character"))[-1]
-        FeatureChoices <- get_feat_cols(meta)
+        FeatureChoices <- get_feat_cols(meta, keep_num = FALSE)
         if (input$SubsetCol != "Select All Samples") {
           FeatureChoices <- FeatureChoices[which(FeatureChoices!=input$SubsetCol)]
         }
@@ -3679,7 +3683,7 @@ server <- function(input, output, session) {
         meta <- meta_react()
         #FeatureChoices <- c("Select All Samples",suppressWarnings(column_type_check(meta,"character"))[-1])
         #FeatureChoices <- suppressWarnings(column_type_check(meta,"character"))[-1]
-        FeatureChoices <- get_feat_cols(meta)
+        FeatureChoices <- get_feat_cols(meta, keep_num = FALSE)
         if (input$SubsetCol != "Select All Samples") {
           FeatureChoices <- FeatureChoices[which(FeatureChoices!=input$SubsetCol)]
         }
@@ -5167,11 +5171,22 @@ server <- function(input, output, session) {
           #if (isTruthy(input$GroupColMulti)) {
           meta <- meta_react()
           rownames(meta) <- meta[,1]
+          anno_cols <- input$GroupColMulti
           
-          meta_sub <- meta[,input$GroupColMulti, drop = F]
-          meta_sub[,input$GroupColMulti] <- as.data.frame(lapply(meta_sub[,input$GroupColMulti, drop = F], factor))
+          meta_sub <- meta[,anno_cols, drop = F]
+          
+          
+          meta_sub[,anno_cols] <- as.data.frame(lapply(meta_sub[,anno_cols, drop = F], function(x) {
+            if (!is.numeric(x) | all(suppressWarnings(as.numeric(x))%%1==0)) {
+              return(factor(x))
+            } else {
+              return(x)
+            }
+          }))
+          
+          #meta_sub[,input$GroupColMulti] <- as.data.frame(lapply(meta_sub[,input$GroupColMulti, drop = F], factor))
           colAnn <- ComplexHeatmap::HeatmapAnnotation(df = meta_sub,
-                                                      name = input$GroupColMulti,
+                                                      name = anno_cols,
                                                       which = 'col'
           )
           
@@ -5291,10 +5306,18 @@ server <- function(input, output, session) {
           meta <- meta[which(meta[,1] %in% usersamps),]
           meta <- meta[match(usersamps,meta[,1]),]
           rownames(meta) <- meta[,1]
-          meta_sub <- meta[,input$GroupColMulti, drop = F]
-          meta_sub[,input$GroupColMulti] <- as.data.frame(lapply(meta_sub[,input$GroupColMulti, drop = F], factor))
+          anno_cols <- input$GroupColMulti
+          meta_sub <- meta[,anno_cols, drop = F]
+          meta_sub[,anno_cols] <- as.data.frame(lapply(meta_sub[,anno_cols, drop = F], function(x) {
+            if (!is.numeric(x) | all(suppressWarnings(as.numeric(x))%%1==0)) {
+              return(factor(x))
+            } else {
+              return(x)
+            }
+          }))
+          #meta_sub[,input$GroupColMulti] <- as.data.frame(lapply(meta_sub[,input$GroupColMulti, drop = F], factor))
           colAnn <- ComplexHeatmap::HeatmapAnnotation(df = meta_sub,
-                                                      name = input$GroupColMulti,
+                                                      name = anno_cols,
                                                       which = 'col'
           )
           colAnn
@@ -5410,10 +5433,18 @@ server <- function(input, output, session) {
           if (input$volcanoCompChoice4 == "Limma: Two groups" | input$volcanoCompChoice4 == "DESeq2") {
             groupA <- input$comparisonA2_h
             groupB <- input$comparisonB2_h
-            meta_sub <- meta[,input$GroupColMulti, drop = F]
-            meta_sub[,input$GroupColMulti] <- as.data.frame(lapply(meta_sub[,input$GroupColMulti, drop = F], factor))
+            anno_cols <- input$GroupColMulti
+            meta_sub <- meta[,anno_cols, drop = F]
+            meta_sub[,anno_cols] <- as.data.frame(lapply(meta_sub[,anno_cols, drop = F], function(x) {
+              if (!is.numeric(x) | all(suppressWarnings(as.numeric(x))%%1==0)) {
+                return(factor(x))
+              } else {
+                return(x)
+              }
+            }))
+            #meta_sub[,input$GroupColMulti] <- as.data.frame(lapply(meta_sub[,input$GroupColMulti, drop = F], factor))
             colAnn <- ComplexHeatmap::HeatmapAnnotation(df = meta_sub,
-                                                        name = input$GroupColMulti,
+                                                        name = anno_cols,
                                                         which = 'col'
             )
           } else if (input$volcanoCompChoice4 == "Limma: One group") {
@@ -5425,12 +5456,32 @@ server <- function(input, output, session) {
             #metaSub_noNA[which(metaSub_noNA[,metacol] != groupA),paste0(metacol,"_Dichot")] <- paste0("Not_",groupA)
             metaSub_noNA[which(metaSub_noNA[,metacol] != groupA),paste0(metacol,"_Dichot")] <- groupB
             metacol <- paste0(metacol,"_Dichot")
-            meta_sub <- meta[,c(metacol,input$GroupColMulti), drop = F]
-            meta_sub[,c(metacol,input$GroupColMulti)] <- as.data.frame(lapply(meta_sub[,c(metacol,input$GroupColMulti), drop = F], factor))
+            
+            anno_cols <- c(metacol,input$GroupColMulti)
+            meta_sub <- meta[,anno_cols, drop = F]
+            meta_sub[,anno_cols] <- as.data.frame(lapply(meta_sub[,anno_cols, drop = F], function(x) {
+              if (!is.numeric(x) | all(suppressWarnings(as.numeric(x))%%1==0)) {
+                return(factor(x))
+              } else {
+                return(x)
+              }
+            }))
+            #meta_sub[,input$GroupColMulti] <- as.data.frame(lapply(meta_sub[,input$GroupColMulti, drop = F], factor))
             colAnn <- ComplexHeatmap::HeatmapAnnotation(df = meta_sub,
-                                                        name = c(metacol,input$GroupColMulti),
+                                                        name = anno_cols,
                                                         which = 'col'
             )
+            
+            
+            
+            
+            
+            #meta_sub <- meta[,c(metacol,input$GroupColMulti), drop = F]
+            #meta_sub[,c(metacol,input$GroupColMulti)] <- as.data.frame(lapply(meta_sub[,c(metacol,input$GroupColMulti), drop = F], factor))
+            #colAnn <- ComplexHeatmap::HeatmapAnnotation(df = meta_sub,
+            #                                            name = c(metacol,input$GroupColMulti),
+            #                                            which = 'col'
+            #)
           }
           
           colAnn
@@ -5717,12 +5768,31 @@ server <- function(input, output, session) {
           meta <- meta[match(colnames(dataset),meta[,1]),]
           rownames(meta) <- meta[,1]
           meta_sub <- meta[,input$ssGSEAGroupColMulti, drop = F]
-          meta_sub[,input$ssGSEAGroupColMulti] <- as.data.frame(lapply(meta_sub[,input$ssGSEAGroupColMulti, drop = F], factor))
           
+          
+          anno_cols <- input$ssGSEAGroupColMulti
+          meta_sub <- meta[,anno_cols, drop = F]
+          meta_sub[,anno_cols] <- as.data.frame(lapply(meta_sub[,anno_cols, drop = F], function(x) {
+            if (!is.numeric(x) | all(suppressWarnings(as.numeric(x))%%1==0)) {
+              return(factor(x))
+            } else {
+              return(x)
+            }
+          }))
+          #meta_sub[,input$input$ssGSEAGroupColMulti] <- as.data.frame(lapply(meta_sub[,input$input$ssGSEAGroupColMulti, drop = F], factor))
           colAnn <- ComplexHeatmap::HeatmapAnnotation(df = meta_sub,
-                                                      name = input$ssGSEAGroupColMulti,
+                                                      name = anno_cols,
                                                       which = 'col'
           )
+          
+          
+          
+          #meta_sub[,input$ssGSEAGroupColMulti] <- as.data.frame(lapply(meta_sub[,input$ssGSEAGroupColMulti, drop = F], factor))
+          #
+          #colAnn <- ComplexHeatmap::HeatmapAnnotation(df = meta_sub,
+          #                                            name = input$ssGSEAGroupColMulti,
+          #                                            which = 'col'
+          #)
           colAnn
         } else {
           meta <- meta_react()
@@ -5953,11 +6023,18 @@ server <- function(input, output, session) {
           meta <- meta[which(meta[,1] %in% colnames(dataset)),]
           meta <- meta[match(colnames(dataset),meta[,1]),]
           rownames(meta) <- meta[,1]
-          meta_sub <- meta[,input$ssGSEAGroupColMulti, drop = F]
-          meta_sub[,input$ssGSEAGroupColMulti] <- as.data.frame(lapply(meta_sub[,input$ssGSEAGroupColMulti, drop = F], factor))
-          
+          anno_cols <- input$ssGSEAGroupColMulti
+          meta_sub <- meta[,anno_cols, drop = F]
+          meta_sub[,anno_cols] <- as.data.frame(lapply(meta_sub[,anno_cols, drop = F], function(x) {
+            if (!is.numeric(x) | all(suppressWarnings(as.numeric(x))%%1==0)) {
+              return(factor(x))
+            } else {
+              return(x)
+            }
+          }))
+          #meta_sub[,input$input$ssGSEAGroupColMulti] <- as.data.frame(lapply(meta_sub[,input$input$ssGSEAGroupColMulti, drop = F], factor))
           colAnn <- ComplexHeatmap::HeatmapAnnotation(df = meta_sub,
-                                                      name = input$ssGSEAGroupColMulti,
+                                                      name = anno_cols,
                                                       which = 'col'
           )
           colAnn
@@ -7241,12 +7318,29 @@ server <- function(input, output, session) {
           if (input$volcanoCompChoice3 == "Two groups") {
             groupA <- input$comparisonA
             groupB <- input$comparisonB
-            meta_sub <- meta[,input$GSEAGroupColMulti, drop = F]
-            meta_sub[,input$GSEAGroupColMulti] <- as.data.frame(lapply(meta_sub[,input$GSEAGroupColMulti, drop = F], factor))
+            
+            
+            anno_cols <- input$GSEAGroupColMulti
+            meta_sub <- meta[,anno_cols, drop = F]
+            meta_sub[,anno_cols] <- as.data.frame(lapply(meta_sub[,anno_cols, drop = F], function(x) {
+              if (!is.numeric(x) | all(suppressWarnings(as.numeric(x))%%1==0)) {
+                return(factor(x))
+              } else {
+                return(x)
+              }
+            }))
+            #meta_sub[,input$input$GSEAGroupColMulti] <- as.data.frame(lapply(meta_sub[,input$input$GSEAGroupColMulti, drop = F], factor))
             colAnn <- ComplexHeatmap::HeatmapAnnotation(df = meta_sub,
-                                                        name = input$GSEAGroupColMulti,
+                                                        name = anno_cols,
                                                         which = 'col'
             )
+            
+            #meta_sub <- meta[,input$GSEAGroupColMulti, drop = F]
+            #meta_sub[,input$GSEAGroupColMulti] <- as.data.frame(lapply(meta_sub[,input$GSEAGroupColMulti, drop = F], factor))
+            #colAnn <- ComplexHeatmap::HeatmapAnnotation(df = meta_sub,
+            #                                            name = input$GSEAGroupColMulti,
+            #                                            which = 'col'
+            #)
           } else if (input$volcanoCompChoice3 == "One group") {
             groupA <- input$comparisonA_one
             groupB <- paste0("Not_",groupA)
@@ -7254,12 +7348,29 @@ server <- function(input, output, session) {
             meta[which(meta[,metacol] == groupA),paste0(metacol,"_Dichot")] <- groupA
             meta[which(meta[,metacol] != groupA),paste0(metacol,"_Dichot")] <- paste0("Not_",groupA)
             metacol <- paste0(metacol,"_Dichot")
-            meta_sub <- meta[,c(metacol,input$GSEAGroupColMulti), drop = F]
-            meta_sub[,c(metacol,input$GSEAGroupColMulti)] <- as.data.frame(lapply(meta_sub[,c(metacol,input$GSEAGroupColMulti), drop = F], factor))
+            
+            anno_cols <- c(metacol,input$GSEAGroupColMulti)
+            meta_sub <- meta[,anno_cols, drop = F]
+            meta_sub[,anno_cols] <- as.data.frame(lapply(meta_sub[,anno_cols, drop = F], function(x) {
+              if (!is.numeric(x) | all(suppressWarnings(as.numeric(x))%%1==0)) {
+                return(factor(x))
+              } else {
+                return(x)
+              }
+            }))
+            #meta_sub[,input$input$GSEAGroupColMulti] <- as.data.frame(lapply(meta_sub[,input$input$GSEAGroupColMulti, drop = F], factor))
             colAnn <- ComplexHeatmap::HeatmapAnnotation(df = meta_sub,
-                                                        name = c(metacol,input$GSEAGroupColMulti),
+                                                        name = anno_cols,
                                                         which = 'col'
             )
+            
+            
+            #meta_sub <- meta[,c(metacol,input$GSEAGroupColMulti), drop = F]
+            #meta_sub[,c(metacol,input$GSEAGroupColMulti)] <- as.data.frame(lapply(meta_sub[,c(metacol,input$GSEAGroupColMulti), drop = F], factor))
+            #colAnn <- ComplexHeatmap::HeatmapAnnotation(df = meta_sub,
+            #                                            name = c(metacol,input$GSEAGroupColMulti),
+            #                                            which = 'col'
+            #)
           }
           
           colAnn
