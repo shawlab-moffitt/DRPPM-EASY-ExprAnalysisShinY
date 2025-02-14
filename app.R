@@ -26,11 +26,11 @@ PasswordSet <- 'password'
 ## User make sure paths are correct
 ExampleExpr_File <- "Example_Data/TCGA_CHOL_Expression_PatientID.txt"
 ExampleClin_File <- "Example_Data/TCGA_CHOL_Clinical_PatientID.txt"
-GeneSetHS_File <- "Genesets/GeneSet_List_HS_v6.RData"
-GeneSetTableHS_File <- "Genesets/GeneSet_Categories_HS.txt"
-GeneSetMM_File <- "Genesets/GeneSet_List_MM.RData"
-GeneSetTableMM_File <- "Genesets/GeneSet_Categories_MM.txt"
-MM_HS_Conversion_File <- "Genesets/hs_mm_conversion_20240701.txt"
+GeneSetHS_File <- "GeneSets/GeneSet_List_HS_v6.RData"
+GeneSetTableHS_File <- "GeneSets/GeneSet_Categories_HS.txt"
+GeneSetMM_File <- "GeneSets/GeneSet_List_MM.RData"
+GeneSetTableMM_File <- "GeneSets/GeneSet_Categories_MM.txt"
+MM_HS_Conversion_File <- "GeneSets/hs_mm_conversion_20240701.txt"
 
 
 #increase file upload size
@@ -2550,20 +2550,20 @@ server <- function(input, output, session) {
           expr <- expr[,sampsames]
           meta <- meta[which(meta[,1] %in% sampsames),]
           
-          if (immudecon_check == TRUE & "Perform Immune Deconvolution" %in% input$RawCountQuantNorm) {
-            withProgress(message = "Processing", value = 0, {
-              incProgress(0.5, detail = "Performing Immune Deconvolution")
-              mcp_counter_decon <- as.data.frame(deconvolute(expr, "mcp_counter"))
-              rownames(mcp_counter_decon) <- paste0(mcp_counter_decon[,1],"_MCP_Counter_Immunedeconv")
-              estimate_decon <- as.data.frame(deconvolute(expr, "estimate"))
-              rownames(estimate_decon) <- paste0(estimate_decon[,1],"_Estimate_Immunedeconv")
-              imm_deconv <- rbind(mcp_counter_decon,estimate_decon)[,-1]
-              ImmDeconv_react(imm_deconv)
-              imm_deconv <- as.data.frame(t(imm_deconv))
-              meta <- merge(meta,imm_deconv, by.x = colnames(meta)[1], by.y = 0, all.x = T)
-              incProgress(0.5, detail = "Complete")
-            })
-          }
+          #if (immudecon_check == TRUE & "Perform Immune Deconvolution" %in% input$RawCountQuantNorm) {
+          #  withProgress(message = "Processing", value = 0, {
+          #    incProgress(0.5, detail = "Performing Immune Deconvolution")
+          #    mcp_counter_decon <- as.data.frame(deconvolute(expr, "mcp_counter"))
+          #    rownames(mcp_counter_decon) <- paste0(mcp_counter_decon[,1],"_MCP_Counter_Immunedeconv")
+          #    estimate_decon <- as.data.frame(deconvolute(expr, "estimate"))
+          #    rownames(estimate_decon) <- paste0(estimate_decon[,1],"_Estimate_Immunedeconv")
+          #    imm_deconv <- rbind(mcp_counter_decon,estimate_decon)[,-1]
+          #    ImmDeconv_react(imm_deconv)
+          #    imm_deconv <- as.data.frame(t(imm_deconv))
+          #    meta <- merge(meta,imm_deconv, by.x = colnames(meta)[1], by.y = 0, all.x = T)
+          #    incProgress(0.5, detail = "Complete")
+          #  })
+          #}
           
           
           expr_input(expr)
@@ -2641,6 +2641,25 @@ server <- function(input, output, session) {
       
       
       ## Data Preview ----------------------------------------------------------
+      
+      observe({
+        if (immudecon_check) {
+          if ("Perform Immune Deconvolution" %in% input$RawCountQuantNorm) {
+            req(expr_input())
+            expr <- expr_input()
+            withProgress(message = "Processing", value = 0, {
+              incProgress(0.5, detail = "Performing Immune Deconvolution")
+              mcp_counter_decon <- as.data.frame(deconvolute(expr, "mcp_counter"))
+              rownames(mcp_counter_decon) <- paste0(mcp_counter_decon[,1],"_MCP_Counter_Immunedeconv")
+              estimate_decon <- as.data.frame(deconvolute(expr, "estimate"))
+              rownames(estimate_decon) <- paste0(estimate_decon[,1],"_Estimate_Immunedeconv")
+              imm_deconv <- rbind(mcp_counter_decon,estimate_decon)[,-1]
+              ImmDeconv_react(imm_deconv)
+              incProgress(0.5, detail = "Complete")
+            })
+          }
+        }
+      })
       
       observe({
         if (immudecon_check) {
@@ -3741,6 +3760,13 @@ server <- function(input, output, session) {
         } #else {
           #meta
         #}
+        
+        if (isTruthy(ImmDeconv_react())) {
+          imm_deconv <- ImmDeconv_react()
+          imm_deconv <- as.data.frame(t(imm_deconv))
+          meta <- merge(meta,imm_deconv, by.x = colnames(meta)[1], by.y = 0, all.x = T)
+        }
+        
         meta
       })
       
