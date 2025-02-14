@@ -1863,6 +1863,7 @@ server <- function(input, output, session) {
       expr_raw <- reactiveVal()
       A_raw <- reactiveVal()
       ImmDeconv_react <- reactiveVal()
+      ImmDeconv_Used <- reactiveVal(FALSE)
       geneList_raw <- reactiveVal()
       Gene_raw <- reactiveVal()
       FileCheckAlerts_react <- reactiveVal()
@@ -2669,6 +2670,7 @@ server <- function(input, output, session) {
         if (immudecon_check) {
           req(input$ImmDeconvAnalysis)
           if (input$ImmDeconvAnalysis == "Immune Deconvolution") {
+            ImmDeconv_Used(TRUE)
             req(ImmDeconv_react())
             expr <- ImmDeconv_react()
             Gene <- rownames(expr)
@@ -2688,7 +2690,15 @@ server <- function(input, output, session) {
                                  choices = sort(as.vector(geneList[,1])),selected = NULL, server = T)
             updateSelectizeInput(session = session, inputId = "scatterGeneSelec",
                                  choices = rownames(expr),selected = NULL, server = T)
+            
+            updateSelectInput(session,"BPlogOpt", selected = "No Log")
+            updateSelectInput(session,"BPlogOpt2", selected = "No Log")
+            updateCheckboxInput(session,"log2barplot", value = FALSE)
+            updateCheckboxInput(session,"AvgExpLogFC", value = FALSE)
+            
+            
           } else if (input$ImmDeconvAnalysis == "Gene Expression") {
+            ImmDeconv_Used(FALSE)
             req(ImmDeconv_react())
             expr <- expr_input()
             Gene <- rownames(expr)
@@ -2708,6 +2718,10 @@ server <- function(input, output, session) {
                                  choices = sort(as.vector(geneList[,1])),selected = NULL, server = T)
             updateSelectizeInput(session = session, inputId = "scatterGeneSelec",
                                  choices = rownames(expr),selected = NULL, server = T)
+            updateSelectInput(session,"BPlogOpt", selected = "Log2+1")
+            updateSelectInput(session,"BPlogOpt2", selected = "Log2+1")
+            updateCheckboxInput(session,"log2barplot", value = TRUE)
+            updateCheckboxInput(session,"AvgExpLogFC", value = TRUE)
           }
         }
         
@@ -4500,7 +4514,10 @@ server <- function(input, output, session) {
         req(topgenereact())
         top2 <- topgenereact()
         if (input$volcanoCompChoice == "DESeq2") {
-          top2$AveExpr <- log2(top2$AveExpr+1)
+          if (!ImmDeconv_Used()) {
+            top2$AveExpr <- log2(top2$AveExpr+1)
+          }
+          #top2$AveExpr <- log2(top2$AveExpr+1)
         }
         df <- top2 %>%
           select(GeneName,AveExpr,logFC,P.Value,adj.P.Val)
@@ -4996,7 +5013,10 @@ server <- function(input, output, session) {
             metaSub[,metacol] <- factor(metaSub[,metacol], levels = c(groupA,groupB))
             
             mat <- expr[,metaSub[,1]]
-            mat <- log2(mat + 1.0)
+            if (!ImmDeconv_Used()) {
+              mat <- log2(mat+1)
+            }
+            #mat <- log2(mat + 1.0)
             if (isTruthy(covars)) {
               metaSub[,covars] <- lapply(metaSub[,covars,drop = F], factor)
               form <- as.formula(paste0("~0 +",paste(c(metacol,covars),collapse = "+")))
@@ -5127,7 +5147,10 @@ server <- function(input, output, session) {
             metaSub[,metacol] <- factor(metaSub[,metacol], levels = c(A_choice,B_choice))
             
             mat <- expr[,metaSub[,1]]
-            mat <- log2(mat + 1.0)
+            if (!ImmDeconv_Used()) {
+              mat <- log2(mat+1)
+            }
+            #mat <- log2(mat + 1.0)
             if (isTruthy(covars)) {
               metaSub[,covars] <- lapply(metaSub[,covars,drop = F], factor)
               form <- as.formula(paste0("~0 +",paste(c(metacol,covars),collapse = "+")))
@@ -5223,8 +5246,13 @@ server <- function(input, output, session) {
           mad <- NULL
           var <- NULL
           cv <- NULL
+          
+          if (!ImmDeconv_Used()) {
+            exp <- log2(exp+1)
+          }
+          
           if (var_type == "MAD"){
-            mad <- apply(log2(exp + 1), 1, mad)
+            mad <- apply(exp, 1, mad)
             mad <- sort(mad, decreasing = T)
             mad <- head(mad, n = (top_probes +1))
             out <- cbind(names(mad), mad[names(mad)], exp[names(mad),])
@@ -5232,7 +5260,7 @@ server <- function(input, output, session) {
             dataset <- exp[names(mad),]
           }
           else if (var_type == "VAR"){
-            var <- apply(log2(exp + 1), 1, var)
+            var <- apply(exp, 1, var)
             var <- sort(var, decreasing = T)
             var <- head(var, n = (top_probes +1))
             out <- cbind(names(var), var[names(var)], exp[names(var),])
@@ -5240,7 +5268,7 @@ server <- function(input, output, session) {
             dataset <- exp[names(var),]
           }
           else if (var_type == "CV"){
-            cv <- apply(log2(exp + 1), 1, cv)
+            cv <- apply(exp, 1, cv)
             cv <- sort(cv, decreasing = T)
             cv <- head(cv, n = (top_probes +1))
             out <- cbind(names(cv), cv[names(cv)], exp[names(cv),])
@@ -5248,7 +5276,10 @@ server <- function(input, output, session) {
             dataset <- exp[names(cv),]
           }
           incProgress(0.25, detail = "Calculating Z-Score")
-          dataset <- log2(dataset + 1)
+          #if (!ImmDeconv_Used()) {
+          #  dataset <- log2(dataset+1)
+          #}
+          #dataset <- log2(dataset + 1)
           zdataset <- apply(dataset, 1, scale)
           zdataset <- apply(zdataset, 1, rev)
           colnames(zdataset) <- colnames(dataset)
@@ -5367,7 +5398,10 @@ server <- function(input, output, session) {
             #meta <- meta[match(colnames(usersamps),meta[,1]),]
             incProgress(0.25, detail = "Calculating Z-Score")
             dataset <- exp
-            dataset <- log2(dataset + 1)
+            if (!ImmDeconv_Used()) {
+              dataset <- log2(dataset+1)
+            }
+            #dataset <- log2(dataset + 1)
             zdataset <- apply(dataset, 1, scale)
             zdataset <- apply(zdataset, 1, rev)
             colnames(zdataset) <- colnames(dataset)
@@ -5527,7 +5561,10 @@ server <- function(input, output, session) {
           # Heatmap Calculations
           dataset <- expr[which(rownames(expr) %in% genelist),]
           if (length(dataset) > 0) {
-            dataset <- log2(dataset + 1)
+            if (!ImmDeconv_Used()) {
+              dataset <- log2(dataset+1)
+            }
+            #dataset <- log2(dataset + 1)
             zdataset <- apply(dataset, 1, scale)
             zdataset <- apply(zdataset, 1, rev)
             colnames(zdataset) <- colnames(dataset)
@@ -5627,7 +5664,10 @@ server <- function(input, output, session) {
             dataset <- AvgExprDF
             incProgress(0.25, detail = "Calculating Z-Score")
             #if (length(group_choices) > 0) {
-            dataset <- log2(dataset + 1)
+            if (!ImmDeconv_Used()) {
+              dataset <- log2(dataset+1)
+            }
+            #dataset <- log2(dataset + 1)
             zdataset <- apply(dataset, 1, scale)
             zdataset <- apply(zdataset, 1, rev)
             colnames(zdataset) <- colnames(dataset)
@@ -6880,7 +6920,10 @@ server <- function(input, output, session) {
           metaSub[,metacol] <- factor(metaSub[,metacol], levels = c(groupA,groupB))
           
           mat <- expr[,metaSub[,1]]
-          mat <- log2(mat + 1.0)
+          if (!ImmDeconv_Used()) {
+            mat <- log2(mat+1)
+          }
+          #mat <- log2(mat + 1.0)
           if (isTruthy(covars)) {
             metaSub[,covars] <- lapply(metaSub[,covars,drop = F], factor)
             form <- as.formula(paste0("~0 +",paste(c(metacol,covars),collapse = "+")))
@@ -6932,7 +6975,10 @@ server <- function(input, output, session) {
         A <- meta[which(meta[,metacol] == input$comparisonA2.path),1]
         B <- meta[which(meta[,metacol] == input$comparisonB2.path),1]
         mat <- expr[,c(A,B)]
-        mat <- log2(mat + 1.0)
+        if (!ImmDeconv_Used()) {
+          mat <- log2(mat+1)
+        }
+        #mat <- log2(mat + 1.0)
         groupAOther <- factor(c(rep("A", length(A)), rep("B", length(B))))
         designA <- model.matrix(~0 + groupAOther)
         fit <- lmFit(mat, design = designA)
@@ -6966,7 +7012,10 @@ server <- function(input, output, session) {
         A <- meta[which(meta[,metacol] == input$comparisonA2.path),1]
         B <- meta[which(meta[,metacol] == input$comparisonB2.path),1]
         mat <- expr[,c(A,B)]
-        mat <- log2(mat + 1.0)
+        if (!ImmDeconv_Used()) {
+          mat <- log2(mat+1)
+        }
+        #mat <- log2(mat + 1.0)
         groupAOther <- factor(c(rep("A", length(A)), rep("B", length(B))))
         designA <- model.matrix(~0 + groupAOther)
         fit <- lmFit(mat, design = designA)
@@ -7434,7 +7483,11 @@ server <- function(input, output, session) {
         class(A) <- "numeric"
         ## Transforming data
         A <- A[,c(groupA,groupB)]
-        exp.mat1 = log2(A + 1) # log
+        if (!ImmDeconv_Used()) {
+          A <- log2(A+1)
+        }
+        exp.mat1 <- A
+        #exp.mat1 = log2(A + 1) # log
         exp.mat2 = apply(exp.mat1, 1, scale); # z score
         exp.mat3 = apply(exp.mat2, 1, rev); # transpose
         colnames(exp.mat3) = colnames(A) # set the column name
@@ -7535,7 +7588,10 @@ server <- function(input, output, session) {
         axis_font <- input$VolMAAxisSize
         top2 <- topgenereact()
         if (input$volcanoCompChoice == "DESeq2") {
-          top2$AveExpr <- log2(top2$AveExpr+1)
+          if (!ImmDeconv_Used()) {
+            top2$AveExpr <- log2(top2$AveExpr+1)
+          }
+          #top2$AveExpr <- log2(top2$AveExpr+1)
         }
         #add color categories based on FC and pval
         top2['threshold'] <- "none"
@@ -8315,7 +8371,10 @@ server <- function(input, output, session) {
         A <- meta[which(meta[,metacol] == input$comparisonA2.path),1]
         B <- meta[which(meta[,metacol] == input$comparisonB2.path),1]
         mat <- expr[,c(A,B)]
-        mat <- log2(mat + 1.0)
+        if (!ImmDeconv_Used()) {
+          mat <- log2(mat+1)
+        }
+        #mat <- log2(mat + 1.0)
         groupAOther <- factor(c(rep("A", length(A)), rep("B", length(B))))
         designA <- model.matrix(~0 + groupAOther)
         fit <- lmFit(mat, design = designA)
@@ -8352,7 +8411,10 @@ server <- function(input, output, session) {
         A <- meta[which(meta[,metacol] == input$comparisonA2.path),1]
         B <- meta[which(meta[,metacol] == input$comparisonB2.path),1]
         mat <- expr[,c(A,B)]
-        mat <- log2(mat + 1.0)
+        if (!ImmDeconv_Used()) {
+          mat <- log2(mat+1)
+        }
+        #mat <- log2(mat + 1.0)
         groupAOther <- factor(c(rep("A", length(A)), rep("B", length(B))))
         designA <- model.matrix(~0 + groupAOther)
         fit <- lmFit(mat, design = designA)
@@ -9075,7 +9137,10 @@ server <- function(input, output, session) {
           A <- meta[which(meta[,metacol] == input$comparisonA2.path),1]
           B <- meta[which(meta[,metacol] == input$comparisonB2.path),1]
           mat <- expr[,c(A,B)]
-          mat <- log2(mat + 1.0)
+          if (!ImmDeconv_Used()) {
+            mat <- log2(mat+1)
+          }
+          #mat <- log2(mat + 1.0)
           groupAOther <- factor(c(rep("A", length(A)), rep("B", length(B))))
           designA <- model.matrix(~0 + groupAOther)
           fit <- lmFit(mat, design = designA)
@@ -9113,7 +9178,10 @@ server <- function(input, output, session) {
           A <- meta[which(meta[,metacol] == input$comparisonA2.path),1]
           B <- meta[which(meta[,metacol] == input$comparisonB2.path),1]
           mat <- expr[,c(A,B)]
-          mat <- log2(mat + 1.0)
+          if (!ImmDeconv_Used()) {
+            mat <- log2(mat+1)
+          }
+          #mat <- log2(mat + 1.0)
           groupAOther <- factor(c(rep("A", length(A)), rep("B", length(B))))
           designA <- model.matrix(~0 + groupAOther)
           fit <- lmFit(mat, design = designA)
@@ -9423,7 +9491,10 @@ server <- function(input, output, session) {
           A <- meta[which(meta[,metacol] == input$comparisonA2.path),1]
           B <- meta[which(meta[,metacol] == input$comparisonB2.path),1]
           mat <- expr[,c(A,B)]
-          mat <- log2(mat + 1.0)
+          if (!ImmDeconv_Used()) {
+            mat <- log2(mat+1)
+          }
+          #mat <- log2(mat + 1.0)
           groupAOther <- factor(c(rep("A", length(A)), rep("B", length(B))))
           designA <- model.matrix(~0 + groupAOther)
           fit <- lmFit(mat, design = designA)
@@ -9461,7 +9532,10 @@ server <- function(input, output, session) {
           A <- meta[which(meta[,metacol] == input$comparisonA2.path),1]
           B <- meta[which(meta[,metacol] == input$comparisonB2.path),1]
           mat <- expr[,c(A,B)]
-          mat <- log2(mat + 1.0)
+          if (!ImmDeconv_Used()) {
+            mat <- log2(mat+1)
+          }
+          #mat <- log2(mat + 1.0)
           groupAOther <- factor(c(rep("A", length(A)), rep("B", length(B))))
           designA <- model.matrix(~0 + groupAOther)
           fit <- lmFit(mat, design = designA)
@@ -9519,7 +9593,11 @@ server <- function(input, output, session) {
               class(A) <- "numeric"
               ## Transforming data
               A <- A[,c(groupA,groupB)]
-              exp.mat1 = log2(A + 1) # log
+              if (!ImmDeconv_Used()) {
+                A <- log2(A+1)
+              }
+              exp.mat1 = A
+              #exp.mat1 = log2(A + 1) # log
               exp.mat2 = apply(exp.mat1, 1, scale); # z score
               exp.mat3 = apply(exp.mat2, 1, rev); # transpose
               colnames(exp.mat3) = colnames(A) # set the column name
@@ -9589,7 +9667,11 @@ server <- function(input, output, session) {
               class(A) <- "numeric"
               ## Transforming data
               A <- A[,c(groupA,groupB)]
-              exp.mat1 = log2(A + 1) # log
+              if (!ImmDeconv_Used()) {
+                A <- log2(A+1)
+              }
+              exp.mat1 = A
+              #exp.mat1 = log2(A + 1) # log
               exp.mat2 = apply(exp.mat1, 1, scale); # z score
               exp.mat3 = apply(exp.mat2, 1, rev); # transpose
               colnames(exp.mat3) = colnames(A) # set the column name
@@ -9659,7 +9741,11 @@ server <- function(input, output, session) {
               class(A) <- "numeric"
               ## Transforming data
               A <- A[,c(groupA,groupB)]
-              exp.mat1 = log2(A + 1) # log
+              if (!ImmDeconv_Used()) {
+                A <- log2(A+1)
+              }
+              exp.mat1 = A
+              #exp.mat1 = log2(A + 1) # log
               exp.mat2 = apply(exp.mat1, 1, scale); # z score
               exp.mat3 = apply(exp.mat2, 1, rev); # transpose
               colnames(exp.mat3) = colnames(A) # set the column name
@@ -9746,8 +9832,13 @@ server <- function(input, output, session) {
           var <- NULL
           cv <- NULL
           var_type <- input$VarianceMeasure
+          
+          if (!ImmDeconv_Used()) {
+            exp <- log2(exp+1)
+          }
+          
           if (var_type == "MAD"){
-            mad <- apply(log2(exp + 1), 1, mad)
+            mad <- apply(exp, 1, mad)
             mad <- sort(mad, decreasing = T)
             mad <- head(mad, n = (top_probes +1))
             out <- cbind(names(mad), mad[names(mad)], exp[names(mad),])
@@ -9756,7 +9847,7 @@ server <- function(input, output, session) {
             variable_gene_list <- names(mad)
           }
           if (var_type == "VAR"){
-            var <- apply(log2(exp + 1), 1, var)
+            var <- apply(exp, 1, var)
             var <- sort(var, decreasing = T)
             var <- head(var, n = (top_probes +1))
             out <- cbind(names(var), var[names(var)], exp[names(var),])
@@ -9765,7 +9856,7 @@ server <- function(input, output, session) {
             variable_gene_list <- names(var)
           }
           if (var_type == "CV"){
-            cv <- apply(log2(exp + 1), 1, cv)
+            cv <- apply(exp, 1, cv)
             cv <- sort(cv, decreasing = T)
             cv <- head(cv, n = (top_probes +1))
             out <- cbind(names(cv), cv[names(cv)], exp[names(cv),])
@@ -9773,7 +9864,10 @@ server <- function(input, output, session) {
             dataset <- exp[names(cv),]
             variable_gene_list <- names(cv)
           }
-          dataset <- log2(dataset + 1)
+          #if (!ImmDeconv_Used()) {
+          #  dataset <- log2(dataset+1)
+          #}
+          #dataset <- log2(dataset + 1)
           zdataset <- apply(dataset, 1, scale)
           zdataset <- apply(zdataset, 1, rev)
           colnames(zdataset) <- colnames(dataset)
@@ -10220,8 +10314,11 @@ server <- function(input, output, session) {
           var <- NULL
           cv <- NULL
           var_type <- input$VarianceMeasure
+          if (!ImmDeconv_Used()) {
+            exp <- log2(exp+1)
+          }
           if (var_type == "MAD"){
-            mad <- apply(log2(exp + 1), 1, mad)
+            mad <- apply(exp, 1, mad)
             mad <- sort(mad, decreasing = T)
             mad <- head(mad, n = (top_probes +1))
             out <- cbind(names(mad), mad[names(mad)], exp[names(mad),])
@@ -10230,7 +10327,7 @@ server <- function(input, output, session) {
             variable_gene_list <- names(mad)
           }
           if (var_type == "VAR"){
-            var <- apply(log2(exp + 1), 1, var)
+            var <- apply(exp, 1, var)
             var <- sort(var, decreasing = T)
             var <- head(var, n = (top_probes +1))
             out <- cbind(names(var), var[names(var)], exp[names(var),])
@@ -10239,7 +10336,7 @@ server <- function(input, output, session) {
             variable_gene_list <- names(var)
           }
           if (var_type == "CV"){
-            cv <- apply(log2(exp + 1), 1, cv)
+            cv <- apply(exp, 1, cv)
             cv <- sort(cv, decreasing = T)
             cv <- head(cv, n = (top_probes +1))
             out <- cbind(names(cv), cv[names(cv)], exp[names(cv),])
@@ -10273,8 +10370,11 @@ server <- function(input, output, session) {
           var <- NULL
           cv <- NULL
           var_type <- input$VarianceMeasure
+          if (!ImmDeconv_Used()) {
+            exp <- log2(exp+1)
+          }
           if (var_type == "MAD"){
-            mad <- apply(log2(exp + 1), 1, mad)
+            mad <- apply(exp, 1, mad)
             mad <- sort(mad, decreasing = T)
             mad <- head(mad, n = (top_probes +1))
             out <- cbind(names(mad), mad[names(mad)], exp[names(mad),])
@@ -10283,7 +10383,7 @@ server <- function(input, output, session) {
             variable_gene_list <- names(mad)
           }
           if (var_type == "VAR"){
-            var <- apply(log2(exp + 1), 1, var)
+            var <- apply(exp, 1, var)
             var <- sort(var, decreasing = T)
             var <- head(var, n = (top_probes +1))
             out <- cbind(names(var), var[names(var)], exp[names(var),])
@@ -10292,7 +10392,7 @@ server <- function(input, output, session) {
             variable_gene_list <- names(var)
           }
           if (var_type == "CV"){
-            cv <- apply(log2(exp + 1), 1, cv)
+            cv <- apply(exp, 1, cv)
             cv <- sort(cv, decreasing = T)
             cv <- head(cv, n = (top_probes +1))
             out <- cbind(names(cv), cv[names(cv)], exp[names(cv),])
