@@ -438,6 +438,8 @@ DataInput_tab <- tabPanel("Data Input",
                             ),
                             ### Main Panel -------------------------------------
                             mainPanel(
+                              uiOutput("log_alert_flag"),
+                              #span(textOutput("log_alert_flag"), style="color:red"),
                               verbatimTextOutput("FileCheckAlerts"),
                               fluidRow(
                                 column(2, style = 'margin-top:15px;padding-right:2px',
@@ -2608,6 +2610,48 @@ server <- function(input, output, session) {
           FileCheckAlerts_react(FileCheckAlerts_list)
           incProgress(0.5, detail = "Complete!")
         })
+      })
+      
+      output$log_alert_flag <- renderUI({
+      #output$log_alert_flag <- renderText({
+        
+      #})
+      #observe({
+        req(expr_input())
+        expr <- as.matrix(expr_input())
+
+        expr_min <- min(expr,na.rm = T)
+        expr_max <- max(expr,na.rm = T)
+        expr_tile <- quantile(expr)
+        
+        #save(list = ls(), file = "expr_flag_env.RData", envir = environment())
+        #
+        #tags$div(
+        #  HTML(paste("This text is ", tags$span(style="color:red", "red"), sep = ""))
+        #)
+        
+        
+        if (all(expr_tile < 30) & expr_min < 0) {
+          tags$div(
+            tags$span(HTML(paste0("The overall expression values of the input matrix were flagged as being lower than 30 and negative values were identified.<br>",
+                      "If this data was log transformed prior to upload, please select the checkbox to the left '<b>Input data is log-transformed</b>'.")),
+                      style="color:red")
+            )
+        } else if (all(expr_tile < 30)) {
+          tags$div(
+            tags$span(HTML(paste0("The overall expression values of the input matrix were flagged as being lower than 30.<br>",
+                      "If this data was log transformed prior to upload, please select the checkbox to the left '<b>Input data is log-transformed</b>'.")),
+                      style="color:red")
+            )
+        } else if (expr_min < 0) {
+          tags$div(
+            tags$span(HTML(paste0("Negative values detected in input expression matrix.<br>",
+                      "If this data was log transformed prior to upload, please select the checkbox to the left '<b>Input data is log-transformed</b>'.")),
+                      style="color:red")
+            )
+        }
+        
+
       })
       
       
