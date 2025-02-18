@@ -1,4 +1,4 @@
-type_id <- paste0("v2.0.20250214")
+type_id <- paste0("v2.0.20250218")
 
 # User Data Input --------------------------------------------------------------
 # Project Name
@@ -100,6 +100,21 @@ date_to_gene <- function(vec,mouse = FALSE) {
   }
   return(vec)
 }
+
+adjust_for_log <- function(vec, method = "floor") {
+  if (method == "floor") {
+    vec[which(vec < 1)] <- 1
+  } else if (method == "shift") {
+    if (min(vec, na.rm = T) < 0) {
+      shift_by <- 1-min(vec, na.rm = T)
+      vec <- vec + shift_by
+    }
+  } else {
+    stop("Please choose either 'floor' or 'shift' as the method of adjustment")
+  }
+  return(vec)
+} 
+
 
 
 ## Gene Set data ---------------------------------------------------------------
@@ -372,12 +387,12 @@ DataInput_tab <- tabPanel("Data Input",
                               ),
                               conditionalPanel(condition = "input.RawCountQuantNorm.includes('Perform Immune Deconvolution')",
                                                radioButtons("ImmDeconvAnalysis","Perform Expression Analysis On:",choices = c("Gene Expression","Immune Deconvolution"),
-                                                            selected = "Gene Expression", inline = T)
+                                                            selected = "Gene Expression", inline = T),
+                                               conditionalPanel(condition = "input.ImmDeconvAnalysis == 'Immune Deconvolution'",
+                                                                radioButtons("ImmDeconvLogOpt","Adjust Matrix for Log Transform:",
+                                                                             choices = c("None","Floor data to 1","Shift Feature Min to 1"), inline = T)
+                                               )
                                                ),
-                              #if (immudecon_check == TRUE) {
-                              #  radioButtons("ImmDeconvAnalysis","Perform Expression Analysis On:",choices = c("Gene Expression","Immune Deconvolution"),
-                              #               selected = "Gene Expression", inline = T)
-                              #},
                               conditionalPanel("input.RawCountQuantNorm.includes('Filter Matrix')",
                                                fluidRow(
                                                  column(6, style = 'margin-bottom:-15px;',
@@ -439,25 +454,55 @@ DataInput_tab <- tabPanel("Data Input",
                             ### Main Panel -------------------------------------
                             mainPanel(
                               uiOutput("log_alert_flag"),
-                              #span(textOutput("log_alert_flag"), style="color:red"),
+                              tags$head(tags$style("#FileCheckAlerts{font-size:12px; overflow-y:scroll; max-height: 100px; background: ghostwhite;}")),
                               verbatimTextOutput("FileCheckAlerts"),
-                              fluidRow(
-                                column(2, style = 'margin-top:15px;padding-right:2px',
-                                       uiOutput("renddownload_expr")
-                                ),
-                                column(2, style = 'margin-top:15px;padding-left:2px;padding-right:2px',
-                                       uiOutput("renddownload_meta")
-                                ),
-                                column(2, style = 'margin-top:15px;padding-left:2px;padding-right:2px',
-                                       uiOutput("renddownload_notes")
-                                )
-                              ),
-                              uiOutput("rendExprFilePrevHeader"),
-                              uiOutput("rendExprHead"),
-                              div(DT::dataTableOutput("ExprFile_Preview"), style = "font-size:10px"),
-                              uiOutput("rendClinFilePrevHeader"),
-                              uiOutput("rendClinHead"),
-                              div(DT::dataTableOutput("ClinFile_Preview"), style = "font-size:10px")
+                              tabsetPanel(id = "datainputtabs",
+                                          tabPanel("Data Preview",
+                                                   fluidRow(
+                                                     column(2, style = 'margin-top:15px;padding-right:2px',
+                                                            uiOutput("renddownload_expr")
+                                                     ),
+                                                     column(2, style = 'margin-top:15px;padding-left:2px;padding-right:2px',
+                                                            uiOutput("renddownload_meta")
+                                                     ),
+                                                     column(2, style = 'margin-top:15px;padding-left:2px;padding-right:2px',
+                                                            uiOutput("renddownload_notes")
+                                                     )
+                                                   ),
+                                                   uiOutput("rendExprFilePrevHeader"),
+                                                   uiOutput("rendExprHead"),
+                                                   div(DT::dataTableOutput("ExprFile_Preview"), style = "font-size:10px"),
+                                                   uiOutput("rendClinFilePrevHeader"),
+                                                   uiOutput("rendClinHead"),
+                                                   div(DT::dataTableOutput("ClinFile_Preview"), style = "font-size:10px")
+                                                   ),
+                                          tabPanel("Data Distribution",
+                                                   p(),
+                                                   wellPanel(
+                                                     fluidRow(
+                                                       column(2,
+                                                              radioButtons("distribOpts","Distribution Across:", choices = c("Features","Samples"))
+                                                              ),
+                                                       column(3,
+                                                              selectizeInput("distribSelect","Select Feature:", choices = NULL, selected = 1)
+                                                              ),
+                                                       column(1, style = "margin-top:20px",
+                                                              checkboxInput("distribLog", "Log2+1", value = FALSE)
+                                                              ),
+                                                       column(1,
+                                                              checkboxGroupInput("distribView", "View As:", choices = c("Histogram","Density"), selected = c("Histogram","Density"))
+                                                              ),
+                                                       column(2,
+                                                              conditionalPanel(condition = "input.distribView.includes('Histogram')",
+                                                                               numericInput("HistBins","Bins",value = 100, min = 2, step = 1, width = "50%")
+                                                                               )
+                                                              )
+                                                       )
+                                                     ),
+                                                   withSpinner(jqui_resizable(plotOutput("distribPlot", width = "100%", height = "500px")), type = 6),
+                                                   downloadButton("distribPlot_dnld","SVG")
+                                                   )
+                                          )
                             )
                           ),
                           tagList( #nolint
@@ -670,7 +715,6 @@ Data_Exploration_tab <- tabPanel("Data Exploration",
                                                                                     #         uiOutput("rendcomparisonB2_h")
                                                                                     #  )
                                                                                     #),
-                                                                                    selectizeInput("DEGCovarSelectHeat","Select Covariates:", choices = NULL, selected = 1, multiple = T),
                                                                                     fluidRow(
                                                                                       column(6,
                                                                                              numericInput("fc_cutoff_h", "LogFC Threshold",
@@ -1868,7 +1912,14 @@ server <- function(input, output, session) {
       ImmDeconv_Used <- reactiveVal(FALSE)
       geneList_raw <- reactiveVal()
       Gene_raw <- reactiveVal()
-      FileCheckAlerts_react <- reactiveVal()
+      #FileCheckAlerts_react <- reactiveVal()
+      FileCheckAlerts_react <- reactiveVal(list(input_min = NULL,input_max = NULL,input_quantile = NULL,inf_found = NULL,na_found = NULL,dup_found = NULL,dup_list = NULL,
+                                                mm_gene_detected = NULL,mm_gene_convert = NULL,gene_convert_fin = NULL,
+                                                log_detect = NULL,exp_done = NULL,
+                                                raw_count_norm = NULL,quant_norm = NULL,filter_done = NULL,
+                                                samp_diff_n = NULL,samp_diff = NULL,
+                                                immdec_min = NULL,immdec_max = NULL,immdec_quantile = NULL,immdec_used = NULL,
+                                                final_min = NULL,final_max = NULL,final_quantile = NULL))
       
       # Data Input Tab ---------------------------------------------------------
       
@@ -2262,7 +2313,8 @@ server <- function(input, output, session) {
       })
       
       observe({
-        FileCheckAlerts_list <- c()
+        #FileCheckAlerts_list <- c()
+        FileCheckAlerts_list <- FileCheckAlerts_react()
         req(user_upload())
         withProgress(message = "Processing", value = 0, {
           incProgress(0.5, detail = "Formatting Input Data")
@@ -2362,14 +2414,16 @@ server <- function(input, output, session) {
                         recount_rse <- user_upload()
                         assays(recount_rse)$counts <- transform_counts(recount_rse)
                         expr <- as.data.frame(recount::getTPM(recount_rse))
-                        message <- paste0("Raw counts normalized by TPM")
-                        FileCheckAlerts_list <- c(FileCheckAlerts_list,message)
+                        FileCheckAlerts_list[["raw_count_norm"]] <- paste0("Raw counts normalized by TPM")
+                        #message <- paste0("Raw counts normalized by TPM")
+                        #FileCheckAlerts_list <- c(FileCheckAlerts_list,message)
                       } else if (input$RawCountNorm == "RPKM") {
                         recount_rse <- user_upload()
                         assays(recount_rse)$counts <- transform_counts(recount_rse)
                         expr <- as.data.frame(recount::getRPKM(recount_rse))
-                        message <- paste0("Raw counts normalized by RPKM")
-                        FileCheckAlerts_list <- c(FileCheckAlerts_list,message)
+                        FileCheckAlerts_list[["raw_count_norm"]] <- paste0("Raw counts normalized by RPKM")
+                        #message <- paste0("Raw counts normalized by RPKM")
+                        #FileCheckAlerts_list <- c(FileCheckAlerts_list,message)
                       }  else if (input$RawCountNorm == "none") {
                         recount_rse <- user_upload()
                         expr <- assay(recount_rse)
@@ -2395,11 +2449,14 @@ server <- function(input, output, session) {
             }
           }
           
+          
+          
           SpecDetect <- detect_species(expr[,1])
           if (SpecDetect == "mouse") {
             updateRadioButtons(session,"HumanOrMouse",NULL,c("Human","Mouse","Mouse to Human Conv"), selected = "Mouse")
             MM_react(TRUE)
-            FileCheckAlerts_list <- c(FileCheckAlerts_list,paste0("Mouse gene symbols detected."))
+            FileCheckAlerts_list[["mm_gene_detected"]] <- paste0("Mouse gene symbols detected.")
+            #FileCheckAlerts_list <- c(FileCheckAlerts_list,paste0("Mouse gene symbols detected."))
           }
           
           colnames(expr)[1] <- "Gene"
@@ -2416,14 +2473,17 @@ server <- function(input, output, session) {
               conv_df <- as.data.frame(fread(MM_HS_Conversion_File))
               colnames(conv_df)[1] <- colnames(expr)[1]
               expr_new <- merge(conv_df,expr)
-              message1 <- "Mouse gene symbols converted to human"
-              FileCheckAlerts_list <- c(FileCheckAlerts_list,message1)
+              FileCheckAlerts_list[["mm_gene_convert"]] <- "Mouse gene symbols converted to human"
+              #message1 <- "Mouse gene symbols converted to human"
+              #FileCheckAlerts_list <- c(FileCheckAlerts_list,message1)
               if (nrow(expr) == nrow(expr_new)) {
-                message2 <- "All genes converted successfully"
-                FileCheckAlerts_list <- c(FileCheckAlerts_list,message2)
+                FileCheckAlerts_list[["gene_convert_fin"]] <- "All genes converted successfully"
+                #message2 <- "All genes converted successfully"
+                #FileCheckAlerts_list <- c(FileCheckAlerts_list,message2)
               } else {
-                message2 <- paste0(abs(nrow(expr)-nrow(expr_new))," genes unable to be converted.")
-                FileCheckAlerts_list <- c(FileCheckAlerts_list,message2)
+                FileCheckAlerts_list[["gene_convert_fin"]] <- paste0(abs(nrow(expr)-nrow(expr_new))," genes unable to be converted.")
+                #message2 <- paste0(abs(nrow(expr)-nrow(expr_new))," genes unable to be converted.")
+                #FileCheckAlerts_list <- c(FileCheckAlerts_list,message2)
               }
               expr <- expr_new
             }
@@ -2433,8 +2493,9 @@ server <- function(input, output, session) {
           
           
           if (length(expr[sapply(expr, is.infinite)]) > 0) {
-            message <- paste0(length(expr[sapply(expr, is.infinite)]), " infinite values found. Replaced with NA." )
-            FileCheckAlerts_list <- c(FileCheckAlerts_list,message)
+            FileCheckAlerts_list[["inf_found"]] <- paste0(length(expr[sapply(expr, is.infinite)]), " infinite values found. Replaced with NA." )
+            #message <- paste0(length(expr[sapply(expr, is.infinite)]), " infinite values found. Replaced with NA." )
+            #FileCheckAlerts_list <- c(FileCheckAlerts_list,message)
             expr[sapply(expr, is.infinite)] <- NA
           }
           
@@ -2443,8 +2504,9 @@ server <- function(input, output, session) {
           expr <- expr %>%
             drop_na()
           if (exprRows > nrow(expr)) {
-            message <- paste0(exprRows-nrow(expr), " features with NA values found. Features removed." )
-            FileCheckAlerts_list <- c(FileCheckAlerts_list,message)
+            FileCheckAlerts_list[["na_found"]] <- paste0(exprRows-nrow(expr), " features with NA values found. Features removed.")
+            #message <- paste0(exprRows-nrow(expr), " features with NA values found. Features removed." )
+            #FileCheckAlerts_list <- c(FileCheckAlerts_list,message)
           }
           # Check that expression data is numeric
           isChar <- unname(which(sapply(expr, function(x) is.character(x))))
@@ -2452,18 +2514,33 @@ server <- function(input, output, session) {
           if (length(isChar) > 0) {
             expr[isChar] <- sapply(expr[isChar],as.numeric)
           }
+          
+          
+          expr_min <- min(as.matrix(expr[,-1]),na.rm = T)
+          expr_max <- max(as.matrix(expr[,-1]),na.rm = T)
+          expr_quant <- round(quantile(as.matrix(expr[,-1]),na.rm = T),2)
+          FileCheckAlerts_list[["input_min"]] <- paste0("Input Matrix Minimum Value: ",round(expr_min,4))
+          FileCheckAlerts_list[["input_max"]] <- paste0("Input Matrix Maximum Value: ",round(expr_max,4))
+          FileCheckAlerts_list[["input_quantile"]] <- paste0("Input Matrix Quantiles: 25%-",expr_quant[[2]]," | 50%-",expr_quant[[3]]," | 75%-",expr_quant[[4]])
+          #min_message <- paste0("Input Matrix Minimum Value: ",round(expr_min,4))
+          #max_message <- paste0("Input Matrix Maximum Value: ",round(expr_max,4))
+          #FileCheckAlerts_list <- c(FileCheckAlerts_list,min_message,max_message)
+          
           # Remove Duplicate genes
           expr_dup <- expr[which(expr[,1] %in% expr[,1][duplicated(expr[,1])]),]
           expr_nondup <- expr[which(!expr[,1] %in% expr[,1][duplicated(expr[,1])]),]
           if (nrow(expr_dup) > 0) {
             expr_dup <- expr_dup %>%
               group_by(Gene) %>%
-              summarise_all(max)
+              summarise_all(max) %>%
+              as.data.frame()
           }
           expr <- rbind(expr_dup,expr_nondup)
           if (nrow(expr_dup) > 0) {
-            message <- paste0(length(unique(expr_dup[,1])), " duplicate features found. Features reduced to those with maximum value." )
-            FileCheckAlerts_list <- c(FileCheckAlerts_list,message)
+            FileCheckAlerts_list[["dup_found"]] <- paste0(length(unique(expr_dup[,1])), " duplicate features found. Features reduced to those with maximum value." )
+            #FileCheckAlerts_list[["dup_list"]] <- paste0("Duplicate Features: ",paste0(unique(expr_dup[,1]), collapse = ", "))
+            #message <- paste0(length(unique(expr_dup[,1])), " duplicate features found. Features reduced to those with maximum value." )
+            #FileCheckAlerts_list <- c(FileCheckAlerts_list,message)
           }
           expr <- as.data.frame(expr)
           # Make rownames <- genenames
@@ -2472,10 +2549,12 @@ server <- function(input, output, session) {
           expr = expr[order(row.names(expr)), ]
           expr_col <- colnames(expr)
           
+          
           if ("Input data is log-transformed" %in% input$RawCountQuantNorm) {
             expr <- 2^as.matrix(expr)
-            message <- paste0("Features exponentiated.")
-            FileCheckAlerts_list <- c(FileCheckAlerts_list,message)
+            FileCheckAlerts_list[["exp_done"]] <- paste0("Features exponentiated.")
+            #message <- paste0("Features exponentiated.")
+            #FileCheckAlerts_list <- c(FileCheckAlerts_list,message)
           }
           if ("Normalize Raw Counts" %in% input$RawCountQuantNorm) {
             if (isTruthy(input$RawCountNorm)) {
@@ -2484,8 +2563,9 @@ server <- function(input, output, session) {
                 mat_dgeList <- DGEList(counts = as.matrix(mat))
                 mat_dgeList_Norm <- edgeR::calcNormFactors(mat_dgeList, method = input$RawCountNorm)
                 expr <- edgeR::cpm(mat_dgeList_Norm)
-                message <- paste0(input$RawCountNorm," normalization preformed")
-                FileCheckAlerts_list <- c(FileCheckAlerts_list,message)
+                FileCheckAlerts_list[["raw_count_norm"]] <- paste0(input$RawCountNorm," normalization preformed")
+                #message <- paste0(input$RawCountNorm," normalization preformed")
+                #FileCheckAlerts_list <- c(FileCheckAlerts_list,message)
               } else if (input$RawCountNorm == "DESeq2") {
                 if (isTruthy(input$DESeqDesignCol)) {
                   desCol <- input$DESeqDesignCol
@@ -2509,8 +2589,9 @@ server <- function(input, output, session) {
                       resOrdered <- res[order(res$padj),]
                       normalizedCounts <- counts(dds, normalized=TRUE)
                       expr <- as.matrix(normalizedCounts)
-                      message <- paste0("DESeq2 Normalization performed using ",desCol," as the design column and ",desRef," as the reference")
-                      FileCheckAlerts_list <- c(FileCheckAlerts_list,message)
+                      FileCheckAlerts_list[["raw_count_norm"]] <- paste0("DESeq2 Normalization performed using ",desCol," as the design column and ",desRef," as the reference")
+                      #message <- paste0("DESeq2 Normalization performed using ",desCol," as the design column and ",desRef," as the reference")
+                      #FileCheckAlerts_list <- c(FileCheckAlerts_list,message)
                     }
                   }
                 }
@@ -2523,17 +2604,21 @@ server <- function(input, output, session) {
             expr <- preprocessCore::normalize.quantiles(as.matrix(expr))
             rownames(expr) <- expr_rows
             colnames(expr) <- expr_cols
-            message <- paste0("Quantile Normalization preformed")
-            FileCheckAlerts_list <- c(FileCheckAlerts_list,message)
+            FileCheckAlerts_list[["quant_norm"]] <- paste0("Quantile Normalization preformed")
+            #message <- paste0("Quantile Normalization preformed")
+            #FileCheckAlerts_list <- c(FileCheckAlerts_list,message)
           }
           if ("Filter Matrix" %in% input$RawCountQuantNorm & isTruthy(input$FilterNum) & isTruthy(input$FilterProp)) {
             FilterProp <- input$FilterProp/100
             expr_pass <- apply(expr,1,function(x) ExprFilter2(x, input$FilterNum, FilterProp))
             expr <- expr[which(expr_pass == TRUE),]
-            message <- paste0("Features with an expression less than ",input$FilterNum," in at least ",
-                              input$FilterProp,"% of Samples filtered out. ",
-                              length(which(expr_pass == FALSE))," features removed.")
-            FileCheckAlerts_list <- c(FileCheckAlerts_list,message)
+            FileCheckAlerts_list[["filter_done"]] <- paste0("Features with an expression less than ",input$FilterNum," in at least ",
+                                                            input$FilterProp,"% of Samples filtered out. ",
+                                                            length(which(expr_pass == FALSE))," features removed.")
+            #message <- paste0("Features with an expression less than ",input$FilterNum," in at least ",
+            #                  input$FilterProp,"% of Samples filtered out. ",
+            #                  length(which(expr_pass == FALSE))," features removed.")
+            #FileCheckAlerts_list <- c(FileCheckAlerts_list,message)
           }
           
           #gene list file from expression data
@@ -2542,41 +2627,24 @@ server <- function(input, output, session) {
           geneList_raw(geneList);
           Gene_raw(Gene)
           
-          #meta[,1] <- gsub("[_.-]", "_", meta[,1])
           colnames(meta)[1] <- "SampleName"
           
           #for heatmap sample selection
           sampsames <- intersect(colnames(expr),meta[,1])
           
           if (length(sampsames) != ncol(expr) | length(sampsames) != nrow(meta)) {
-            message <- paste0("Mistmatching or missing sample names found between feature matrix and meta data. Reduced to only similar samples (N=",length(sampsames),")")
-            FileCheckAlerts_list <- c(FileCheckAlerts_list,message)
+            FileCheckAlerts_list[["samp_diff_n"]] <- paste0("Mistmatching or missing sample names found between feature matrix and meta data. Reduced to only similar samples (N=",length(sampsames),")")
+            #FileCheckAlerts_list[["samp_diff"]] <- paste0("Mismatching Samples: ",paste0(sampsames,collapse = ", "))
+            #message <- paste0("Mistmatching or missing sample names found between feature matrix and meta data. Reduced to only similar samples (N=",length(sampsames),")")
+            #FileCheckAlerts_list <- c(FileCheckAlerts_list,message)
           }
           
           #ensure expression samples and meta are exact
           expr <- expr[,sampsames]
           meta <- meta[which(meta[,1] %in% sampsames),]
           
-          #if (immudecon_check == TRUE & "Perform Immune Deconvolution" %in% input$RawCountQuantNorm) {
-          #  withProgress(message = "Processing", value = 0, {
-          #    incProgress(0.5, detail = "Performing Immune Deconvolution")
-          #    mcp_counter_decon <- as.data.frame(deconvolute(expr, "mcp_counter"))
-          #    rownames(mcp_counter_decon) <- paste0(mcp_counter_decon[,1],"_MCP_Counter_Immunedeconv")
-          #    estimate_decon <- as.data.frame(deconvolute(expr, "estimate"))
-          #    rownames(estimate_decon) <- paste0(estimate_decon[,1],"_Estimate_Immunedeconv")
-          #    imm_deconv <- rbind(mcp_counter_decon,estimate_decon)[,-1]
-          #    ImmDeconv_react(imm_deconv)
-          #    imm_deconv <- as.data.frame(t(imm_deconv))
-          #    meta <- merge(meta,imm_deconv, by.x = colnames(meta)[1], by.y = 0, all.x = T)
-          #    incProgress(0.5, detail = "Complete")
-          #  })
-          #}
-          
-          
           expr_input(expr)
           meta_input(meta)
-          
-          
           
           if (isTruthy(MM_react())) {
             if (as.logical(MM_react())) {
@@ -2612,46 +2680,114 @@ server <- function(input, output, session) {
         })
       })
       
-      output$log_alert_flag <- renderUI({
-      #output$log_alert_flag <- renderText({
+      
+      
+      observe({
         
-      #})
-      #observe({
-        req(expr_input())
-        expr <- as.matrix(expr_input())
+        req(expr_raw())
+        expr <- expr_raw()[,-1]
+        isChar <- unname(which(sapply(expr, function(x) is.character(x))))
+        if (length(isChar) > 0) {
+          expr[isChar] <- sapply(expr[isChar],as.numeric)
+        }
+        
+        expr_min <- min(expr,na.rm = T)
+        expr_max <- max(expr,na.rm = T)
+
+        print(expr_min)
+        print(expr_max)
+        
+        if (expr_max < 30 | expr_min < 0) {
+          updateCheckboxGroupInput(session,"RawCountQuantNorm", selected = "Input data is log-transformed")
+        }
+        
+      })
+      
+      output$log_alert_flag <- renderUI({
+        
+        req(expr_raw())
+        expr <- expr_raw()[,-1]
+        isChar <- unname(which(sapply(expr, function(x) is.character(x))))
+        if (length(isChar) > 0) {
+          expr[isChar] <- sapply(expr[isChar],as.numeric)
+        }
 
         expr_min <- min(expr,na.rm = T)
         expr_max <- max(expr,na.rm = T)
-        expr_tile <- quantile(expr)
-        
-        #save(list = ls(), file = "expr_flag_env.RData", envir = environment())
-        #
-        #tags$div(
-        #  HTML(paste("This text is ", tags$span(style="color:red", "red"), sep = ""))
-        #)
-        
-        
-        if (all(expr_tile < 30) & expr_min < 0) {
+
+        if (expr_max < 30 & expr_min < 0) {
           tags$div(
-            tags$span(HTML(paste0("The overall expression values of the input matrix were flagged as being lower than 30 and negative values were identified.<br>",
-                      "If this data was log transformed prior to upload, please select the checkbox to the left '<b>Input data is log-transformed</b>'.")),
+            tags$span(HTML(paste0("This input matrix has been flagged as possibly log-transformed pior to upload. The overall expression values of the input matrix were flagged as being lower than 30 and negative values were identified.<br>",
+                                  "The checkbox '<b>Input data is log-transformed</b>' was selected to adjust the data.<br>",
+                                  "If you beleive there has been a mistake please re-check your input data to ensure it has not been log-transformed prior to upload.")),
                       style="color:red")
             )
-        } else if (all(expr_tile < 30)) {
+        } else if (expr_max < 30) {
           tags$div(
-            tags$span(HTML(paste0("The overall expression values of the input matrix were flagged as being lower than 30.<br>",
-                      "If this data was log transformed prior to upload, please select the checkbox to the left '<b>Input data is log-transformed</b>'.")),
+            tags$span(HTML(paste0("This input matrix has been flagged as possibly log-transformed pior to upload. The overall expression values of the input matrix were flagged as being lower than 30.<br>",
+                                  "The checkbox '<b>Input data is log-transformed</b>' was selected to adjust the data.<br>",
+                                  "If you beleive there has been a mistake please re-check your input data to ensure it has not been log-transformed prior to upload.")),
                       style="color:red")
-            )
+          )
         } else if (expr_min < 0) {
           tags$div(
-            tags$span(HTML(paste0("Negative values detected in input expression matrix.<br>",
-                      "If this data was log transformed prior to upload, please select the checkbox to the left '<b>Input data is log-transformed</b>'.")),
+            tags$span(HTML(paste0("This input matrix has been flagged as possibly log-transformed pior to upload. Negative values have been detected in input expression matrix.<br>",
+                                  "The checkbox '<b>Input data is log-transformed</b>' was selected to adjust the data.<br>",
+                                  "If you beleive there has been a mistake please re-check your input data to ensure it has not been log-transformed prior to upload.")),
                       style="color:red")
-            )
+          )
         }
         
 
+      })
+      
+      observeEvent(expr_react(), {
+        req(expr_raw())
+        req(expr_react())
+        req(FileCheckAlerts_react())
+        
+        FileCheckAlerts_list <- FileCheckAlerts_react()
+        
+        expr_raw <- expr_raw()[,-1]
+        isChar <- unname(which(sapply(expr_raw, function(x) is.character(x))))
+        if (length(isChar) > 0) {
+          expr_raw[isChar] <- sapply(expr_raw[isChar],as.numeric)
+        }
+        expr <- expr_react()
+        
+        expr_raw_min <- min(expr_raw, na.rm = T)
+        expr_raw_max <- max(expr_raw, na.rm = T)
+        expr_min <- min(expr, na.rm = T)
+        expr_max <- max(expr, na.rm = T)
+        expr_quant <- round(quantile(as.matrix(expr)),4)
+        
+        
+        
+        
+        if (immudecon_check) {
+          if ("Perform Immune Deconvolution" %in% input$RawCountQuantNorm) {
+            req(ImmDeconv_react())
+            expr_immmin <- min(ImmDeconv_react(), na.rm = T)
+            expr_immmax <- max(ImmDeconv_react(), na.rm = T)
+            expr_immquant <- round(quantile(as.matrix(ImmDeconv_react())),4)
+            FileCheckAlerts_list[["immdec_min"]] <- paste0("Immune Deconvolution Matrix Minimum Value: ",round(expr_immmin,4))
+            FileCheckAlerts_list[["immdec_max"]] <- paste0("Immune Deconvolution Matrix Maximum Value: ",round(expr_immmax,4))
+            FileCheckAlerts_list[["immdec_quantile"]] <- paste0("Immune Deconvolution Matrix Quantiles: 25%-",expr_immquant[[2]]," | 50%-",expr_immquant[[3]]," | 75%-",expr_immquant[[4]])
+            if (input$ImmDeconvAnalysis == "Immune Deconvolution") {
+              FileCheckAlerts_list[["immdec_used"]] <- paste0("Expression analysis performed on immune deconvolution data.")
+            } else if (input$ImmDeconvAnalysis == "Gene Expression") {
+              FileCheckAlerts_list[["immdec_used"]] <- NULL
+            }
+          }
+        }
+        if (expr_raw_min != expr_min | expr_raw_max != expr_max) {
+          FileCheckAlerts_list[["final_min"]] <- paste0("Adjusted Matrix Minimum Value: ",round(expr_min,4))
+          FileCheckAlerts_list[["final_max"]] <- paste0("Adjusted Matrix Maximum Value: ",round(expr_max,4))
+          FileCheckAlerts_list[["final_quantile"]] <- paste0("Adjusted Matrix Quantiles: 25%-",expr_quant[[2]]," | 50%-",expr_quant[[3]]," | 75%-",expr_quant[[4]])
+        }
+        
+        FileCheckAlerts_react(FileCheckAlerts_list)
+        
       })
       
       
@@ -2689,7 +2825,7 @@ server <- function(input, output, session) {
       })
       
       
-      ## Data Preview ----------------------------------------------------------
+      # Data Preview ----------------------------------------------------------
       
       observe({
         if (immudecon_check) {
@@ -2775,10 +2911,21 @@ server <- function(input, output, session) {
       output$FileCheckAlerts <- renderPrint({
         
         req(FileCheckAlerts_react())
-        text <- paste(FileCheckAlerts_react(), collapse = "\n")
+        
+        FileCheckAlerts_list <- FileCheckAlerts_react()
+        #save(list = ls(), file = "Alert_list.RData", envir = environment())
+        
+        
+        FileCheckAlerts_vec <- unname(unlist(FileCheckAlerts_list))
+        
+        
+        
+        text <- paste(FileCheckAlerts_vec, collapse = "\n")
+        #text <- paste(unique(FileCheckAlerts_react()), collapse = "\n")
         cat(text)
         
       })
+      
       
       output$ExprFile_Preview <- DT::renderDataTable({
         req(expr_input())
@@ -2786,7 +2933,19 @@ server <- function(input, output, session) {
         
         if (immudecon_check & input$ImmDeconvAnalysis == "Immune Deconvolution") {
           req(ImmDeconv_react())
+          req(input$ImmDeconvLogOpt)
           expr <- ImmDeconv_react()
+          if (input$ImmDeconvLogOpt == "Floor data to 1") {
+            expr <- as.data.frame(do.call(cbind, lapply(expr,function(x) {
+              return(adjust_for_log(x,method = "floor"))
+            })), row.names = rownames(expr))
+          } else if (input$ImmDeconvLogOpt == "Shift Each Feature Min to 1") {
+            expr <- as.data.frame(do.call(cbind, lapply(expr,function(x) {
+              return(adjust_for_log(x,method = "shift"))
+            })), row.names = rownames(expr))
+          } else {
+            expr <- expr
+          }
         } else {
           expr <- expr_input()
         }
@@ -2826,7 +2985,9 @@ server <- function(input, output, session) {
         }
       })
       output$renddownload_notes <- renderUI({
-        if (length(FileCheckAlerts_react()) > 0) {
+        FileCheckAlerts_list <- FileCheckAlerts_react()
+        FileCheckAlerts_vec <- unname(unlist(FileCheckAlerts_list))
+        if (length(FileCheckAlerts_vec) > 0) {
           downloadButton("download_notes","Download data processing notes")
         }
       })
@@ -2858,8 +3019,84 @@ server <- function(input, output, session) {
           paste(ProjectName_react(), "_DataProcessingNotes_", Sys.Date(), ".txt", sep = "")
         },
         content = function(file) {
-          df <- data.frame(Notes = FileCheckAlerts_react())
+          FileCheckAlerts_list <- FileCheckAlerts_react()
+          FileCheckAlerts_vec <- unname(unlist(FileCheckAlerts_list))
+          df <- data.frame(Notes = FileCheckAlerts_vec)
           write_tsv(df, file, col_names = F)
+        }
+      )
+      
+      # Data Distribution ------------------------------------------------------
+      
+      observe({
+        req(expr_react())
+        expr <- expr_react()
+        if (input$distribOpts == "Features") {
+          updateSelectizeInput(session,"distribSelect",choices = rownames(expr), server = T)
+        } else if (input$distribOpts == "Samples") {
+          updateSelectizeInput(session,"distribSelect",choices = colnames(expr), server = T)
+        }
+      })
+      
+      distribPlot_react <- reactive({
+        
+        req(expr_react())
+        req(input$distribOpts)
+        req(input$distribSelect)
+        expr <- expr_react()
+        feat_type <- input$distribOpts
+        feat <- input$distribSelect
+        plot_type <- input$distribView
+        hist_breaks <- input$HistBins
+        logOpt <- input$distribLog
+        
+        if (feat_type == "Features") {
+          #plot_df <- as.data.frame(expr[feat,])
+          plot_df <- as.data.frame(t(expr[feat,]))
+          plot_title <- paste0("Sample Distribution Across ", feat)
+        } else {
+          plot_df <- as.data.frame(expr[,feat,drop = F])
+          plot_title <- paste0("Feature Distribution Across Sample ", feat)
+        }
+        
+        if (logOpt)  {
+          plot_df[,feat] <- log2(plot_df[,feat]+1)
+        }
+        
+        p <- ggplot(plot_df, aes(x = !!sym(feat)))
+        if ("Histogram" %in% plot_type & "Density" %in% plot_type) {
+          p <- p + geom_histogram(aes(y=..density..), bins = hist_breaks,
+                                  alpha=.2, fill = "#FF6666", color = "#FF6666") +
+            geom_density(alpha=.2, fill="cadetblue", color = "cadetblue")
+        } else if ("Histogram" %in% plot_type & !"Density" %in% plot_type) {
+          p <- p + geom_histogram(bins = hist_breaks,alpha=.2, fill = "#FF6666", color = "#FF6666")
+        } else if (!"Histogram" %in% plot_type & "Density" %in% plot_type) {
+          p <- p + geom_density(alpha=.2, fill="cadetblue", color = "cadetblue")
+        }
+        p <- p +
+          theme_minimal() +
+          ggtitle(plot_title) +
+          theme(axis.text = element_text(size = 12),
+                axis.title = element_text(size = 14),
+                plot.title = element_text(size = 16))
+        p
+      })
+      
+      output$distribPlot <- renderPlot({
+        req(distribPlot_react())
+        p <- distribPlot_react()
+        p
+      })
+      
+      output$distribPlot_dnld <- downloadHandler(
+        filename = function() {
+          feat <- input$distribSelect
+          paste0(ProjectName_react(),"_DistributionPlot_",feat,"_", Sys.Date(), ".svg")
+        },
+        content = function(file) {
+          req(distribPlot_react())
+          p <- distribPlot_react()
+          ggsave(file,p, height = 8, width = 10)
         }
       )
       
@@ -3862,15 +4099,29 @@ server <- function(input, output, session) {
         meta <- meta_react()
         if (immudecon_check & input$ImmDeconvAnalysis == "Immune Deconvolution") {
           req(ImmDeconv_react())
+          req(input$ImmDeconvLogOpt)
           expr <- ImmDeconv_react()
+          if (input$ImmDeconvLogOpt == "Floor data to 1") {
+            expr <- as.data.frame(do.call(cbind, lapply(expr,function(x) {
+              return(adjust_for_log(x,method = "floor"))
+            })), row.names = rownames(expr))
+          } else if (input$ImmDeconvLogOpt == "Shift Each Feature Min to 1") {
+            expr <- as.data.frame(do.call(cbind, lapply(expr,function(x) {
+              return(adjust_for_log(x,method = "shift"))
+            })), row.names = rownames(expr))
+          } else {
+            expr <- expr
+          }
         } else {
           req(expr_input())
           expr <- expr_input()
         }
         expr2 <- expr[,meta[,1]]
-        expr2
+        as.data.frame(expr2)
         
       })
+      
+      
       observe({
         if (immudecon_check & input$ImmDeconvAnalysis == "Immune Deconvolution") {
           req(ImmDeconv_react())
@@ -4558,9 +4809,20 @@ server <- function(input, output, session) {
         req(topgenereact())
         top2 <- topgenereact()
         if (input$volcanoCompChoice == "DESeq2") {
-          if (!ImmDeconv_Used()) {
+          
+          #if (ImmDeconv_Used()) {
+          #  req(input$ImmDeconvLogOpt)
+          #  if (input$ImmDeconvLogOpt == "Floor data to 1") {
+          #    top2$AveExpr[which(top2$AveExpr < 1)] <- 1
+          #  } else {
+          #    
+          #  }
+          #} else {
+          #  top2$AveExpr <- log2(top2$AveExpr+1)
+          #}
+          #if (!ImmDeconv_Used()) {
             top2$AveExpr <- log2(top2$AveExpr+1)
-          }
+          #}
           #top2$AveExpr <- log2(top2$AveExpr+1)
         }
         df <- top2 %>%
@@ -5045,8 +5307,6 @@ server <- function(input, output, session) {
               metacol <- paste0(metacol,"_Dichot")
             }
             
-            
-            
             metaSub <- metaSub[which(metaSub[,1] %in% c(A,B)),]
             colnames(metaSub) <- gsub(" ","_",colnames(metaSub))
             colnames(metaSub) <- gsub("[[:punct:]]","_",colnames(metaSub))
@@ -5057,9 +5317,25 @@ server <- function(input, output, session) {
             metaSub[,metacol] <- factor(metaSub[,metacol], levels = c(groupA,groupB))
             
             mat <- expr[,metaSub[,1]]
-            if (!ImmDeconv_Used()) {
-              mat <- log2(mat+1)
-            }
+            
+            #if (ImmDeconv_Used()) {
+            #  req(input$ImmDeconvLogOpt)
+            #  if (input$ImmDeconvLogOpt == "Floor data to 1") {
+            #    mat <- as.data.frame(do.call(cbind, lapply(mat,function(x) {
+            #      return(adjust_for_log(x,method = "floor"))
+            #    })), row.names = rownames(expr))
+            #  } else {
+            #    mat <- as.data.frame(do.call(cbind, lapply(mat,function(x) {
+            #      return(adjust_for_log(x,method = "shift"))
+            #    })), row.names = rownames(expr))
+            #  }
+            #}
+            
+            mat <- log2(mat+1)
+            
+            #if (!ImmDeconv_Used()) {
+            #  mat <- log2(mat+1)
+            #}
             #mat <- log2(mat + 1.0)
             if (isTruthy(covars)) {
               metaSub[,covars] <- lapply(metaSub[,covars,drop = F], factor)
@@ -5191,9 +5467,25 @@ server <- function(input, output, session) {
             metaSub[,metacol] <- factor(metaSub[,metacol], levels = c(A_choice,B_choice))
             
             mat <- expr[,metaSub[,1]]
-            if (!ImmDeconv_Used()) {
+            
+            
+            #if (ImmDeconv_Used()) {
+            #  req(input$ImmDeconvLogOpt2)
+            #  if (input$ImmDeconvLogOpt2 == "Floor data to 1") {
+            #    mat <- as.data.frame(do.call(cbind, lapply(mat,function(x) {
+            #      return(adjust_for_log(x,method = "floor"))
+            #    })), row.names = rownames(expr))
+            #  } else {
+            #    mat <- as.data.frame(do.call(cbind, lapply(mat,function(x) {
+            #      return(adjust_for_log(x,method = "shift"))
+            #    })), row.names = rownames(expr))
+            #  }
+            #}
+            
+            
+            #if (!ImmDeconv_Used()) {
               mat <- log2(mat+1)
-            }
+            #}
             #mat <- log2(mat + 1.0)
             if (isTruthy(covars)) {
               metaSub[,covars] <- lapply(metaSub[,covars,drop = F], factor)
@@ -5291,9 +5583,9 @@ server <- function(input, output, session) {
           var <- NULL
           cv <- NULL
           
-          if (!ImmDeconv_Used()) {
+          #if (!ImmDeconv_Used()) {
             exp <- log2(exp+1)
-          }
+          #}
           
           if (var_type == "MAD"){
             mad <- apply(exp, 1, mad)
@@ -5442,9 +5734,9 @@ server <- function(input, output, session) {
             #meta <- meta[match(colnames(usersamps),meta[,1]),]
             incProgress(0.25, detail = "Calculating Z-Score")
             dataset <- exp
-            if (!ImmDeconv_Used()) {
+            #if (!ImmDeconv_Used()) {
               dataset <- log2(dataset+1)
-            }
+            #}
             #dataset <- log2(dataset + 1)
             zdataset <- apply(dataset, 1, scale)
             zdataset <- apply(zdataset, 1, rev)
@@ -5605,9 +5897,9 @@ server <- function(input, output, session) {
           # Heatmap Calculations
           dataset <- expr[which(rownames(expr) %in% genelist),]
           if (length(dataset) > 0) {
-            if (!ImmDeconv_Used()) {
+            #if (!ImmDeconv_Used()) {
               dataset <- log2(dataset+1)
-            }
+            #}
             #dataset <- log2(dataset + 1)
             zdataset <- apply(dataset, 1, scale)
             zdataset <- apply(zdataset, 1, rev)
@@ -5708,9 +6000,9 @@ server <- function(input, output, session) {
             dataset <- AvgExprDF
             incProgress(0.25, detail = "Calculating Z-Score")
             #if (length(group_choices) > 0) {
-            if (!ImmDeconv_Used()) {
+            #if (!ImmDeconv_Used()) {
               dataset <- log2(dataset+1)
-            }
+            #}
             #dataset <- log2(dataset + 1)
             zdataset <- apply(dataset, 1, scale)
             zdataset <- apply(zdataset, 1, rev)
@@ -6964,9 +7256,9 @@ server <- function(input, output, session) {
           metaSub[,metacol] <- factor(metaSub[,metacol], levels = c(groupA,groupB))
           
           mat <- expr[,metaSub[,1]]
-          if (!ImmDeconv_Used()) {
+          #if (!ImmDeconv_Used()) {
             mat <- log2(mat+1)
-          }
+          #}
           #mat <- log2(mat + 1.0)
           if (isTruthy(covars)) {
             metaSub[,covars] <- lapply(metaSub[,covars,drop = F], factor)
@@ -7019,9 +7311,9 @@ server <- function(input, output, session) {
         A <- meta[which(meta[,metacol] == input$comparisonA2.path),1]
         B <- meta[which(meta[,metacol] == input$comparisonB2.path),1]
         mat <- expr[,c(A,B)]
-        if (!ImmDeconv_Used()) {
+        #if (!ImmDeconv_Used()) {
           mat <- log2(mat+1)
-        }
+        #}
         #mat <- log2(mat + 1.0)
         groupAOther <- factor(c(rep("A", length(A)), rep("B", length(B))))
         designA <- model.matrix(~0 + groupAOther)
@@ -7056,9 +7348,9 @@ server <- function(input, output, session) {
         A <- meta[which(meta[,metacol] == input$comparisonA2.path),1]
         B <- meta[which(meta[,metacol] == input$comparisonB2.path),1]
         mat <- expr[,c(A,B)]
-        if (!ImmDeconv_Used()) {
+        #if (!ImmDeconv_Used()) {
           mat <- log2(mat+1)
-        }
+        #}
         #mat <- log2(mat + 1.0)
         groupAOther <- factor(c(rep("A", length(A)), rep("B", length(B))))
         designA <- model.matrix(~0 + groupAOther)
@@ -7527,9 +7819,9 @@ server <- function(input, output, session) {
         class(A) <- "numeric"
         ## Transforming data
         A <- A[,c(groupA,groupB)]
-        if (!ImmDeconv_Used()) {
+        #if (!ImmDeconv_Used()) {
           A <- log2(A+1)
-        }
+        #}
         exp.mat1 <- A
         #exp.mat1 = log2(A + 1) # log
         exp.mat2 = apply(exp.mat1, 1, scale); # z score
@@ -7632,9 +7924,9 @@ server <- function(input, output, session) {
         axis_font <- input$VolMAAxisSize
         top2 <- topgenereact()
         if (input$volcanoCompChoice == "DESeq2") {
-          if (!ImmDeconv_Used()) {
+          #if (!ImmDeconv_Used()) {
             top2$AveExpr <- log2(top2$AveExpr+1)
-          }
+          #}
           #top2$AveExpr <- log2(top2$AveExpr+1)
         }
         #add color categories based on FC and pval
@@ -8415,9 +8707,9 @@ server <- function(input, output, session) {
         A <- meta[which(meta[,metacol] == input$comparisonA2.path),1]
         B <- meta[which(meta[,metacol] == input$comparisonB2.path),1]
         mat <- expr[,c(A,B)]
-        if (!ImmDeconv_Used()) {
+        #if (!ImmDeconv_Used()) {
           mat <- log2(mat+1)
-        }
+        #}
         #mat <- log2(mat + 1.0)
         groupAOther <- factor(c(rep("A", length(A)), rep("B", length(B))))
         designA <- model.matrix(~0 + groupAOther)
@@ -8455,9 +8747,9 @@ server <- function(input, output, session) {
         A <- meta[which(meta[,metacol] == input$comparisonA2.path),1]
         B <- meta[which(meta[,metacol] == input$comparisonB2.path),1]
         mat <- expr[,c(A,B)]
-        if (!ImmDeconv_Used()) {
+        #if (!ImmDeconv_Used()) {
           mat <- log2(mat+1)
-        }
+        #}
         #mat <- log2(mat + 1.0)
         groupAOther <- factor(c(rep("A", length(A)), rep("B", length(B))))
         designA <- model.matrix(~0 + groupAOther)
@@ -9181,9 +9473,9 @@ server <- function(input, output, session) {
           A <- meta[which(meta[,metacol] == input$comparisonA2.path),1]
           B <- meta[which(meta[,metacol] == input$comparisonB2.path),1]
           mat <- expr[,c(A,B)]
-          if (!ImmDeconv_Used()) {
+          #if (!ImmDeconv_Used()) {
             mat <- log2(mat+1)
-          }
+          #}
           #mat <- log2(mat + 1.0)
           groupAOther <- factor(c(rep("A", length(A)), rep("B", length(B))))
           designA <- model.matrix(~0 + groupAOther)
@@ -9222,9 +9514,9 @@ server <- function(input, output, session) {
           A <- meta[which(meta[,metacol] == input$comparisonA2.path),1]
           B <- meta[which(meta[,metacol] == input$comparisonB2.path),1]
           mat <- expr[,c(A,B)]
-          if (!ImmDeconv_Used()) {
+          #if (!ImmDeconv_Used()) {
             mat <- log2(mat+1)
-          }
+          #}
           #mat <- log2(mat + 1.0)
           groupAOther <- factor(c(rep("A", length(A)), rep("B", length(B))))
           designA <- model.matrix(~0 + groupAOther)
@@ -9535,9 +9827,9 @@ server <- function(input, output, session) {
           A <- meta[which(meta[,metacol] == input$comparisonA2.path),1]
           B <- meta[which(meta[,metacol] == input$comparisonB2.path),1]
           mat <- expr[,c(A,B)]
-          if (!ImmDeconv_Used()) {
+          #if (!ImmDeconv_Used()) {
             mat <- log2(mat+1)
-          }
+          #}
           #mat <- log2(mat + 1.0)
           groupAOther <- factor(c(rep("A", length(A)), rep("B", length(B))))
           designA <- model.matrix(~0 + groupAOther)
@@ -9576,9 +9868,9 @@ server <- function(input, output, session) {
           A <- meta[which(meta[,metacol] == input$comparisonA2.path),1]
           B <- meta[which(meta[,metacol] == input$comparisonB2.path),1]
           mat <- expr[,c(A,B)]
-          if (!ImmDeconv_Used()) {
+          #if (!ImmDeconv_Used()) {
             mat <- log2(mat+1)
-          }
+          #}
           #mat <- log2(mat + 1.0)
           groupAOther <- factor(c(rep("A", length(A)), rep("B", length(B))))
           designA <- model.matrix(~0 + groupAOther)
@@ -9637,9 +9929,9 @@ server <- function(input, output, session) {
               class(A) <- "numeric"
               ## Transforming data
               A <- A[,c(groupA,groupB)]
-              if (!ImmDeconv_Used()) {
+              #if (!ImmDeconv_Used()) {
                 A <- log2(A+1)
-              }
+              #}
               exp.mat1 = A
               #exp.mat1 = log2(A + 1) # log
               exp.mat2 = apply(exp.mat1, 1, scale); # z score
@@ -9711,9 +10003,9 @@ server <- function(input, output, session) {
               class(A) <- "numeric"
               ## Transforming data
               A <- A[,c(groupA,groupB)]
-              if (!ImmDeconv_Used()) {
+              #if (!ImmDeconv_Used()) {
                 A <- log2(A+1)
-              }
+              #}
               exp.mat1 = A
               #exp.mat1 = log2(A + 1) # log
               exp.mat2 = apply(exp.mat1, 1, scale); # z score
@@ -9785,9 +10077,9 @@ server <- function(input, output, session) {
               class(A) <- "numeric"
               ## Transforming data
               A <- A[,c(groupA,groupB)]
-              if (!ImmDeconv_Used()) {
+              #if (!ImmDeconv_Used()) {
                 A <- log2(A+1)
-              }
+              #}
               exp.mat1 = A
               #exp.mat1 = log2(A + 1) # log
               exp.mat2 = apply(exp.mat1, 1, scale); # z score
@@ -9877,9 +10169,9 @@ server <- function(input, output, session) {
           cv <- NULL
           var_type <- input$VarianceMeasure
           
-          if (!ImmDeconv_Used()) {
+          #if (!ImmDeconv_Used()) {
             exp <- log2(exp+1)
-          }
+          #}
           
           if (var_type == "MAD"){
             mad <- apply(exp, 1, mad)
@@ -10358,9 +10650,9 @@ server <- function(input, output, session) {
           var <- NULL
           cv <- NULL
           var_type <- input$VarianceMeasure
-          if (!ImmDeconv_Used()) {
+          #if (!ImmDeconv_Used()) {
             exp <- log2(exp+1)
-          }
+          #}
           if (var_type == "MAD"){
             mad <- apply(exp, 1, mad)
             mad <- sort(mad, decreasing = T)
@@ -10414,9 +10706,9 @@ server <- function(input, output, session) {
           var <- NULL
           cv <- NULL
           var_type <- input$VarianceMeasure
-          if (!ImmDeconv_Used()) {
+          #if (!ImmDeconv_Used()) {
             exp <- log2(exp+1)
-          }
+          #}
           if (var_type == "MAD"){
             mad <- apply(exp, 1, mad)
             mad <- sort(mad, decreasing = T)
