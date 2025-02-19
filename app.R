@@ -398,10 +398,10 @@ DataInput_tab <- tabPanel("Data Input",
                               conditionalPanel("input.RawCountQuantNorm.includes('Filter Matrix')",
                                                fluidRow(
                                                  column(6, style = 'margin-bottom:-15px;',
-                                                        numericInput("FilterNum","Filter value:",value = 1, min = 0)
+                                                        numericInput("FilterNum","Filter value:",value = NA, min = 0)
                                                  ),
                                                  column(6, style = 'margin-bottom:-15px;',
-                                                        numericInput("FilterProp","Proportion of samples (%):",value = 10, max = 100, min = 0)
+                                                        numericInput("FilterProp","Proportion of samples (%):",value = NA, max = 100, min = 0)
                                                  )
                                                )
                               ),
