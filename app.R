@@ -2127,6 +2127,7 @@ server <- function(input, output, session) {
         print(query)
         if (!is.null(query[['expr']]) && !is.null(query[['meta']])) {
           ProjectName_react(query[["proj"]])
+          updateTextInput(session,"UserProjectName",value = ProjectName_react())
           ExpressionMatrix_file_react(query[['expr']])
           MetaData_file_react(query[['meta']])
           if ('mouse' %in% names(query)) {
