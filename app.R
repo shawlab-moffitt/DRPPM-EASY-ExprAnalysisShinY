@@ -1,4 +1,4 @@
-type_id <- paste0("v2.0.20250218")
+type_id <- paste0("v2.0.20250219")
 
 # User Data Input --------------------------------------------------------------
 # Project Name
@@ -363,10 +363,11 @@ DataInput_tab <- tabPanel("Data Input",
                               textInput("UserProjectName","Project Name:", value = "Expression Analysis"),
                               uiOutput("rendExprFileInput"),
                               fluidRow(
-                                column(6, style = 'margin-top:-20px;',
+                                column(6, style = 'margin-top:-10px;',
                                        if (immudecon_check == TRUE) {
                                          checkboxGroupInput("RawCountQuantNorm",label = NULL,
                                                             choices = c("Input data is log-transformed",
+                                                                        "Floor Matrix to 1",
                                                                         "Normalize Raw Counts",
                                                                         "Quantile Normalization",
                                                                         "Filter Matrix",
@@ -374,6 +375,7 @@ DataInput_tab <- tabPanel("Data Input",
                                        } else {
                                          checkboxGroupInput("RawCountQuantNorm",label = NULL,
                                                             choices = c("Input data is log-transformed",
+                                                                        "Floor Matrix to 1",
                                                                         "Normalize Raw Counts",
                                                                         "Quantile Normalization",
                                                                         "Filter Matrix"))
@@ -1915,7 +1917,7 @@ server <- function(input, output, session) {
       #FileCheckAlerts_react <- reactiveVal()
       FileCheckAlerts_react <- reactiveVal(list(input_min = NULL,input_max = NULL,input_quantile = NULL,inf_found = NULL,na_found = NULL,dup_found = NULL,dup_list = NULL,
                                                 mm_gene_detected = NULL,mm_gene_convert = NULL,gene_convert_fin = NULL,
-                                                log_detect = NULL,exp_done = NULL,
+                                                exp_floor = NULL, log_detect = NULL,exp_done = NULL,
                                                 raw_count_norm = NULL,quant_norm = NULL,filter_done = NULL,
                                                 samp_diff_n = NULL,samp_diff = NULL,
                                                 immdec_min = NULL,immdec_max = NULL,immdec_quantile = NULL,immdec_used = NULL,
@@ -1942,12 +1944,16 @@ server <- function(input, output, session) {
           HM_select <- "Human"
         }
         fluidRow(
-          column(8,
-                 fileInput("ExprFileInput","Expression Matrix")
-          ),
-          column(4, style = "margin-top:15px",
-                 shiny::radioButtons("HumanOrMouse",NULL,c("Human","Mouse","Mouse to Human Conv"), selected = HM_select)
-          )
+          column(12,
+                 fileInput("ExprFileInput","Expression Matrix"),
+                 div(shiny::radioButtons("HumanOrMouse",NULL,c("Human","Mouse","Mouse to Human Conversion"), selected = HM_select, inline = T), style = "margin-top:-20px")
+          )#,
+          #column(8,
+          #       fileInput("ExprFileInput","Expression Matrix")
+          #),
+          #column(4, style = "margin-top:15px",
+          #       shiny::radioButtons("HumanOrMouse",NULL,c("Human","Mouse","Mouse to Human Conv"), selected = HM_select)
+          #)
         )
       })
       output$rendRawCountNorm <- renderUI({
@@ -2522,9 +2528,6 @@ server <- function(input, output, session) {
           FileCheckAlerts_list[["input_min"]] <- paste0("Input Matrix Minimum Value: ",round(expr_min,4))
           FileCheckAlerts_list[["input_max"]] <- paste0("Input Matrix Maximum Value: ",round(expr_max,4))
           FileCheckAlerts_list[["input_quantile"]] <- paste0("Input Matrix Quantiles: 25%-",expr_quant[[2]]," | 50%-",expr_quant[[3]]," | 75%-",expr_quant[[4]])
-          #min_message <- paste0("Input Matrix Minimum Value: ",round(expr_min,4))
-          #max_message <- paste0("Input Matrix Maximum Value: ",round(expr_max,4))
-          #FileCheckAlerts_list <- c(FileCheckAlerts_list,min_message,max_message)
           
           # Remove Duplicate genes
           expr_dup <- expr[which(expr[,1] %in% expr[,1][duplicated(expr[,1])]),]
@@ -2538,9 +2541,6 @@ server <- function(input, output, session) {
           expr <- rbind(expr_dup,expr_nondup)
           if (nrow(expr_dup) > 0) {
             FileCheckAlerts_list[["dup_found"]] <- paste0(length(unique(expr_dup[,1])), " duplicate features found. Features reduced to those with maximum value." )
-            #FileCheckAlerts_list[["dup_list"]] <- paste0("Duplicate Features: ",paste0(unique(expr_dup[,1]), collapse = ", "))
-            #message <- paste0(length(unique(expr_dup[,1])), " duplicate features found. Features reduced to those with maximum value." )
-            #FileCheckAlerts_list <- c(FileCheckAlerts_list,message)
           }
           expr <- as.data.frame(expr)
           # Make rownames <- genenames
@@ -2549,12 +2549,16 @@ server <- function(input, output, session) {
           expr = expr[order(row.names(expr)), ]
           expr_col <- colnames(expr)
           
+          if ("Floor Matrix to 1" %in% input$RawCountQuantNorm) {
+            expr <- as.data.frame(do.call(cbind, lapply(expr,function(x) {
+              return(adjust_for_log(x,method = "floor"))
+            })), row.names = rownames(expr))
+            FileCheckAlerts_list[["exp_floor"]] <- paste0("Matrix values floored to 1.")
+          }
           
           if ("Input data is log-transformed" %in% input$RawCountQuantNorm) {
             expr <- 2^as.matrix(expr)
             FileCheckAlerts_list[["exp_done"]] <- paste0("Features exponentiated.")
-            #message <- paste0("Features exponentiated.")
-            #FileCheckAlerts_list <- c(FileCheckAlerts_list,message)
           }
           if ("Normalize Raw Counts" %in% input$RawCountQuantNorm) {
             if (isTruthy(input$RawCountNorm)) {
