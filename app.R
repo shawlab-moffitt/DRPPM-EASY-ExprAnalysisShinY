@@ -1,4 +1,4 @@
-type_id <- paste0("v2.0.20250219")
+type_id <- paste0("v2.0.20250307")
 
 # User Data Input --------------------------------------------------------------
 # Project Name
@@ -87,6 +87,7 @@ if (immudecon_check == TRUE) {
 }
 
 
+
 date_to_gene <- function(vec,mouse = FALSE) {
   if (is.null(vec)) exit("Please provide vector argument")
   if (!mouse) {
@@ -113,7 +114,7 @@ adjust_for_log <- function(vec, method = "floor") {
     stop("Please choose either 'floor' or 'shift' as the method of adjustment")
   }
   return(vec)
-} 
+}
 
 
 
@@ -394,7 +395,7 @@ DataInput_tab <- tabPanel("Data Input",
                                                                 radioButtons("ImmDeconvLogOpt","Adjust Matrix for Log Transform:",
                                                                              choices = c("None","Floor data to 1","Shift Feature Min to 1"), inline = T)
                                                )
-                                               ),
+                              ),
                               conditionalPanel("input.RawCountQuantNorm.includes('Filter Matrix')",
                                                fluidRow(
                                                  column(6, style = 'margin-bottom:-15px;',
@@ -477,34 +478,34 @@ DataInput_tab <- tabPanel("Data Input",
                                                    uiOutput("rendClinFilePrevHeader"),
                                                    uiOutput("rendClinHead"),
                                                    div(DT::dataTableOutput("ClinFile_Preview"), style = "font-size:10px")
-                                                   ),
+                                          ),
                                           tabPanel("Data Distribution",
                                                    p(),
                                                    wellPanel(
                                                      fluidRow(
                                                        column(2,
                                                               radioButtons("distribOpts","Distribution Across:", choices = c("Features","Samples"))
-                                                              ),
+                                                       ),
                                                        column(3,
                                                               selectizeInput("distribSelect","Select Feature:", choices = NULL, selected = 1)
-                                                              ),
+                                                       ),
                                                        column(1, style = "margin-top:20px",
                                                               checkboxInput("distribLog", "Log2+1", value = FALSE)
-                                                              ),
+                                                       ),
                                                        column(1,
                                                               checkboxGroupInput("distribView", "View As:", choices = c("Histogram","Density"), selected = c("Histogram","Density"))
-                                                              ),
+                                                       ),
                                                        column(2,
                                                               conditionalPanel(condition = "input.distribView.includes('Histogram')",
                                                                                numericInput("HistBins","Bins",value = 100, min = 2, step = 1, width = "50%")
-                                                                               )
                                                               )
                                                        )
-                                                     ),
+                                                     )
+                                                   ),
                                                    withSpinner(jqui_resizable(plotOutput("distribPlot", width = "100%", height = "500px")), type = 6),
                                                    downloadButton("distribPlot_dnld","SVG")
-                                                   )
                                           )
+                              )
                             )
                           ),
                           tagList( #nolint
@@ -2698,7 +2699,7 @@ server <- function(input, output, session) {
         
         expr_min <- min(expr,na.rm = T)
         expr_max <- max(expr,na.rm = T)
-
+        
         print(expr_min)
         print(expr_max)
         
@@ -2716,17 +2717,17 @@ server <- function(input, output, session) {
         if (length(isChar) > 0) {
           expr[isChar] <- sapply(expr[isChar],as.numeric)
         }
-
+        
         expr_min <- min(expr,na.rm = T)
         expr_max <- max(expr,na.rm = T)
-
+        
         if (expr_max < 30 & expr_min < 0) {
           tags$div(
             tags$span(HTML(paste0("This input matrix has been flagged as possibly log-transformed pior to upload. The overall expression values of the input matrix were flagged as being lower than 30 and negative values were identified.<br>",
                                   "The checkbox '<b>Input data is log-transformed</b>' was selected to adjust the data.<br>",
                                   "If you beleive there has been a mistake please re-check your input data to ensure it has not been log-transformed prior to upload.")),
                       style="color:red")
-            )
+          )
         } else if (expr_max < 30) {
           tags$div(
             tags$span(HTML(paste0("This input matrix has been flagged as possibly log-transformed pior to upload. The overall expression values of the input matrix were flagged as being lower than 30.<br>",
@@ -2743,7 +2744,7 @@ server <- function(input, output, session) {
           )
         }
         
-
+        
       })
       
       observeEvent(expr_react(), {
@@ -2852,7 +2853,7 @@ server <- function(input, output, session) {
       })
       
       observe({
-        if (immudecon_check) {
+        if (immudecon_check & ("Perform Immune Deconvolution" %in% input$RawCountQuantNorm)) {
           req(input$ImmDeconvAnalysis)
           if (input$ImmDeconvAnalysis == "Immune Deconvolution") {
             ImmDeconv_Used(TRUE)
@@ -2914,21 +2915,13 @@ server <- function(input, output, session) {
       })
       
       output$FileCheckAlerts <- renderPrint({
-        
         req(FileCheckAlerts_react())
-        
         FileCheckAlerts_list <- FileCheckAlerts_react()
         #save(list = ls(), file = "Alert_list.RData", envir = environment())
-        
-        
         FileCheckAlerts_vec <- unname(unlist(FileCheckAlerts_list))
-        
-        
-        
         text <- paste(FileCheckAlerts_vec, collapse = "\n")
         #text <- paste(unique(FileCheckAlerts_react()), collapse = "\n")
         cat(text)
-        
       })
       
       
@@ -2936,33 +2929,40 @@ server <- function(input, output, session) {
         req(expr_input())
         req(input$ExprHead)
         
-        if (immudecon_check & input$ImmDeconvAnalysis == "Immune Deconvolution") {
-          req(ImmDeconv_react())
-          req(input$ImmDeconvLogOpt)
-          expr <- ImmDeconv_react()
-          if (input$ImmDeconvLogOpt == "Floor data to 1") {
-            expr <- as.data.frame(do.call(cbind, lapply(expr,function(x) {
-              return(adjust_for_log(x,method = "floor"))
-            })), row.names = rownames(expr))
-          } else if (input$ImmDeconvLogOpt == "Shift Each Feature Min to 1") {
-            expr <- as.data.frame(do.call(cbind, lapply(expr,function(x) {
-              return(adjust_for_log(x,method = "shift"))
-            })), row.names = rownames(expr))
+        if (immudecon_check & ("Perform Immune Deconvolution" %in% input$RawCountQuantNorm)) {
+          req(input$ImmDeconvAnalysis)
+          if (input$ImmDeconvAnalysis == "Immune Deconvolution") {
+            req(ImmDeconv_react())
+            req(input$ImmDeconvLogOpt)
+            expr <- ImmDeconv_react()
+            if (input$ImmDeconvLogOpt == "Floor data to 1") {
+              expr <- as.data.frame(do.call(cbind, lapply(expr,function(x) {
+                return(adjust_for_log(x,method = "floor"))
+              })), row.names = rownames(expr))
+            } else if (input$ImmDeconvLogOpt == "Shift Each Feature Min to 1") {
+              expr <- as.data.frame(do.call(cbind, lapply(expr,function(x) {
+                return(adjust_for_log(x,method = "shift"))
+              })), row.names = rownames(expr))
+            } else {
+              expr <- expr
+            }
           } else {
-            expr <- expr
+            expr <- expr_input()
           }
         } else {
           expr <- expr_input()
         }
-        if (input$ExprHead == "View table head") {
-          expr <- head(expr,c(100,100))
+        if (isTruthy(dim(expr))) {
+          if (input$ExprHead == "View table head") {
+            expr <- head(expr,c(100,100))
+          }
+          DT::datatable(expr,
+                        options = list(lengthMenu = c(5,10, 20, 100, 1000),
+                                       pageLength = 10,
+                                       scrollX = T),
+                        rownames = T) %>%
+            formatRound(columns = colnames(expr), digits = 4)
         }
-        DT::datatable(expr,
-                      options = list(lengthMenu = c(5,10, 20, 100, 1000),
-                                     pageLength = 10,
-                                     scrollX = T),
-                      rownames = T) %>%
-          formatRound(columns = colnames(expr), digits = 4)
       })
       
       output$ClinFile_Preview <- DT::renderDataTable({
@@ -3313,7 +3313,7 @@ server <- function(input, output, session) {
       })
       
       #observe({
-      #  
+      #
       #  #req(userGeneSet_table())
       #  req(geneset_list())
       #  gs_list <- geneset_list()
@@ -3322,8 +3322,8 @@ server <- function(input, output, session) {
       #    gs_list <- c(gs_df[,1], names(gs_list))
       #  }
       #  updateSelectizeInput(session,"ssgseaHeatGS", choices = gs_list, selected = gs_list[1:3], server = T)
-      #  
-      #  
+      #
+      #
       #})
       
       output$userGeneSetTable <- DT::renderDataTable({
@@ -3514,7 +3514,7 @@ server <- function(input, output, session) {
         
       })
       #output$rendSubsetCol <- renderUI({
-      #  
+      #
       #  req(meta_input())
       #  meta <- meta_input()
       #  if (ncol(meta) > 2) {
@@ -3524,7 +3524,7 @@ server <- function(input, output, session) {
       #                choices = CharCols,
       #                selected = SubCol_reactVal())
       #  }
-      #  
+      #
       #})
       #observeEvent(input$DEGSubsetCol, {
       #  updateSelectInput(session, "SubsetCol",selected = isolate(input$DEGSubsetCol))
@@ -3675,7 +3675,7 @@ server <- function(input, output, session) {
       
       ## DEG -----------------------------------------------------------------------
       #output$rendDEGSubsetCol <- renderUI({
-      #  
+      #
       #  meta <- meta_react()
       #  if (ncol(meta) > 2) {
       #    #CharCols <- c("Select All Samples",suppressWarnings(column_type_check(meta,"character"))[-1])
@@ -3684,7 +3684,7 @@ server <- function(input, output, session) {
       #                choices = CharCols,
       #                selected = SubCol_reactVal())
       #  }
-      #  
+      #
       #})
       #observeEvent(input$SubsetCol, ignoreInit = TRUE, {
       #  updateSelectInput(session, "DEGSubsetCol",selected = isolate(input$SubsetCol))
@@ -3695,14 +3695,14 @@ server <- function(input, output, session) {
       #observeEvent(input$DEGSubsetCol,{SubCol_reactVal(input$DEGSubsetCol)})
       
       #output$rendDEGSubsetCrit <- renderUI({
-      #  
+      #
       #  req(input$DEGSubsetCol)
       #  if (input$DEGSubsetCol != "Select All Samples") {
       #    meta <- meta_input()
       #    SubCrit <- unique(meta[,input$DEGSubsetCol])
       #    selectInput("DEGSubsetCrit","Sample Criteria:",choices = SubCrit, selected = SubCrit_reactVal())
       #  }
-      #  
+      #
       #})
       #observeEvent(input$SubsetCrit, ignoreInit = TRUE, {
       #  updateSelectInput(session, "DEGSubsetCrit",selected = isolate(input$SubsetCrit))
@@ -3908,7 +3908,7 @@ server <- function(input, output, session) {
       })
       
       #output$rendGSEASubsetCol <- renderUI({
-      #  
+      #
       #  meta <- meta_react()
       #  if (ncol(meta) > 2) {
       #    #if ()
@@ -3918,7 +3918,7 @@ server <- function(input, output, session) {
       #                choices = CharCols,
       #                selected = SubCol_reactVal())
       #  }
-      #  
+      #
       #})
       #observeEvent(input$SubsetCol, ignoreInit = TRUE, {
       #  updateSelectInput(session, "GSEASubsetCol",selected = isolate(input$SubsetCol))
@@ -3929,14 +3929,14 @@ server <- function(input, output, session) {
       #observeEvent(input$GSEASubsetCol,{SubCol_reactVal(input$GSEASubsetCol)})
       
       #output$rendGSEASubsetCrit <- renderUI({
-      #  
+      #
       #  req(input$GSEASubsetCol)
       #  if (input$GSEASubsetCol != "Select All Samples") {
       #    meta <- meta_input()
       #    SubCrit <- unique(meta[,input$GSEASubsetCol])
       #    selectInput("GSEASubsetCrit","Sample Criteria:",choices = SubCrit, selected = SubCrit_reactVal())
       #  }
-      #  
+      #
       #})
       #observeEvent(input$SubsetCrit, ignoreInit = TRUE, {
       #  updateSelectInput(session, "GSEASubsetCrit",selected = isolate(input$SubsetCrit))
@@ -4059,10 +4059,10 @@ server <- function(input, output, session) {
               }
             }
           } #else {
-            #meta
+          #meta
           #}
         } #else {
-          #meta
+        #meta
         #}
         
         if (isTruthy(ImmDeconv_react())) {
@@ -4075,14 +4075,14 @@ server <- function(input, output, session) {
       })
       
       #observe({
-      #  
+      #
       #  req(meta_react())
       #  meta <- meta_react()
       #  updateSelectizeInput(session = session, inputId = "userheatsamp2",
       #                       choices = meta[,1],selected = meta[,1], server = T)
       #  updateSelectizeInput(session = session, inputId = "userheatsampSS",
       #                       choices = meta[,1],selected = meta[,1], server = T)
-      #  
+      #
       #})
       
       observe({
@@ -4102,45 +4102,57 @@ server <- function(input, output, session) {
       expr_react <- reactive({
         req(meta_react())
         meta <- meta_react()
-        if (immudecon_check & input$ImmDeconvAnalysis == "Immune Deconvolution") {
-          req(ImmDeconv_react())
-          req(input$ImmDeconvLogOpt)
-          expr <- ImmDeconv_react()
-          if (input$ImmDeconvLogOpt == "Floor data to 1") {
-            expr <- as.data.frame(do.call(cbind, lapply(expr,function(x) {
-              return(adjust_for_log(x,method = "floor"))
-            })), row.names = rownames(expr))
-          } else if (input$ImmDeconvLogOpt == "Shift Each Feature Min to 1") {
-            expr <- as.data.frame(do.call(cbind, lapply(expr,function(x) {
-              return(adjust_for_log(x,method = "shift"))
-            })), row.names = rownames(expr))
+        if (immudecon_check & ("Perform Immune Deconvolution" %in% input$RawCountQuantNorm)) {
+          req(input$ImmDeconvAnalysis)
+          if (input$ImmDeconvAnalysis == "Immune Deconvolution") {
+            req(ImmDeconv_react())
+            req(input$ImmDeconvLogOpt)
+            expr <- ImmDeconv_react()
+            if (input$ImmDeconvLogOpt == "Floor data to 1") {
+              expr <- as.data.frame(do.call(cbind, lapply(expr,function(x) {
+                return(adjust_for_log(x,method = "floor"))
+              })), row.names = rownames(expr))
+            } else if (input$ImmDeconvLogOpt == "Shift Each Feature Min to 1") {
+              expr <- as.data.frame(do.call(cbind, lapply(expr,function(x) {
+                return(adjust_for_log(x,method = "shift"))
+              })), row.names = rownames(expr))
+            } else {
+              expr <- expr
+            }
           } else {
-            expr <- expr
+            req(expr_input())
+            expr <- expr_input()
           }
         } else {
           req(expr_input())
           expr <- expr_input()
         }
         expr2 <- expr[,meta[,1]]
+        #save(list = ls(), file = "immdeconv.RData", envir = environment())
         as.data.frame(expr2)
         
       })
       
       
       observe({
-        if (immudecon_check & input$ImmDeconvAnalysis == "Immune Deconvolution") {
-          req(ImmDeconv_react())
-          req(meta_react())
-          meta <- meta_react()
-          req(expr_input())
-          expr <- expr_input()
-          expr <- expr[,meta[,1]]
+        if (immudecon_check & ("Perform Immune Deconvolution" %in% input$RawCountQuantNorm)) {
+          req(input$ImmDeconvAnalysis)
+          if (input$ImmDeconvAnalysis == "Immune Deconvolution") {
+            req(ImmDeconv_react())
+            req(meta_react())
+            meta <- meta_react()
+            req(expr_input())
+            expr <- expr_input()
+            expr <- expr[,meta[,1]]
+            A <- as.matrix(expr)
+            A_raw(A)
+          }
         } else {
           req(expr_react())
           expr <- expr_react()
+          A <- as.matrix(expr)
+          A_raw(A)
         }
-        A <- as.matrix(expr)
-        A_raw(A)
       })
       
       #expr_mat_react <- reactive({
@@ -4202,10 +4214,10 @@ server <- function(input, output, session) {
       #})
       
       #output$rendssgseaHeatGS <- renderUI({
-      #  
+      #
       #  GS <- geneset_list()
       #  gs_names <- names(GS)
-      #  
+      #
       #  #if (input$tables == 1) {
       #  #  gs_names <- c(grep("^HALLMARK",names(gs()),value = T),grep("^HALLMARK",names(gs()),value = T, invert = T))
       #  #}
@@ -4229,7 +4241,7 @@ server <- function(input, output, session) {
       #  gs_selected <- gs_selected[!is.na(gs_selected)]
       #  selectInput("ssgseaHeatGS", "Select Gene Sets:",
       #              choices = gs_names, selected = gs_selected, multiple = T)
-      #  
+      #
       #})
       
       # Render cluster method selection for average heatmap
@@ -4744,7 +4756,7 @@ server <- function(input, output, session) {
       #render enrich signature table generation button for msigdb data
       #output$genESTbutton <- renderUI({
       #  if (input$tables == 1) {
-      #    
+      #
       #  }
       #})
       
@@ -4820,13 +4832,13 @@ server <- function(input, output, session) {
           #  if (input$ImmDeconvLogOpt == "Floor data to 1") {
           #    top2$AveExpr[which(top2$AveExpr < 1)] <- 1
           #  } else {
-          #    
+          #
           #  }
           #} else {
           #  top2$AveExpr <- log2(top2$AveExpr+1)
           #}
           #if (!ImmDeconv_Used()) {
-            top2$AveExpr <- log2(top2$AveExpr+1)
+          top2$AveExpr <- log2(top2$AveExpr+1)
           #}
           #top2$AveExpr <- log2(top2$AveExpr+1)
         }
@@ -5489,7 +5501,7 @@ server <- function(input, output, session) {
             
             
             #if (!ImmDeconv_Used()) {
-              mat <- log2(mat+1)
+            mat <- log2(mat+1)
             #}
             #mat <- log2(mat + 1.0)
             if (isTruthy(covars)) {
@@ -5589,7 +5601,7 @@ server <- function(input, output, session) {
           cv <- NULL
           
           #if (!ImmDeconv_Used()) {
-            exp <- log2(exp+1)
+          exp <- log2(exp+1)
           #}
           
           if (var_type == "MAD"){
@@ -5658,7 +5670,7 @@ server <- function(input, output, session) {
                                                         cluster_rows = clust_rows_opt, cluster_columns = clust_cols_opt,
                                                         row_names_gp = gpar(fontsize = row_font), column_names_gp = gpar(fontsize = col_font),
                                                         heatmap_legend_param = list(title = "Expression"),
-                                                        #width = ncol(dataset)*unit(3, "mm"), 
+                                                        #width = ncol(dataset)*unit(3, "mm"),
                                                         #height = nrow(dataset)*unit(2.5, "mm"),
                                                         border = F))
           incProgress(0.5, detail = "Complete!")
@@ -5740,7 +5752,7 @@ server <- function(input, output, session) {
             incProgress(0.25, detail = "Calculating Z-Score")
             dataset <- exp
             #if (!ImmDeconv_Used()) {
-              dataset <- log2(dataset+1)
+            dataset <- log2(dataset+1)
             #}
             #dataset <- log2(dataset + 1)
             zdataset <- apply(dataset, 1, scale)
@@ -5903,7 +5915,7 @@ server <- function(input, output, session) {
           dataset <- expr[which(rownames(expr) %in% genelist),]
           if (length(dataset) > 0) {
             #if (!ImmDeconv_Used()) {
-              dataset <- log2(dataset+1)
+            dataset <- log2(dataset+1)
             #}
             #dataset <- log2(dataset + 1)
             zdataset <- apply(dataset, 1, scale)
@@ -6006,7 +6018,7 @@ server <- function(input, output, session) {
             incProgress(0.25, detail = "Calculating Z-Score")
             #if (length(group_choices) > 0) {
             #if (!ImmDeconv_Used()) {
-              dataset <- log2(dataset+1)
+            dataset <- log2(dataset+1)
             #}
             #dataset <- log2(dataset + 1)
             zdataset <- apply(dataset, 1, scale)
@@ -6131,7 +6143,7 @@ server <- function(input, output, session) {
         
         df <- ssgseaheatmap_df_react()
         dataset <- ssgsea_heat_data()
-        DT::datatable(df, 
+        DT::datatable(df,
                       options = list(lengthMenu = c(5,10,20,50,100,1000),
                                      pageLength = 10,
                                      scrollX = TRUE),
@@ -6329,7 +6341,7 @@ server <- function(input, output, session) {
         
         df <- ssgseaheatmap2_df_react()
         dataset <- ssgsea_heat2_data()
-        DT::datatable(df, 
+        DT::datatable(df,
                       options = list(lengthMenu = c(5,10,20,50,100,1000),
                                      pageLength = 10,
                                      scrollX = TRUE),
@@ -6461,7 +6473,7 @@ server <- function(input, output, session) {
         dataset <- ssgsea_heat2_data()
         colAnno <- ssgsea_heat_anno2()
         
-
+        
         p <- suppressMessages(ComplexHeatmap::Heatmap(dataset,
                                                       top_annotation = colAnno,
                                                       clustering_method_rows = clust_method,
@@ -6619,7 +6631,7 @@ server <- function(input, output, session) {
         
         df <- ssgseaheatmap3_df_react()
         dataset <- ssgseaheatmap3_react_df()
-        DT::datatable(df, 
+        DT::datatable(df,
                       options = list(lengthMenu = c(5,10,20,50,100,1000),
                                      pageLength = 10,
                                      scrollX = TRUE),
@@ -7262,7 +7274,7 @@ server <- function(input, output, session) {
           
           mat <- expr[,metaSub[,1]]
           #if (!ImmDeconv_Used()) {
-            mat <- log2(mat+1)
+          mat <- log2(mat+1)
           #}
           #mat <- log2(mat + 1.0)
           if (isTruthy(covars)) {
@@ -7317,7 +7329,7 @@ server <- function(input, output, session) {
         B <- meta[which(meta[,metacol] == input$comparisonB2.path),1]
         mat <- expr[,c(A,B)]
         #if (!ImmDeconv_Used()) {
-          mat <- log2(mat+1)
+        mat <- log2(mat+1)
         #}
         #mat <- log2(mat + 1.0)
         groupAOther <- factor(c(rep("A", length(A)), rep("B", length(B))))
@@ -7354,7 +7366,7 @@ server <- function(input, output, session) {
         B <- meta[which(meta[,metacol] == input$comparisonB2.path),1]
         mat <- expr[,c(A,B)]
         #if (!ImmDeconv_Used()) {
-          mat <- log2(mat+1)
+        mat <- log2(mat+1)
         #}
         #mat <- log2(mat + 1.0)
         groupAOther <- factor(c(rep("A", length(A)), rep("B", length(B))))
@@ -7825,7 +7837,7 @@ server <- function(input, output, session) {
         ## Transforming data
         A <- A[,c(groupA,groupB)]
         #if (!ImmDeconv_Used()) {
-          A <- log2(A+1)
+        A <- log2(A+1)
         #}
         exp.mat1 <- A
         #exp.mat1 = log2(A + 1) # log
@@ -7930,7 +7942,7 @@ server <- function(input, output, session) {
         top2 <- topgenereact()
         if (input$volcanoCompChoice == "DESeq2") {
           #if (!ImmDeconv_Used()) {
-            top2$AveExpr <- log2(top2$AveExpr+1)
+          top2$AveExpr <- log2(top2$AveExpr+1)
           #}
           #top2$AveExpr <- log2(top2$AveExpr+1)
         }
@@ -8111,7 +8123,7 @@ server <- function(input, output, session) {
         #featdf <- as.data.frame(t(featdf))
         #featdf[,NameCol] <- rownames(featdf)
         #meta <- merge(meta,featdf)
-        #} 
+        #}
         
         if (isTruthy(Feature)) {
           if (Feature %in% colnames(meta)) {
@@ -8381,7 +8393,7 @@ server <- function(input, output, session) {
         #featdf <- as.data.frame(t(featdf))
         #featdf[,NameCol] <- rownames(featdf)
         #meta <- merge(meta,featdf)
-        #} 
+        #}
         if (isTruthy(Feature)) {
           if (Feature %in% colnames(meta)) {
             meta <- meta %>% select(any_of(c(NameCol,groupCrit,Feature)))
@@ -8515,7 +8527,7 @@ server <- function(input, output, session) {
       
       #render boxplot
       #output$boxplot3 <- renderPlot({
-      #  
+      #
       #  meta <- meta_react()
       #  metacol <- metacol_reactVal()
       #  if (length(colnames(meta)) == 2) {
@@ -8531,7 +8543,7 @@ server <- function(input, output, session) {
       #  #else if (ncol(meta) == 2) {
       #  #  metacol <- colnames(meta)[2]
       #  #}
-      #  
+      #
       #  if (length(input$GeneListTable2_rows_selected) > 0){
       #    gene <- geneList[input$GeneListTable2_rows_selected, 1]
       #    min <- min(log2(expr[gene,] + 1.0))
@@ -8713,7 +8725,7 @@ server <- function(input, output, session) {
         B <- meta[which(meta[,metacol] == input$comparisonB2.path),1]
         mat <- expr[,c(A,B)]
         #if (!ImmDeconv_Used()) {
-          mat <- log2(mat+1)
+        mat <- log2(mat+1)
         #}
         #mat <- log2(mat + 1.0)
         groupAOther <- factor(c(rep("A", length(A)), rep("B", length(B))))
@@ -8753,7 +8765,7 @@ server <- function(input, output, session) {
         B <- meta[which(meta[,metacol] == input$comparisonB2.path),1]
         mat <- expr[,c(A,B)]
         #if (!ImmDeconv_Used()) {
-          mat <- log2(mat+1)
+        mat <- log2(mat+1)
         #}
         #mat <- log2(mat + 1.0)
         groupAOther <- factor(c(rep("A", length(A)), rep("B", length(B))))
@@ -9479,7 +9491,7 @@ server <- function(input, output, session) {
           B <- meta[which(meta[,metacol] == input$comparisonB2.path),1]
           mat <- expr[,c(A,B)]
           #if (!ImmDeconv_Used()) {
-            mat <- log2(mat+1)
+          mat <- log2(mat+1)
           #}
           #mat <- log2(mat + 1.0)
           groupAOther <- factor(c(rep("A", length(A)), rep("B", length(B))))
@@ -9520,7 +9532,7 @@ server <- function(input, output, session) {
           B <- meta[which(meta[,metacol] == input$comparisonB2.path),1]
           mat <- expr[,c(A,B)]
           #if (!ImmDeconv_Used()) {
-            mat <- log2(mat+1)
+          mat <- log2(mat+1)
           #}
           #mat <- log2(mat + 1.0)
           groupAOther <- factor(c(rep("A", length(A)), rep("B", length(B))))
@@ -9833,7 +9845,7 @@ server <- function(input, output, session) {
           B <- meta[which(meta[,metacol] == input$comparisonB2.path),1]
           mat <- expr[,c(A,B)]
           #if (!ImmDeconv_Used()) {
-            mat <- log2(mat+1)
+          mat <- log2(mat+1)
           #}
           #mat <- log2(mat + 1.0)
           groupAOther <- factor(c(rep("A", length(A)), rep("B", length(B))))
@@ -9874,7 +9886,7 @@ server <- function(input, output, session) {
           B <- meta[which(meta[,metacol] == input$comparisonB2.path),1]
           mat <- expr[,c(A,B)]
           #if (!ImmDeconv_Used()) {
-            mat <- log2(mat+1)
+          mat <- log2(mat+1)
           #}
           #mat <- log2(mat + 1.0)
           groupAOther <- factor(c(rep("A", length(A)), rep("B", length(B))))
@@ -9935,7 +9947,7 @@ server <- function(input, output, session) {
               ## Transforming data
               A <- A[,c(groupA,groupB)]
               #if (!ImmDeconv_Used()) {
-                A <- log2(A+1)
+              A <- log2(A+1)
               #}
               exp.mat1 = A
               #exp.mat1 = log2(A + 1) # log
@@ -10009,7 +10021,7 @@ server <- function(input, output, session) {
               ## Transforming data
               A <- A[,c(groupA,groupB)]
               #if (!ImmDeconv_Used()) {
-                A <- log2(A+1)
+              A <- log2(A+1)
               #}
               exp.mat1 = A
               #exp.mat1 = log2(A + 1) # log
@@ -10083,7 +10095,7 @@ server <- function(input, output, session) {
               ## Transforming data
               A <- A[,c(groupA,groupB)]
               #if (!ImmDeconv_Used()) {
-                A <- log2(A+1)
+              A <- log2(A+1)
               #}
               exp.mat1 = A
               #exp.mat1 = log2(A + 1) # log
@@ -10175,7 +10187,7 @@ server <- function(input, output, session) {
           var_type <- input$VarianceMeasure
           
           #if (!ImmDeconv_Used()) {
-            exp <- log2(exp+1)
+          exp <- log2(exp+1)
           #}
           
           if (var_type == "MAD"){
@@ -10656,7 +10668,7 @@ server <- function(input, output, session) {
           cv <- NULL
           var_type <- input$VarianceMeasure
           #if (!ImmDeconv_Used()) {
-            exp <- log2(exp+1)
+          exp <- log2(exp+1)
           #}
           if (var_type == "MAD"){
             mad <- apply(exp, 1, mad)
@@ -10712,7 +10724,7 @@ server <- function(input, output, session) {
           cv <- NULL
           var_type <- input$VarianceMeasure
           #if (!ImmDeconv_Used()) {
-            exp <- log2(exp+1)
+          exp <- log2(exp+1)
           #}
           if (var_type == "MAD"){
             mad <- apply(exp, 1, mad)
