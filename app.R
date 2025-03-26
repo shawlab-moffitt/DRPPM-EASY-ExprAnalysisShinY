@@ -1,4 +1,4 @@
-type_id <- paste0("v2.0.20250307")
+type_id <- paste0("v2.0.20250326")
 
 # User Data Input --------------------------------------------------------------
 # Project Name
@@ -8070,6 +8070,7 @@ server <- function(input, output, session) {
         
         req(expr_react())
         req(meta_react())
+        req(input$BPFeatureCategory2)
         Features <- NULL
         FeatCat <- input$BPFeatureCategory2
         if (FeatCat == "Matrix Features") {
@@ -8340,6 +8341,7 @@ server <- function(input, output, session) {
         
         req(expr_react())
         req(meta_react())
+        req(input$BPFeatureCategory)
         Features <- NULL
         FeatCat <- input$BPFeatureCategory
         if (FeatCat == "Matrix Features") {
