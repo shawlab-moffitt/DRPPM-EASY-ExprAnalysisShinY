@@ -22,6 +22,7 @@ Password_Protected <- FALSE
 PasswordSet <- 'password'
 
 
+
 ## Provided Input --------------------------------------------------------------
 ## User make sure paths are correct
 ExampleExpr_File <- "Example_Data/TCGA_CHOL_Expression_PatientID.txt"
@@ -200,12 +201,12 @@ mouse <- ifelse(!as.logical(human),TRUE,FALSE)
 #}
 
 get_feat_cols <- function(data, keep_num = TRUE) {
-  if (keep_num) {
-    data <- data[sapply(data, function(x) length(unique(x))>1)]
-  } else {
-    data <- data[sapply(data, function(x) length(unique(x))>1)]
-    data <- data[sapply(data, function(x) length(unique(x))<length(x))]
-  }
+  #if (keep_num) {
+  #  data <- data[sapply(data, function(x) length(unique(x))>1)]
+  #} else {
+  #  data <- data[sapply(data, function(x) length(unique(x))>1)]
+  #  data <- data[sapply(data, function(x) length(unique(x))<length(x))]
+  #}
   return(colnames(data))
 }
 
@@ -2633,7 +2634,7 @@ server <- function(input, output, session) {
           geneList_raw(geneList);
           Gene_raw(Gene)
           
-          colnames(meta)[1] <- "SampleName"
+          #colnames(meta)[1] <- "SampleName"
           
           #for heatmap sample selection
           sampsames <- intersect(colnames(expr),meta[,1])
@@ -8380,6 +8381,7 @@ server <- function(input, output, session) {
         NameCol <- colnames(meta)[1]
         removeSingles <- input$BPremoveSingles
         BPlog <- input$BPlogOpt
+        #save(list = ls(), file = "CohortBPPlot_df_react.RData", envir = environment())
         if (FeatCat == "Matrix Features") {
           feat <- unlist(mat[Feature,])
           featdf <- data.frame(
@@ -8396,6 +8398,7 @@ server <- function(input, output, session) {
         #featdf[,NameCol] <- rownames(featdf)
         #meta <- merge(meta,featdf)
         #}
+        
         if (isTruthy(Feature)) {
           if (Feature %in% colnames(meta)) {
             meta <- meta %>% select(any_of(c(NameCol,groupCrit,Feature)))
@@ -8460,6 +8463,8 @@ server <- function(input, output, session) {
         }
         BPorder <- input$BPplotXaxOrder
         BPGroupSelect <- input$BPgroupSelection
+        
+        #save(list = ls(), file = "CohortBPPlot_react.RData", envir = environment())
         
         if (isTruthy(Feature)) {
           plotdf <- plotdf_full[,c(NameCol,groupCrit,Feature)]
@@ -8615,7 +8620,7 @@ server <- function(input, output, session) {
           expr_gene <- merge(expr_gene, meta_temp, by=0)
           colnames(expr_gene)[c(1,3)] <- c("SampleName","Type")
           
-          expr_gene2 <- merge(expr_gene,meta, all = T)
+          expr_gene2 <- merge(expr_gene,meta, all = T, by.x = "SampleName", by.y = colnames(meta)[1])
           plottitle <- paste(gene,"Average Gene Expression Across",metacol)
           genetitle <- paste(gene,"Average Expression")
           
@@ -11147,7 +11152,7 @@ server <- function(input, output, session) {
             }
           }
           
-          
+          #save(list = ls(), file = "VolGroupsText.RData", envir = environment())
           
           if (nrow(metaSub_noNA) < nrow(metaSub)) {
             RowsTaken <- nrow(metaSub)-nrow(metaSub_noNA)
