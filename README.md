@@ -1,4 +1,4 @@
-# Easy-App - Expression Analysis
+# Easy-App for Gene/Protein Expression Analysis
 
 # Introduction
 
